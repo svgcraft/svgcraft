@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      var is_dragging = false;
+      var lastMouseX = null;
+      var lastMouseY = null;
+      var mainSvgX = 0;
+      var mainSvgY = 0;
+      var mainSvgElem = null;
+
+      function setup_scrolling() {
+          mainSvgElem = document.getElementById("mainsvg");
+          mainSvgElem.style.left = mainSvgX + 'px';
+          mainSvgElem.style.top = mainSvgY + 'px';
+          document.addEventListener("mousedown", function(e){
+              is_dragging = true;
+              lastMouseX = e.pageX;
+              lastMouseY = e.pageY;
+          });
+          document.addEventListener("mouseup", function(){
+              is_dragging = false;
+          });
+          document.addEventListener("mousemove", function(e){
+              if (!is_dragging) return;
+              e.preventDefault();
+              var dx = e.pageX - lastMouseX;
+              var dy = e.pageY - lastMouseY;
+              mainSvgX += dx;
+              mainSvgY += dy;
+              mainSvgElem.style.left = mainSvgX + 'px';
+              mainSvgElem.style.top = mainSvgY + 'px';
+              lastMouseX = e.pageX;
+              lastMouseY = e.pageY;
+          });
+      }
+
+      function init() {
+          setup_scrolling();
+      }
+
+    </script>
+
+    <style>
+      #mapport {
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          bottom: 20px;
+          right: 20px;
+          overflow: hidden;
+          background-color: white;
+      }
+
+      #mainsvg {
+          position: absolute;
+          top: -50px;
+          left: -50px;
+      }
+
+      body {
+          background-color: #555;
+      }
+    </style>
+  </head>
+
+  <body onload="init()">
+    <div id="mapport">
+      <svg id="mainsvg" width="800" height="10000">
+
+        <defs>
+          <linearGradient id="WhiteToBlueGradient">
+            <stop offset="5%" stop-color="white"/>
+            <stop offset="95%" stop-color="blue"/>
+          </linearGradient>
+
+          <pattern id="BlueCircles" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="50" height="50" fill="skyblue"/>
+            <circle cx="25" cy="25" r="20" fill="url(#WhiteToBlueGradient)" fill-opacity="0.5"/>
+          </pattern>
+
+          <pattern id="SimpleBlueCircles" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+            <circle cx="20" cy="20" r="20" fill="#64bee3" />
+          </pattern>
+
+          <pattern id="CobbledWestEast" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+            <rect x="2" y="2" width="16" height="36" fill="#dddddd"/>
+            <rect x="22" y="0" width="16" height="18" fill="#dddddd"/>
+            <rect x="22" y="22" width="16" height="18" fill="#dddddd"/>
+          </pattern>
+
+          <pattern id="Tiles1" x="0" y="0" width="150" height="150" patternUnits="userSpaceOnUse">
+            <rect x="2"   y="2"   width="56" height="56" fill="#f3f3f3"/>
+            <rect x="62"  y="32"  width="56" height="56" fill="#f3f3f3"/>
+            <rect x="122" y="62"  width="56" height="56" fill="#f3f3f3"/>
+            <rect x="-28" y="62"  width="56" height="56" fill="#f3f3f3"/>
+            <rect x="32"  y="92"  width="56" height="56" fill="#f3f3f3"/>
+            <rect x="92"  y="122" width="56" height="56" fill="#f3f3f3"/>
+            <rect x="92"  y="-28" width="56" height="56" fill="#f3f3f3"/>
+            <rect x="62"  y="2"   width="26" height="26" fill="#dddddd"/>
+            <rect x="122" y="32"  width="26" height="26" fill="#dddddd"/>
+            <rect x="32"  y="62"  width="26" height="26" fill="#dddddd"/>
+            <rect x="92"  y="92"  width="26" height="26" fill="#dddddd"/>
+            <rect x="2"   y="122" width="26" height="26" fill="#dddddd"/>
+          </pattern>
+
+
+        </defs>
+
+        <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
+
+        <circle cx="500" cy="9000" r="40" stroke="green" stroke-width="4" fill="white" />
+
+        <rect x="110" y="90" width="200" height="200" fill="url(#SimpleBlueCircles)" fill-opacity="0.5"/>
+
+        <rect x="520" y="20" fill="url(#BlueCircles)" width="500" height="500" fill-opacity="0.5"/>
+
+        <rect x="45" y="325" fill="url(#CobbledWestEast)" width="400" height="200"/>
+
+        <rect x="50" y="550" fill="url(#Tiles1)" width="400" height="200"/>
+
+      </svg>
+    </div>
+  </body>
+</html>
