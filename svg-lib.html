@@ -7,36 +7,53 @@
       var lastMouseY = null;
       var mainSvgX = 0;
       var mainSvgY = 0;
+      var zoomScale = 1.0;
       var mainSvgElem = null;
+      var mapPortDiv = null;
 
-      function setup_scrolling() {
+      function set_transform() {
+          mainSvgElem.style.transform = `translate(${mainSvgX}px, ${mainSvgY}px) scale(${zoomScale})`;
+      }
+
+      function setup_scroll_and_zoom() {
           mainSvgElem = document.getElementById("mainsvg");
-          mainSvgElem.style.left = mainSvgX + 'px';
-          mainSvgElem.style.top = mainSvgY + 'px';
-          document.addEventListener("mousedown", function(e){
+          set_transform();
+          mapPortDiv = document.getElementById("mapport");
+          mapPortDiv.addEventListener("mousedown", function(e){
               is_dragging = true;
-              lastMouseX = e.pageX;
-              lastMouseY = e.pageY;
+              lastMouseX = e.clientX;
+              lastMouseY = e.clientY;
           });
-          document.addEventListener("mouseup", function(){
+          mapPortDiv.addEventListener("mouseup", function(){
               is_dragging = false;
           });
-          document.addEventListener("mousemove", function(e){
+          mapPortDiv.addEventListener("mousemove", function(e){
               if (!is_dragging) return;
               e.preventDefault();
-              var dx = e.pageX - lastMouseX;
-              var dy = e.pageY - lastMouseY;
+              var dx = e.clientX - lastMouseX;
+              var dy = e.clientY - lastMouseY;
               mainSvgX += dx;
               mainSvgY += dy;
-              mainSvgElem.style.left = mainSvgX + 'px';
-              mainSvgElem.style.top = mainSvgY + 'px';
-              lastMouseX = e.pageX;
-              lastMouseY = e.pageY;
+              lastMouseX = e.clientX;
+              lastMouseY = e.clientY;
+              set_transform();
           });
+          mapPortDiv.addEventListener("wheel", function(e){
+              e.preventDefault();
+              var zoomChange = Math.exp(e.deltaY * -0.001);
+              var rect = mapPortDiv.getBoundingClientRect();
+              var xInPort = e.clientX - rect.left;
+              var yInPort = e.clientY - rect.top;
+              mainSvgX = xInPort - (xInPort - mainSvgX) * zoomChange;
+              mainSvgY = yInPort - (yInPort - mainSvgY) * zoomChange;
+              zoomScale *= zoomChange;
+              set_transform();
+          });
+
       }
 
       function init() {
-          setup_scrolling();
+          setup_scroll_and_zoom();
       }
 
     </script>
@@ -54,8 +71,11 @@
 
       #mainsvg {
           position: absolute;
-          top: -50px;
-          left: -50px;
+           /* show elements at negative positions too, we want an infinite space in all directions */
+          overflow: visible;
+          top: 0;
+          left: 0;
+          transform-origin: top left;
       }
 
       body {
@@ -66,7 +86,7 @@
 
   <body onload="init()">
     <div id="mapport">
-      <svg id="mainsvg" width="800" height="10000">
+      <svg id="mainsvg" width="42" height="42"> <!-- width and height are ignored because overflow:visible -->
 
         <defs>
           <linearGradient id="WhiteToBlueGradient">
@@ -117,7 +137,7 @@
 
         <rect x="45" y="325" fill="url(#CobbledWestEast)" width="400" height="200"/>
 
-        <rect x="50" y="550" fill="url(#Tiles1)" width="400" height="200"/>
+        <rect x="-150" y="550" fill="url(#Tiles1)" width="1000" height="1000"/>
 
       </svg>
     </div>
