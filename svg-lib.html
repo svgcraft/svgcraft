@@ -142,40 +142,42 @@
             <path d="M 43 29 c 6 -6, 11 -6, 17 0 s 11 6, 17 0"
                   stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"/>
           </pattern>
+
+          <clipPath id="ClipMapTile"><rect x="0" y="0" width="10020" height="10000"/></clipPath>
         </defs>
 
-        <svg x="0" y="0" width="10000" height="10000">
+        <g id="Tile0" clip-path="url(#ClipMapTile)" transform="translate(0,0)">
           <rect x="0" y="0" width="10000" height="10000" fill="#cccc00" />
           <ellipse cx="0" cy="10000" rx="5000" ry="6500" fill="url(#Ocean)"/>
           <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
           <ellipse cx="4250" cy="0" rx="750" ry="600" fill="url(#Ocean)"/>
           <ellipse cx="10000" cy="5500" rx="2200" ry="2000" fill="url(#Ocean)"/>
-        </svg>
+        </g>
 
-        <svg x="10000" y="0" width="10000" height="10000">
+        <g id="Tile1" clip-path="url(#ClipMapTile)" transform="translate(-10000, 0)">
           <rect x="0" y="0" width="10000" height="10000" fill="url(#Ocean)" />
           <ellipse cx="10000" cy="10000" rx="5000" ry="2500" fill="#cccc00"/>
           <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
           <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
           <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
-        </svg>
+        </g>
 
-        <svg x="0" y="10000" width="10000" height="10000">
+        <g id="Tile2" clip-path="url(#ClipMapTile)" transform="translate(0, -10000)">
           <rect x="0" y="0" width="10000" height="7500" fill="url(#Ocean)" />
           <rect x="0" y="7500" width="10000" height="2500" fill="#cccc00" />
           <ellipse cx="10000" cy="4250" rx="1500" ry="3250" fill="url(#Ocean)"/>
           <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
           <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
           <ellipse cx="4250" cy="10000" rx="750" ry="600" fill="url(#Ocean)"/>
-        </svg>
+        </g>
 
-        <svg x="10000" y="10000" width="10000" height="10000">
+        <g id="Tile3" clip-path="url(#ClipMapTile)" transform="translate(-10000, -10000)">
           <rect x="0" y="0" width="5000" height="10000" fill="url(#Ocean)" />
           <rect x="5000" y="0" width="5000" height="10000" fill="#cccc00" />
           <ellipse cx="10000" cy="5500" rx="1500" ry="2000" fill="url(#Ocean)"/>
           <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
           <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
-        </svg>
+        </g>
 
 
         <circle cx="250" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
