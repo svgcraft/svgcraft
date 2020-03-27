@@ -1,23 +1,28 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     <script>
       var is_dragging = false;
       var lastMouseX = null;
       var lastMouseY = null;
       var mainSvgX = 100;
       var mainSvgY = 100;
-      var zoomScale = 0.1;
+      var zoomScale = 0.01;
       var mainSvgElem = null;
       var mapPortDiv = null;
 
+      function port_coord_to_world(p) {
+          return p.add(new Point(mainSvgX, mainSvgY)).scale(zoomScale);
+      }
+
       function set_transform() {
           mainSvgElem.style.transform = `translate(${mainSvgX}px, ${mainSvgY}px) scale(${zoomScale})`;
+          add_needed_tiles();
       }
 
       function setup_scroll_and_zoom() {
           mainSvgElem = document.getElementById("mainsvg");
-          set_transform();
           mapPortDiv = document.getElementById("mapport");
           mapPortDiv.addEventListener("mousedown", function(e){
               is_dragging = true;
@@ -49,11 +54,53 @@
               zoomScale *= zoomChange;
               set_transform();
           });
+      }
 
+      var tileTemplateGs = null;
+      var tileWidth = 10000;
+      var tileHeight = 10000;
+
+      function modulo(n, m) {
+          return ((n % m) + m) % m;
+      }
+
+      function some_random(i, j) {
+          return (new Math.seedrandom(i + "aa" + j))();
+      }
+
+      function add_tile_if_not_there(i, j) {
+          var id = `Tile_${i}_${j}`;
+          if (!document.getElementById(id)) {
+              var kind = Math.floor(some_random(i, j) * tileTemplateGs.length);
+              var newTileG = tileTemplateGs[kind].cloneNode(true);
+              newTileG.id = id;
+              newTileG.style.transform = `translate(${i*tileWidth}px, ${j*tileHeight}px)`;
+              document.getElementById("Tiles").appendChild(newTileG);
+          }
+      }
+
+      function add_needed_tiles() {
+          var start_i = Math.floor(-mainSvgX / zoomScale / tileWidth);
+          var start_j = Math.floor(-mainSvgY / zoomScale / tileHeight);
+          var end_i = Math.ceil((mapPortDiv.clientWidth - mainSvgX) / zoomScale / tileWidth);
+          var end_j = Math.ceil((mapPortDiv.clientHeight - mainSvgY) / zoomScale / tileHeight);
+          for (var i = start_i; i < end_i; i++) {
+              for (var j = start_j; j < end_j; j++) {
+                  add_tile_if_not_there(i, j);
+              }
+          }
+      }
+
+      function setup_tiles() {
+          var tileTemplatesG = document.getElementById("TileTemplates");
+          document.getElementById("mainsvg").removeChild(tileTemplatesG);
+          tileTemplateGs = tileTemplatesG.children;
       }
 
       function init() {
           setup_scroll_and_zoom();
+          setup_tiles();
+          set_transform();
       }
 
     </script>
@@ -143,42 +190,58 @@
                   stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"/>
           </pattern>
 
-          <clipPath id="ClipMapTile"><rect x="0" y="0" width="10020" height="10000"/></clipPath>
+          <clipPath id="ClipMapTile">
+            <rect x="0" y="0" width="10020" height="10000"/>
+          </clipPath>
         </defs>
 
-        <g id="Tile0" clip-path="url(#ClipMapTile)" transform="translate(0,0)">
-          <rect x="0" y="0" width="10000" height="10000" fill="#cccc00" />
-          <ellipse cx="0" cy="10000" rx="5000" ry="6500" fill="url(#Ocean)"/>
-          <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
-          <ellipse cx="4250" cy="0" rx="750" ry="600" fill="url(#Ocean)"/>
-          <ellipse cx="10000" cy="5500" rx="2200" ry="2000" fill="url(#Ocean)"/>
+        <g id="TileTemplates">
+          <!-- g clip-path="url(#ClipMapTile)" transform="translate(0,0)">
+            <rect x="0" y="0" width="10000" height="10000" fill="#cccc00" />
+            <ellipse cx="0" cy="10000" rx="5000" ry="6500" fill="url(#Ocean)"/>
+            <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
+            <ellipse cx="4250" cy="0" rx="750" ry="600" fill="url(#Ocean)"/>
+            <ellipse cx="10000" cy="5500" rx="2200" ry="2000" fill="url(#Ocean)"/>
+          </g -->
+          <g clip-path="url(#ClipMapTile)" transform="translate(-10000, 0)">
+            <rect x="0" y="0" width="10000" height="10000" fill="url(#Ocean)" />
+            <ellipse cx="10000" cy="10000" rx="5000" ry="2500" fill="#cccc00"/>
+            <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
+            <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
+            <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
+          </g>
+          <g clip-path="url(#ClipMapTile)" transform="translate(-10000, 0)">
+            <rect x="0" y="0" width="10000" height="10000" fill="url(#Ocean)" />
+            <ellipse cx="10000" cy="10000" rx="5000" ry="2500" fill="#cccc00"/>
+            <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
+            <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
+            <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
+          </g>
+          <g clip-path="url(#ClipMapTile)" transform="translate(0,0)">
+            <rect x="0" y="0" width="10000" height="10000" fill="#cccc00" />
+            <ellipse cx="4250" cy="0" rx="750" ry="600" fill="url(#Ocean)"/>
+            <ellipse cx="4250" cy="10000" rx="750" ry="500" fill="url(#Ocean)"/>
+            <ellipse cx="10000" cy="5500" rx="1800" ry="2000" fill="url(#Ocean)"/>
+            <ellipse cx="0" cy="5500" rx="1200" ry="2000" fill="url(#Ocean)"/>
+          </g>
+          <!--g clip-path="url(#ClipMapTile)" transform="translate(0, -10000)">
+            <rect x="0" y="0" width="10000" height="7500" fill="url(#Ocean)" />
+            <rect x="0" y="7500" width="10000" height="2500" fill="#cccc00" />
+            <ellipse cx="10000" cy="4250" rx="1500" ry="3250" fill="url(#Ocean)"/>
+            <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
+            <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
+            <ellipse cx="4250" cy="10000" rx="750" ry="600" fill="url(#Ocean)"/>
+          </g>
+          <g clip-path="url(#ClipMapTile)" transform="translate(-10000, -10000)">
+            <rect x="0" y="0" width="5000" height="10000" fill="url(#Ocean)" />
+            <rect x="5000" y="0" width="5000" height="10000" fill="#cccc00" />
+            <ellipse cx="10000" cy="5500" rx="1500" ry="2000" fill="url(#Ocean)"/>
+            <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
+            <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
+          </g-->
         </g>
 
-        <g id="Tile1" clip-path="url(#ClipMapTile)" transform="translate(-10000, 0)">
-          <rect x="0" y="0" width="10000" height="10000" fill="url(#Ocean)" />
-          <ellipse cx="10000" cy="10000" rx="5000" ry="2500" fill="#cccc00"/>
-          <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
-          <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
-          <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
-        </g>
-
-        <g id="Tile2" clip-path="url(#ClipMapTile)" transform="translate(0, -10000)">
-          <rect x="0" y="0" width="10000" height="7500" fill="url(#Ocean)" />
-          <rect x="0" y="7500" width="10000" height="2500" fill="#cccc00" />
-          <ellipse cx="10000" cy="4250" rx="1500" ry="3250" fill="url(#Ocean)"/>
-          <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
-          <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
-          <ellipse cx="4250" cy="10000" rx="750" ry="600" fill="url(#Ocean)"/>
-        </g>
-
-        <g id="Tile3" clip-path="url(#ClipMapTile)" transform="translate(-10000, -10000)">
-          <rect x="0" y="0" width="5000" height="10000" fill="url(#Ocean)" />
-          <rect x="5000" y="0" width="5000" height="10000" fill="#cccc00" />
-          <ellipse cx="10000" cy="5500" rx="1500" ry="2000" fill="url(#Ocean)"/>
-          <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
-          <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
-        </g>
-
+        <g id="Tiles"/>
 
         <circle cx="250" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
 
