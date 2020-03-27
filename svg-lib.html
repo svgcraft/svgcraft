@@ -5,9 +5,9 @@
       var is_dragging = false;
       var lastMouseX = null;
       var lastMouseY = null;
-      var mainSvgX = 0;
-      var mainSvgY = 0;
-      var zoomScale = 1.0;
+      var mainSvgX = 100;
+      var mainSvgY = 100;
+      var zoomScale = 0.1;
       var mainSvgElem = null;
       var mapPortDiv = null;
 
@@ -135,10 +135,49 @@
             <circle cx="-2" cy="0" r="5" stroke-width="1" stroke="#63c900" fill="none"/>
           </pattern>
 
-
+          <pattern id="Ocean" x="0" y="0" width="80" height="40" patternUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="80" height="40" fill="#4dc3ff"/>
+            <path d="M 3 9 c 6 -6, 11 -6, 17 0 s 11 6, 17 0"
+                  stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"/>
+            <path d="M 43 29 c 6 -6, 11 -6, 17 0 s 11 6, 17 0"
+                  stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"/>
+          </pattern>
         </defs>
 
-        <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
+        <svg x="0" y="0" width="10000" height="10000">
+          <rect x="0" y="0" width="10000" height="10000" fill="#cccc00" />
+          <ellipse cx="0" cy="10000" rx="5000" ry="9000" fill="url(#Ocean)"/>
+          <ellipse cx="0" cy="10000" rx="1000" ry="2500" fill="#cccc00"/>
+          <ellipse cx="3000" cy="0" rx="2000" ry="600" fill="url(#Ocean)"/>
+          <ellipse cx="10000" cy="4250" rx="2200" ry="3250" fill="url(#Ocean)"/>
+        </svg>
+
+        <svg x="10000" y="0" width="10000" height="10000">
+          <rect x="0" y="0" width="10000" height="10000" fill="url(#Ocean)" />
+          <circle cx="10000" cy="10000" r="5000" fill="#cccc00"/>
+          <circle cx="0" cy="0" r="1000" fill="#cccc00"/>
+          <ellipse cx="0" cy="10000" rx="1000" ry="2500" fill="#cccc00"/>
+          <ellipse cx="10000" cy="0" rx="5000" ry="1000" fill="#cccc00"/>
+        </svg>
+
+        <svg x="0" y="10000" width="10000" height="10000">
+          <rect x="0" y="0" width="10000" height="7500" fill="url(#Ocean)" />
+          <rect x="0" y="7500" width="10000" height="2500" fill="#cccc00" />
+          <ellipse cx="10000" cy="4250" rx="1500" ry="3250" fill="url(#Ocean)"/>
+          <circle cx="0" cy="0" r="1000" fill="#cccc00"/>
+          <ellipse cx="10000" cy="0" rx="5000" ry="1000" fill="#cccc00"/>
+        </svg>
+
+        <svg x="10000" y="10000" width="10000" height="10000">
+          <rect x="0" y="0" width="5000" height="10000" fill="url(#Ocean)" />
+          <rect x="5000" y="0" width="5000" height="10000" fill="#cccc00" />
+          <ellipse cx="10000" cy="4250" rx="1500" ry="3250" fill="url(#Ocean)"/>
+          <circle cx="0" cy="0" r="1000" fill="#cccc00"/>
+          <ellipse cx="0" cy="10000" rx="1000" ry="2500" fill="#cccc00"/>
+        </svg>
+
+
+        <circle cx="250" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
 
         <circle cx="500" cy="9000" r="40" stroke="green" stroke-width="4" fill="white" />
 
