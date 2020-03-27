@@ -6,9 +6,9 @@
       var is_dragging = false;
       var lastMouseX = null;
       var lastMouseY = null;
-      var mainSvgX = 100;
-      var mainSvgY = 100;
-      var zoomScale = 0.01;
+      var mainSvgX = 0;
+      var mainSvgY = 0;
+      var zoomScale = 1.0;
       var mainSvgElem = null;
       var mapPortDiv = null;
 
@@ -196,13 +196,7 @@
         </defs>
 
         <g id="TileTemplates">
-          <!-- g clip-path="url(#ClipMapTile)" transform="translate(0,0)">
-            <rect x="0" y="0" width="10000" height="10000" fill="#cccc00" />
-            <ellipse cx="0" cy="10000" rx="5000" ry="6500" fill="url(#Ocean)"/>
-            <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
-            <ellipse cx="4250" cy="0" rx="750" ry="600" fill="url(#Ocean)"/>
-            <ellipse cx="10000" cy="5500" rx="2200" ry="2000" fill="url(#Ocean)"/>
-          </g -->
+          <!-- twice the same: four sand corners -->
           <g clip-path="url(#ClipMapTile)" transform="translate(-10000, 0)">
             <rect x="0" y="0" width="10000" height="10000" fill="url(#Ocean)" />
             <ellipse cx="10000" cy="10000" rx="5000" ry="2500" fill="#cccc00"/>
@@ -217,28 +211,27 @@
             <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
             <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
           </g>
-          <g clip-path="url(#ClipMapTile)" transform="translate(0,0)">
-            <rect x="0" y="0" width="10000" height="10000" fill="#cccc00" />
-            <ellipse cx="4250" cy="0" rx="750" ry="600" fill="url(#Ocean)"/>
-            <ellipse cx="4250" cy="10000" rx="750" ry="500" fill="url(#Ocean)"/>
-            <ellipse cx="10000" cy="5500" rx="1800" ry="2000" fill="url(#Ocean)"/>
-            <ellipse cx="0" cy="5500" rx="1200" ry="2000" fill="url(#Ocean)"/>
-          </g>
-          <!--g clip-path="url(#ClipMapTile)" transform="translate(0, -10000)">
+          <!-- water shaped like -| -->
+          <g clip-path="url(#ClipMapTile)" transform="translate(0, -10000)">
             <rect x="0" y="0" width="10000" height="7500" fill="url(#Ocean)" />
             <rect x="0" y="7500" width="10000" height="2500" fill="#cccc00" />
+            <path d="M 0 7500 q 1000 0, 2125 500 t 2125 500 t 2000 -500 t 3750 -500 L 0 7500"
+                  fill="url(#Ocean)"/>
             <ellipse cx="10000" cy="4250" rx="1500" ry="3250" fill="url(#Ocean)"/>
             <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
             <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
             <ellipse cx="4250" cy="10000" rx="750" ry="600" fill="url(#Ocean)"/>
           </g>
+          <!-- water shaped like upside down T -->
           <g clip-path="url(#ClipMapTile)" transform="translate(-10000, -10000)">
             <rect x="0" y="0" width="5000" height="10000" fill="url(#Ocean)" />
             <rect x="5000" y="0" width="5000" height="10000" fill="#cccc00" />
+            <path d="M 5000 0 q 0 1500, 1000 2750 t 1000 2750 t -1000 2250 t -1000 2250 L 5000 0"
+                  fill="url(#Ocean)"/>
             <ellipse cx="10000" cy="5500" rx="1500" ry="2000" fill="url(#Ocean)"/>
             <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
             <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
-          </g-->
+          </g>
         </g>
 
         <g id="Tiles"/>
