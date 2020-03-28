@@ -52,8 +52,8 @@ function setup_scroll_and_zoom() {
 }
 
 var tileTemplateGs = null;
-var tileWidth = 10000;
-var tileHeight = 10000;
+var tileWidth = -1;
+var tileHeight = -1;
 
 function modulo(n, m) {
     return ((n % m) + m) % m;
@@ -79,6 +79,12 @@ function add_needed_tiles() {
     var start_j = Math.floor(-mainSvgY / zoomScale / tileHeight);
     var end_i = Math.ceil((mapPortDiv.clientWidth - mainSvgX) / zoomScale / tileWidth);
     var end_j = Math.ceil((mapPortDiv.clientHeight - mainSvgY) / zoomScale / tileHeight);
+    var backgroundRect = document.getElementById("BackgroundRect");
+
+    backgroundRect.setAttribute("x", start_i * tileWidth);
+    backgroundRect.setAttribute("y", start_j * tileHeight);
+    backgroundRect.setAttribute("width", (end_i - start_i) * tileWidth);
+    backgroundRect.setAttribute("height", (end_j - start_j) * tileHeight);
     for (var i = start_i; i < end_i; i++) {
         for (var j = start_j; j < end_j; j++) {
             add_tile_if_not_there(i, j);
@@ -87,6 +93,9 @@ function add_needed_tiles() {
 }
 
 function setup_tiles() {
+    var backgroundRect = document.getElementById("BackgroundRect");
+    tileWidth = backgroundRect.getBoundingClientRect().width;
+    tileHeight = backgroundRect.getBoundingClientRect().height;
     var tileTemplatesG = document.getElementById("TileTemplates");
     document.getElementById("mainsvg").removeChild(tileTemplatesG);
     tileTemplateGs = [];
