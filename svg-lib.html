@@ -3,6 +3,26 @@
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     <script src="./svgcraft.js"></script>
+    <script>
+      function setup_tile(tile, i, j, rng) {
+          var e = tile.getElementsByTagName("ellipse")[0];
+          if (e) {
+              var rx = 2500 + 1500 * rng();
+              var ry = 2000 + 1200 * rng();
+              e.setAttribute("rx", rx);
+              e.setAttribute("ry", ry);
+              var rotCenterX = 4000 + 2000 * rng();
+              var rotCenterY = 4000 + 2000 * rng();
+              var t = `rotate(${rng()*360} ${rotCenterX} ${rotCenterY})`;
+              e.setAttribute("transform", t);
+              var txt = tile.getElementsByTagName("text")[0];
+              txt.textContent =
+                  (i >= 0 ? (i+1) + "E" : (-i) + "W") +
+                  (j >= 0 ? (j+1) + "S" : (-j) + "N") +
+                  " Island";
+          }
+      }
+    </script>
     <link rel="stylesheet" href="./svgcraft.css"/>
   </head>
 
@@ -71,46 +91,20 @@
             <path d="M 43 29 c 6 -6, 11 -6, 17 0 s 11 6, 17 0"
                   stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"/>
           </pattern>
-
-          <clipPath id="ClipMapTile">
-            <rect x="0" y="0" width="10020" height="10000"/>
-          </clipPath>
         </defs>
 
+        <style>
+          .IslandLabel { font: 30px sans-serif; fill: #555 }
+        </style>
+
         <g id="TileTemplates">
-          <!-- four sand corners -->
-          <g data-freq="10" clip-path="url(#ClipMapTile)" transform="translate(-10000, 0)">
-            <ellipse cx="10000" cy="10000" rx="5000" ry="2500" fill="#cccc00"/>
-            <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
-            <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
-            <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
+          <g data-freq="5">
+            <ellipse cx="5000" cy="5000" rx="1234" ry="1234" fill="#cccc00"/>
+            <path d="M 5000 5000 l 0 -200" stroke="gray" stroke-width="18" fill="transparent"/>
+            <rect x="4900" y="4750" width="200" height="50" rx="7" ry="7" stroke="gray" stroke-width="5" fill="white"/>
+            <text x="4910" y="4785" class="IslandLabel"></text>
           </g>
-          <!-- filled with one little lake per edge -->
-          <g data-freq="2" clip-path="url(#ClipMapTile)" transform="translate(0,0)">
-            <rect x="0" y="0" width="10000" height="10000" fill="#cccc00" />
-            <ellipse cx="4250" cy="0" rx="750" ry="600" fill="url(#Ocean)"/>
-            <ellipse cx="4250" cy="10000" rx="750" ry="500" fill="url(#Ocean)"/>
-            <ellipse cx="10000" cy="5500" rx="1800" ry="2000" fill="url(#Ocean)"/>
-            <ellipse cx="0" cy="5500" rx="1200" ry="2000" fill="url(#Ocean)"/>
-          </g>
-          <!-- water shaped like -| -->
-          <g data-freq="3" clip-path="url(#ClipMapTile)" transform="translate(0, -10000)">
-            <rect x="0" y="7500" width="10000" height="2500" fill="#cccc00" />
-            <path d="M 0 7500 q 1000 0, 2125 500 t 2125 500 t 2000 -500 t 3750 -500 L 0 7500"
-                  fill="url(#Ocean)"/>
-            <ellipse cx="10000" cy="4250" rx="1500" ry="3250" fill="url(#Ocean)"/>
-            <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
-            <ellipse cx="10000" cy="0" rx="5000" ry="3500" fill="#cccc00"/>
-            <ellipse cx="4250" cy="10000" rx="750" ry="600" fill="url(#Ocean)"/>
-          </g>
-          <!-- water shaped like upside down T -->
-          <g data-freq="4" clip-path="url(#ClipMapTile)" transform="translate(-10000, -10000)">
-            <rect x="5000" y="0" width="5000" height="10000" fill="#cccc00" />
-            <path d="M 5000 0 q 0 1500, 1000 2750 t 1000 2750 t -1000 2250 t -1000 2250 L 5000 0"
-                  fill="url(#Ocean)"/>
-            <ellipse cx="10000" cy="5500" rx="1500" ry="2000" fill="url(#Ocean)"/>
-            <circle cx="0" cy="0" r="3500" fill="#cccc00"/>
-            <ellipse cx="0" cy="10000" rx="3500" ry="2500" fill="#cccc00"/>
+          <g data-freq="1">
           </g>
         </g>
 
@@ -119,6 +113,8 @@
         <rect id="BackgroundRect" x="0" y="0" width="10000" height="10000" fill="url(#Ocean)" />
 
         <g id="Tiles"/>
+
+        <ellipse cx="0" cy="5000" rx="10000" ry="5000" fill="#cccc00"/>
 
         <circle cx="250" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
 

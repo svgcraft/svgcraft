@@ -59,16 +59,14 @@ function modulo(n, m) {
     return ((n % m) + m) % m;
 }
 
-function some_random(i, j) {
-    return (new Math.seedrandom(i + "aa" + j))();
-}
-
 function add_tile_if_not_there(i, j) {
     var id = `Tile_${i}_${j}`;
     if (!document.getElementById(id)) {
-        var kind = Math.floor(some_random(i, j) * tileTemplateGs.length);
+        var rng = new Math.seedrandom(i + "aa" + j);
+        var kind = Math.floor(rng() * tileTemplateGs.length);
         var newTileG = tileTemplateGs[kind].cloneNode(true);
         newTileG.id = id;
+        setup_tile(newTileG, i, j, rng);
         newTileG.style.transform = `translate(${i*tileWidth}px, ${j*tileHeight}px)`;
         document.getElementById("Tiles").appendChild(newTileG);
     }
