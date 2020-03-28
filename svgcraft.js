@@ -11,14 +11,31 @@ function port_coord_to_world(p) {
     return p.add(new Point(mainSvgX, mainSvgY)).scale(zoomScale);
 }
 
+function encode_transform() {
+    return `translate(${mainSvgX}px, ${mainSvgY}px) scale(${zoomScale})`;
+}
+
+// s could be eg "translate(210px, 180px) scale(0.4)"
+function decode_transform(s) {
+    var r = /translate\(([0-9.]+)px, ([0-9.]+)px\) scale\(([0-9.]+)\)/;
+    var initialPosMatch = s.match(r);
+    if (initialPosMatch) {
+        mainSvgX = initialPosMatch[1];
+        mainSvgY = initialPosMatch[2];
+        zoomScale = initialPosMatch[3];
+    }
+}
+
 function set_transform() {
-    mainSvgElem.style.transform = `translate(${mainSvgX}px, ${mainSvgY}px) scale(${zoomScale})`;
+    mainSvgElem.style.transform = encode_transform();
     add_needed_tiles();
 }
 
 function setup_scroll_and_zoom() {
     mainSvgElem = document.getElementById("mainsvg");
     mapPortDiv = document.getElementById("mapport");
+    decode_transform(mainSvgElem.style.transform);
+    console.log("initial transform: " + encode_transform());
     mapPortDiv.addEventListener("mousedown", function(e){
         is_dragging = true;
         lastMouseX = e.clientX;
@@ -92,8 +109,8 @@ function add_needed_tiles() {
 
 function setup_tiles() {
     var backgroundRect = document.getElementById("BackgroundRect");
-    tileWidth = backgroundRect.getBoundingClientRect().width;
-    tileHeight = backgroundRect.getBoundingClientRect().height;
+    tileWidth = backgroundRect.getAttribute("width");
+    tileHeight = backgroundRect.getAttribute("height");
     var tileTemplatesG = document.getElementById("TileTemplates");
     document.getElementById("mainsvg").removeChild(tileTemplatesG);
     tileTemplateGs = [];
