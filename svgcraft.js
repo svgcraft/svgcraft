@@ -6,6 +6,7 @@ var mainSvgY = 0;
 var zoomScale = 1.0;
 var mainSvgElem = null;
 var mapPortDiv = null;
+var setup_tile = null;
 
 function port_coord_to_world(p) {
     return p.add(new Point(mainSvgX, mainSvgY)).scale(zoomScale);
@@ -123,8 +124,16 @@ function setup_tiles() {
     }
 }
 
-function init() {
+// the function passed in should have the following signature:
+//
+//   function specialize_tile(tile, i, j, rng)
+//
+//  tile: <g></g>
+//  i, j: tile coordinates
+//  rng: random number generator seeded with value derived deterministically from i and j
+function init(specialize_tile) {
     setup_scroll_and_zoom();
+    setup_tile = specialize_tile;
     setup_tiles();
     set_transform();
     console.log("init done");

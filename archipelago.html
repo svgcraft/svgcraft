@@ -22,11 +22,15 @@
                   " Island";
           }
       }
+
+      window.onload = () => {
+          init(setup_tile);
+      }
     </script>
     <link rel="stylesheet" href="./svgcraft.css"/>
   </head>
 
-  <body onload="init()">
+  <body>
     <div id="mapport">
       <!-- width and height are ignored because overflow:visible -->
       <svg id="mainsvg" width="42" height="42"
