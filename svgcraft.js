@@ -3,6 +3,9 @@
 // a deterministic pseudo random generator.
 import "https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js";
 
+// provides twemoji.parse
+import twemoji from "./third_party/twemoji.esm.js";
+
 var is_dragging = false;
 var lastMouseX = null;
 var lastMouseY = null;
@@ -147,3 +150,16 @@ export function init(specialize_tile) {
     set_transform();
     console.log("init done");
 }
+
+function get_emoji_url(s) {
+    return `${twemoji.base}svg/${twemoji.convert.toCodePoint(s)}.svg`;
+}
+
+console.log(twemoji.convert.toCodePoint("🐸"));
+
+console.log(get_emoji_url("👖"));
+
+console.log(twemoji.parse("🐸", {
+  folder: 'svg',
+  ext: '.svg'
+}));
