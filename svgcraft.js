@@ -20,9 +20,9 @@ function decode_transform(s) {
     var r = /translate\(([0-9.]+)px, ([0-9.]+)px\) scale\(([0-9.]+)\)/;
     var initialPosMatch = s.match(r);
     if (initialPosMatch) {
-        mainSvgX = initialPosMatch[1];
-        mainSvgY = initialPosMatch[2];
-        zoomScale = initialPosMatch[3];
+        mainSvgX = parseFloat(initialPosMatch[1]);
+        mainSvgY = parseFloat(initialPosMatch[2]);
+        zoomScale = parseFloat(initialPosMatch[3]);
     }
 }
 
@@ -109,8 +109,8 @@ function add_needed_tiles() {
 
 function setup_tiles() {
     var backgroundRect = document.getElementById("BackgroundRect");
-    tileWidth = backgroundRect.getAttribute("width");
-    tileHeight = backgroundRect.getAttribute("height");
+    tileWidth = parseFloat(backgroundRect.getAttribute("width"));
+    tileHeight = parseFloat(backgroundRect.getAttribute("height"));
     var tileTemplatesG = document.getElementById("TileTemplates");
     document.getElementById("mainsvg").removeChild(tileTemplatesG);
     tileTemplateGs = [];
