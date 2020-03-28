@@ -1,19 +1,14 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
-    <script src="./svgcraft.js"></script>
-    <script>
-      function setup_tile(tile, i, j, rng) {
-          // do nothing (but keep function because it's a callback)
-      }
+    <script type="module">
+      import * as svgcraft from './svgcraft.js';
       window.onload = () => {
-          init(setup_tile);
+          svgcraft.init();
       }
     </script>
     <link rel="stylesheet" href="./svgcraft.css"/>
   </head>
-
   <body>
     <div id="mapport">
       <svg id="mainsvg" width="42" height="42"> <!-- width and height are ignored because overflow:visible -->
@@ -114,7 +109,6 @@
         <rect x="-160" y="550" width="20" height="1000" fill="url(#CobbledWestEast)"/>
 
         <rect x="300" y="550" width="400" height="1000" rx="9" ry="9" stroke="white" stroke-width="4"fill="url(#BlueCarpet1)"/>
-
 
       </svg>
     </div>

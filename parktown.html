@@ -1,14 +1,10 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
-    <script src="./svgcraft.js"></script>
-    <script>
-      function setup_tile(tile, i, j, rng) {
-          // do nothing (but keep function because it's a callback)
-      }
+    <script type="module">
+      import * as svgcraft from './svgcraft.js';
       window.onload = () => {
-          init(setup_tile);
+          svgcraft.init();
       }
     </script>
     <link rel="stylesheet" href="./svgcraft.css"/>

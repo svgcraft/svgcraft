@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
-    <script src="./svgcraft.js"></script>
-    <script>
+    <script type="module">
+      import * as svgcraft from './svgcraft.js';
+
       function setup_tile(tile, i, j, rng) {
           var e = tile.getElementsByTagName("ellipse")[0];
           if (e) {
@@ -24,7 +24,7 @@
       }
 
       window.onload = () => {
-          init(setup_tile);
+          svgcraft.init(setup_tile);
       }
     </script>
     <link rel="stylesheet" href="./svgcraft.css"/>

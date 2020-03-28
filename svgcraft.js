@@ -1,3 +1,8 @@
+// Import for side-effects only. The side effect of this import is that the "Math"
+// object is extended with a method called "seedrandom" which can be used to obtain
+// a deterministic pseudo random generator.
+import "https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js";
+
 var is_dragging = false;
 var lastMouseX = null;
 var lastMouseY = null;
@@ -124,16 +129,20 @@ function setup_tiles() {
     }
 }
 
-// the function passed in should have the following signature:
+// the function passed in should have the following signature (or be undefined)
 //
 //   function specialize_tile(tile, i, j, rng)
 //
 //  tile: <g></g>
 //  i, j: tile coordinates
 //  rng: random number generator seeded with value derived deterministically from i and j
-function init(specialize_tile) {
+export function init(specialize_tile) {
     setup_scroll_and_zoom();
-    setup_tile = specialize_tile;
+    if (specialize_tile) {
+        setup_tile = specialize_tile;
+    } else {
+        setup_tile = (tile, i, j, rng) => {};
+    }
     setup_tiles();
     set_transform();
     console.log("init done");
