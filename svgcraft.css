@@ -1,0 +1,22 @@
+#mapport {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    bottom: 20px;
+    right: 20px;
+    overflow: hidden;
+    background-color: white;
+}
+
+#mainsvg {
+    position: absolute;
+    /* show elements at negative positions too, we want an infinite space in all directions */
+    overflow: visible;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+}
+
+body {
+    background-color: #555;
+}
