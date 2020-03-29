@@ -20,3 +20,17 @@
 body {
     background-color: #555;
 }
+
+.avatar {
+    animation: move forwards 600ms ease-in-out;
+    offset-rotate: 0deg;
+}
+
+@keyframes move {
+    0% {
+        offset-distance: 0%;
+    }
+    100% {
+        offset-distance: 100%;
+    }
+}

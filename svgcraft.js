@@ -9,6 +9,8 @@ import twemoji from "./third_party/twemoji.esm.js";
 var is_dragging = false;
 var lastMouseX = null;
 var lastMouseY = null;
+var lastAvatarX = null;
+var lastAvatarY = null;
 var mainSvgX = 0;
 var mainSvgY = 0;
 var zoomScale = 1.0;
@@ -40,6 +42,12 @@ function set_transform() {
     add_needed_tiles();
 }
 
+function replace_with_clone(elem) {
+    var newone = elem.cloneNode(true);
+    elem.parentNode.replaceChild(newone, elem);
+    return newone;
+}
+
 function setup_scroll_and_zoom() {
     mainSvgElem = document.getElementById("mainsvg");
     mapPortDiv = document.getElementById("mapport");
@@ -54,7 +62,25 @@ function setup_scroll_and_zoom() {
         var yInPort = e.clientY - rect.top;
         var xInWorld = (xInPort - mainSvgX) / zoomScale;
         var yInWorld = (yInPort - mainSvgY) / zoomScale;
-        avatarG.style.transform = `translate(${xInWorld}px, ${yInWorld}px)`;
+
+        var jumpHeight = 400;
+        var d = `M${lastAvatarX},${lastAvatarY} C${lastAvatarX},${lastAvatarY-jumpHeight} ${xInWorld},${yInWorld-jumpHeight} ${xInWorld},${yInWorld}`;
+
+        var showJumpTrace = false;
+        if (showJumpTrace) {
+            var path = svg("path", {d: d, fill: "transparent", stroke: "yellow"});
+            mainSvgElem.appendChild(path);
+        }
+
+        avatarG.style.offsetPath = `path('${d}')`;
+
+        // The right way would be something like this:
+        // avatarG.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
+        // But since that doesn't work, we re-trigger the animation by removing and adding the node:
+        avatarG = replace_with_clone(avatarG);
+
+        lastAvatarX = xInWorld;
+        lastAvatarY = yInWorld;
     });
     mapPortDiv.addEventListener("mouseup", function(){
         is_dragging = false;
@@ -169,9 +195,12 @@ function svg(tag, attrs, children) {
 var avatarG = null;
 
 function setup_avatar(avatar_str) {
+    lastAvatarX = 0;
+    lastAvatarY = 0;
     var img = svg("image", {x: -25, y: -25, height: 50, width: 50});
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
-    avatarG = svg("g", {}, [svg("circle", {cx: 0, cy: 0, r: 35, fill: "yellow"}), img]);
+    avatarG = svg("g", {"class": "avatar"},
+                  [svg("circle", {cx: lastAvatarX, cy: lastAvatarY, r: 35, fill: "yellow"}), img]);
     mainSvgElem.appendChild(avatarG);
 }
 
