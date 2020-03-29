@@ -34,10 +34,10 @@
   </head>
 
   <body>
+    <div id="UpperPart">
+
     <div id="mapport">
-      <!-- width and height are ignored because overflow:visible -->
-      <svg id="mainsvg" width="42" height="42"
-           style="transform: translate(322px, 145px) scale(0.5);">
+      <svg id="mainsvg" style="transform: translate(322px, 145px) scale(0.5);">
 
         <defs>
           <linearGradient id="WhiteToBlueGradient">
@@ -128,28 +128,39 @@
 
         <g id="Tiles"/>
 
-        <ellipse cx="0" cy="5000" rx="10000" ry="5000" fill="#cccc00"/>
+        <g id="EditableElements">
+          <ellipse cx="0" cy="5000" rx="10000" ry="5000" fill="#cccc00"/>
 
-        <circle cx="250" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
+          <circle cx="250" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
 
-        <circle cx="500" cy="9000" r="40" stroke="green" stroke-width="4" fill="white" />
+          <circle cx="500" cy="9000" r="40" stroke="green" stroke-width="4" fill="white" />
 
-        <rect x="110" y="90" width="200" height="200" fill="url(#SimpleBlueCircles)" fill-opacity="0.5"/>
+          <rect x="110" y="90" width="200" height="200" fill="url(#SimpleBlueCircles)" fill-opacity="0.5"/>
 
-        <rect x="520" y="20" fill="url(#BlueCircles)" width="500" height="500" fill-opacity="0.5"/>
+          <rect x="520" y="20" fill="url(#BlueCircles)" width="500" height="500" fill-opacity="0.5"/>
 
-        <rect x="45" y="325" fill="url(#CobbledWestEast)" width="400" height="200"/>
+          <rect x="45" y="325" fill="url(#CobbledWestEast)" width="400" height="200"/>
 
-        <rect x="-1000" y="550" width="858" height="1000" fill="url(#Lawn1)"/>
-        <rect x="-1000" y="940" width="850" height="200" fill="url(#SquareWaveCobble)"/>
+          <rect x="-1000" y="550" width="858" height="1000" fill="url(#Lawn1)"/>
+          <rect x="-1000" y="940" width="850" height="200" fill="url(#SquareWaveCobble)"/>
 
-        <rect x="-138" y="550" fill="url(#Tiles1)" width="700" height="1000"/>
-        <rect x="-160" y="550" width="20" height="1000" fill="url(#CobbledWestEast)"/>
+          <rect x="-138" y="550" fill="url(#Tiles1)" width="700" height="1000"/>
+          <rect x="-160" y="550" width="20" height="1000" fill="url(#CobbledWestEast)"/>
 
-        <rect x="300" y="550" width="400" height="1000" rx="9" ry="9" stroke="white" stroke-width="4"fill="url(#BlueCarpet1)"/>
-
-
+          <rect x="300" y="550" width="400" height="1000" rx="9" ry="9" stroke="white" stroke-width="4"fill="url(#BlueCarpet1)"/>
+        </g>
       </svg>
+    </div>
+
+    </div>
+
+    <div id="LowerPart">
+      <div id="Tools">
+      </div>
+      <div id="SvgEditWrapper">
+        <textarea id="SvgEdit"></textarea>
+      </div>
+      <!-- TODO add "apply changes", "revert edits", "close", "delete" buttons -->
     </div>
   </body>
 </html>

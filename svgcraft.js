@@ -54,6 +54,7 @@ function setup_scroll_and_zoom() {
     decode_transform(mainSvgElem.style.transform);
     console.log("initial transform: " + encode_transform());
     mapPortDiv.addEventListener("mousedown", function(e){
+        set_selected(null);
         is_dragging = true;
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
@@ -204,6 +205,30 @@ function setup_avatar(avatar_str) {
     mainSvgElem.appendChild(avatarG);
 }
 
+var selectedElement = null;
+
+function set_selected(elem) {
+    if (!document.getElementById("SvgEdit")) return; // TODO remove and build DOM in js
+
+    selectedElement = elem;
+    if (elem) {
+        document.getElementById("SvgEdit").value = elem.outerHTML;
+    } else {
+        document.getElementById("SvgEdit").value = "";
+    }
+}
+
+function setup_edit_handlers() {
+    var editableElementsG = document.getElementById("EditableElements");
+    if (!editableElementsG) return; // TODO remove and build DOM in js
+
+    for (const elem of editableElementsG.children) {
+        elem.onclick = (e) => {
+            set_selected(e.target);
+        }
+    }
+}
+
 // the function passed in should have the following signature (or be undefined)
 //
 //   function specialize_tile(tile, i, j, rng)
@@ -221,5 +246,6 @@ export function init(specialize_tile) {
     setup_tiles();
     set_transform();
     setup_avatar("🐸");
+    setup_edit_handlers();
     console.log("init done");
 }
