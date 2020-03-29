@@ -132,6 +132,43 @@ function setup_tiles() {
     }
 }
 
+console.log(twemoji.convert.toCodePoint("🐸"));
+
+console.log(get_emoji_url("👖"));
+
+console.log(twemoji.parse("🐸", {
+  folder: 'svg',
+  ext: '.svg'
+}));
+
+function get_emoji_url(s) {
+    return `${twemoji.base}svg/${twemoji.convert.toCodePoint(s)}.svg`;
+}
+
+function svg(tag, attrs, children) {
+    var res = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    if (attrs) {
+        for (const attrName in attrs) {
+            res.setAttribute(attrName, attrs[attrName]);
+        }
+    }
+    if (children) {
+        for (const child of children) {
+            res.appendChild(child);
+        }
+    }
+    return res;
+}
+
+var avatarG = null;
+
+function setup_avatar(avatar_str) {
+    var img = svg("image", {x: 0, y: 0, height: 50, width: 50});
+    img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
+    avatarG = svg("g", {}, [svg("circle", {cx: 25, cy: 25, r: 35, fill: "yellow"}), img]);
+    mainSvgElem.appendChild(avatarG);
+}
+
 // the function passed in should have the following signature (or be undefined)
 //
 //   function specialize_tile(tile, i, j, rng)
@@ -148,18 +185,6 @@ export function init(specialize_tile) {
     }
     setup_tiles();
     set_transform();
+    setup_avatar("🐸");
     console.log("init done");
 }
-
-function get_emoji_url(s) {
-    return `${twemoji.base}svg/${twemoji.convert.toCodePoint(s)}.svg`;
-}
-
-console.log(twemoji.convert.toCodePoint("🐸"));
-
-console.log(get_emoji_url("👖"));
-
-console.log(twemoji.parse("🐸", {
-  folder: 'svg',
-  ext: '.svg'
-}));
