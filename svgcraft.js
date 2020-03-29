@@ -49,6 +49,12 @@ function setup_scroll_and_zoom() {
         is_dragging = true;
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
+        var rect = mapPortDiv.getBoundingClientRect();
+        var xInPort = e.clientX - rect.left;
+        var yInPort = e.clientY - rect.top;
+        var xInWorld = (xInPort - mainSvgX) / zoomScale;
+        var yInWorld = (yInPort - mainSvgY) / zoomScale;
+        avatarG.style.transform = `translate(${xInWorld}px, ${yInWorld}px)`;
     });
     mapPortDiv.addEventListener("mouseup", function(){
         is_dragging = false;
@@ -163,9 +169,9 @@ function svg(tag, attrs, children) {
 var avatarG = null;
 
 function setup_avatar(avatar_str) {
-    var img = svg("image", {x: 0, y: 0, height: 50, width: 50});
+    var img = svg("image", {x: -25, y: -25, height: 50, width: 50});
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
-    avatarG = svg("g", {}, [svg("circle", {cx: 25, cy: 25, r: 35, fill: "yellow"}), img]);
+    avatarG = svg("g", {}, [svg("circle", {cx: 0, cy: 0, r: 35, fill: "yellow"}), img]);
     mainSvgElem.appendChild(avatarG);
 }
 
