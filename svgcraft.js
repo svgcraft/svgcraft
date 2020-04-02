@@ -1,45 +1,26 @@
-// Import for side-effects only. The side effect of this import is that the "Math"
-// object is extended with a method called "seedrandom" which can be used to obtain
-// a deterministic pseudo random generator.
-import "https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js";
-
-// provides twemoji.parse
-import twemoji from "./third_party/twemoji.esm.js";
+"use strict";
 
 var is_dragging = false;
 var lastMouseX = null;
 var lastMouseY = null;
 var lastAvatarX = null;
 var lastAvatarY = null;
-var mainSvgX = 0;
-var mainSvgY = 0;
-var zoomScale = 1.0;
 var mainSvgElem = null;
 var mapPortDiv = null;
 var setup_tile = null;
+var world = null;
 
 function port_coord_to_world(p) {
-    return p.add(new Point(mainSvgX, mainSvgY)).scale(zoomScale);
+    return p.add(new Point(world.view.x, world.view.y)).scale(world.view.scale);
 }
 
 function encode_transform() {
-    return `translate(${mainSvgX}px, ${mainSvgY}px) scale(${zoomScale})`;
-}
-
-// s could be eg "translate(210px, 180px) scale(0.4)"
-function decode_transform(s) {
-    var r = /translate\(([0-9.]+)px, ([0-9.]+)px\) scale\(([0-9.]+)\)/;
-    var initialPosMatch = s.match(r);
-    if (initialPosMatch) {
-        mainSvgX = parseFloat(initialPosMatch[1]);
-        mainSvgY = parseFloat(initialPosMatch[2]);
-        zoomScale = parseFloat(initialPosMatch[3]);
-    }
+    return `translate(${world.view.x}px, ${world.view.y}px) scale(${world.view.scale})`;
 }
 
 function set_transform() {
     mainSvgElem.style.transform = encode_transform();
-    add_needed_tiles();
+    expand_background();
 }
 
 function replace_with_clone(elem) {
@@ -51,7 +32,6 @@ function replace_with_clone(elem) {
 function setup_scroll_and_zoom() {
     mainSvgElem = document.getElementById("mainsvg");
     mapPortDiv = document.getElementById("mapport");
-    decode_transform(mainSvgElem.style.transform);
     console.log("initial transform: " + encode_transform());
     mapPortDiv.addEventListener("mousedown", function(e){
         set_selected(null);
@@ -61,8 +41,8 @@ function setup_scroll_and_zoom() {
         var rect = mapPortDiv.getBoundingClientRect();
         var xInPort = e.clientX - rect.left;
         var yInPort = e.clientY - rect.top;
-        var xInWorld = (xInPort - mainSvgX) / zoomScale;
-        var yInWorld = (yInPort - mainSvgY) / zoomScale;
+        var xInWorld = (xInPort - world.view.x) / world.view.scale;
+        var yInWorld = (yInPort - world.view.y) / world.view.scale;
 
         var jumpHeight = 400;
         var d = `M${lastAvatarX},${lastAvatarY} C${lastAvatarX},${lastAvatarY-jumpHeight} ${xInWorld},${yInWorld-jumpHeight} ${xInWorld},${yInWorld}`;
@@ -91,8 +71,8 @@ function setup_scroll_and_zoom() {
         e.preventDefault();
         var dx = e.clientX - lastMouseX;
         var dy = e.clientY - lastMouseY;
-        mainSvgX += dx;
-        mainSvgY += dy;
+        world.view.x += dx;
+        world.view.y += dy;
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
         set_transform();
@@ -103,71 +83,33 @@ function setup_scroll_and_zoom() {
         var rect = mapPortDiv.getBoundingClientRect();
         var xInPort = e.clientX - rect.left;
         var yInPort = e.clientY - rect.top;
-        mainSvgX = xInPort - (xInPort - mainSvgX) * zoomChange;
-        mainSvgY = yInPort - (yInPort - mainSvgY) * zoomChange;
-        zoomScale *= zoomChange;
+        world.view.x = xInPort - (xInPort - world.view.x) * zoomChange;
+        world.view.y = yInPort - (yInPort - world.view.y) * zoomChange;
+        world.view.scale *= zoomChange;
         set_transform();
     });
 }
 
-var tileTemplateGs = null;
-var tileWidth = -1;
-var tileHeight = -1;
-
-function modulo(n, m) {
-    return ((n % m) + m) % m;
-}
-
-function add_tile_if_not_there(i, j) {
-    var id = `Tile_${i}_${j}`;
-    if (!document.getElementById(id)) {
-        var rng = new Math.seedrandom(i + "aa" + j);
-        var kind = Math.floor(rng() * tileTemplateGs.length);
-        var newTileG = tileTemplateGs[kind].cloneNode(true);
-        newTileG.id = id;
-        setup_tile(newTileG, i, j, rng);
-        newTileG.style.transform = `translate(${i*tileWidth}px, ${j*tileHeight}px)`;
-        document.getElementById("Tiles").appendChild(newTileG);
-    }
-}
-
-function add_needed_tiles() {
-    var start_i = Math.floor(-mainSvgX / zoomScale / tileWidth);
-    var start_j = Math.floor(-mainSvgY / zoomScale / tileHeight);
-    var end_i = Math.ceil((mapPortDiv.clientWidth - mainSvgX) / zoomScale / tileWidth);
-    var end_j = Math.ceil((mapPortDiv.clientHeight - mainSvgY) / zoomScale / tileHeight);
+function expand_background() {
+    const slack = 10;
+    const x = -world.view.x / world.view.scale - slack;
+    const y = -world.view.y / world.view.scale - slack;
+    var w = (mapPortDiv.clientWidth - world.view.x) / world.view.scale + 2 * slack - x;
+    var h = (mapPortDiv.clientHeight - world.view.y) / world.view.scale + 2 * slack - y;
     var backgroundRect = document.getElementById("BackgroundRect");
-
-    backgroundRect.setAttribute("x", start_i * tileWidth);
-    backgroundRect.setAttribute("y", start_j * tileHeight);
-    backgroundRect.setAttribute("width", (end_i - start_i) * tileWidth);
-    backgroundRect.setAttribute("height", (end_j - start_j) * tileHeight);
-    for (var i = start_i; i < end_i; i++) {
-        for (var j = start_j; j < end_j; j++) {
-            add_tile_if_not_there(i, j);
-        }
-    }
-}
-
-function setup_tiles() {
-    var backgroundRect = document.getElementById("BackgroundRect");
-    tileWidth = parseFloat(backgroundRect.getAttribute("width"));
-    tileHeight = parseFloat(backgroundRect.getAttribute("height"));
-    var tileTemplatesG = document.getElementById("TileTemplates");
-    document.getElementById("mainsvg").removeChild(tileTemplatesG);
-    tileTemplateGs = [];
-    for (var i = 0; i < tileTemplatesG.children.length; i++) {
-        var tile = tileTemplatesG.children[i];
-        for (var c = 0; c < tile.getAttribute("data-freq"); c++) {
-            // push mulitple times (without copying) to increase its chances of being picked
-            tileTemplateGs.push(tile);
-        }
-    }
+    // TODO only do this if rect needs to grow, test if faster
+    backgroundRect.setAttribute("x", x);
+    backgroundRect.setAttribute("y", y);
+    backgroundRect.setAttribute("width", w);
+    backgroundRect.setAttribute("height", h);
 }
 
 console.log(twemoji.convert.toCodePoint("🐸"));
 
-console.log(get_emoji_url("👖"));
+// TODO needs /2/ base to obtain
+// https://twemoji.maxcdn.com/2/svg/1f9d9-1f3fc-200d-2642-fe0f.svg
+// Use https://emojipedia.org/twitter/ as the emoji picker
+console.log(get_emoji_url("🧙🏼‍♂️"));
 
 console.log(twemoji.parse("🐸", {
   folder: 'svg',
@@ -229,23 +171,17 @@ function setup_edit_handlers() {
     }
 }
 
-// the function passed in should have the following signature (or be undefined)
-//
-//   function specialize_tile(tile, i, j, rng)
-//
-//  tile: <g></g>
-//  i, j: tile coordinates
-//  rng: random number generator seeded with value derived deterministically from i and j
-export function init(specialize_tile) {
+function init_with_json(j) {
+    world = j;
     setup_scroll_and_zoom();
-    if (specialize_tile) {
-        setup_tile = specialize_tile;
-    } else {
-        setup_tile = (tile, i, j, rng) => {};
-    }
-    setup_tiles();
     set_transform();
     setup_avatar("🐸");
     setup_edit_handlers();
-    console.log("init done");
+    console.log("initialization done");
+}
+
+function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const jsonUrl = `${urlParams.get("world")}.json`;
+    fetch(jsonUrl).then(res => res.json()).then(init_with_json);
 }

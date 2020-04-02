@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>svgcraft</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/12.0.4/2/twemoji.min.js"></script>
+    <script src="./svgcraft.js"></script>
+    <script>
+      window.onload = init;
+    </script>
+    <link rel="stylesheet" href="./svgcraft.css"/>
+  </head>
+
+  <body>
+    <div id="UpperPart">
+    <div id="mapport">
+      <svg id="mainsvg">
+        <defs></defs>
+        <rect id="BackgroundRect" x="0" y="0" width="100" height="100" fill="black"/>
+        <g id="EditableElements"></g>
+      </svg>
+    </div>
+    </div>
+    <div id="LowerPart">
+      <div id="Tools">
+      </div>
+      <div id="SvgEditWrapper">
+        <textarea id="SvgEdit"></textarea>
+      </div>
+      <!-- TODO add "apply changes", "revert edits", "close", "delete" buttons -->
+    </div>
+  </body>
+</html>
