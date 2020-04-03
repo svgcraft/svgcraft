@@ -1,14 +1,14 @@
 "use strict";
 
-var is_dragging = false;
 var lastMouseX = null;
 var lastMouseY = null;
 var lastAvatarX = null;
 var lastAvatarY = null;
-var mainSvgElem = null;
-var mapPortDiv = null;
-var setup_tile = null;
 var world = null;
+
+function I(id) {
+    return document.getElementById(id);
+}
 
 function port_coord_to_world(p) {
     return p.add(new Point(world.view.x, world.view.y)).scale(world.view.scale);
@@ -19,7 +19,7 @@ function encode_transform() {
 }
 
 function set_transform() {
-    mainSvgElem.style.transform = encode_transform();
+    I("mainsvg").style.transform = encode_transform();
     expand_background();
 }
 
@@ -33,85 +33,119 @@ function replace_with_clone(elem) {
     return newone;
 }
 
-function setup_scroll_and_zoom() {
-    mainSvgElem = document.getElementById("mainsvg");
-    mapPortDiv = document.getElementById("mapport");
-    console.log("initial transform: " + encode_transform());
-    mapPortDiv.addEventListener("mousedown", function(e){
-        set_selected(null);
-        is_dragging = true;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        var rect = mapPortDiv.getBoundingClientRect();
-        var xInPort = e.clientX - rect.left;
-        var yInPort = e.clientY - rect.top;
-        var xInWorld = (xInPort - world.view.x) / world.view.scale;
-        var yInWorld = (yInPort - world.view.y) / world.view.scale;
+function mousedown_begin_map_move(e) {
+    set_selected(null);
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    var rect = I("mapport").getBoundingClientRect();
+    var xInPort = e.clientX - rect.left;
+    var yInPort = e.clientY - rect.top;
+    var xInWorld = (xInPort - world.view.x) / world.view.scale;
+    var yInWorld = (yInPort - world.view.y) / world.view.scale;
 
-        var jumpHeight = 400;
-        var d = `M${lastAvatarX},${lastAvatarY} C${lastAvatarX},${lastAvatarY-jumpHeight} ${xInWorld},${yInWorld-jumpHeight} ${xInWorld},${yInWorld}`;
+    var jumpHeight = 400;
+    var d = `M${lastAvatarX},${lastAvatarY} C${lastAvatarX},${lastAvatarY-jumpHeight} ${xInWorld},${yInWorld-jumpHeight} ${xInWorld},${yInWorld}`;
 
-        var showJumpTrace = false;
-        if (showJumpTrace) {
-            var path = svg("path", {d: d, fill: "transparent", stroke: "yellow"});
-            mainSvgElem.appendChild(path);
-        }
+    var showJumpTrace = false;
+    if (showJumpTrace) {
+        var path = svg("path", {d: d, fill: "transparent", stroke: "yellow"});
+        I("mainsvg").appendChild(path);
+    }
 
-        avatarG.style.offsetPath = `path('${d}')`;
+    avatarG.style.offsetPath = `path('${d}')`;
 
-        // The right way would be something like this:
-        // avatarG.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
-        // But since that doesn't work, we re-trigger the animation by removing and adding the node:
-        avatarG = replace_with_clone(avatarG);
+    // The right way would be something like this:
+    // avatarG.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
+    // But since that doesn't work, we re-trigger the animation by removing and adding the node:
+    avatarG = replace_with_clone(avatarG);
 
-        lastAvatarX = xInWorld;
-        lastAvatarY = yInWorld;
-    });
-    mapPortDiv.addEventListener("mouseup", function(){
-        is_dragging = false;
-    });
-    mapPortDiv.addEventListener("mousemove", function(e){
-        if (!is_dragging) return;
-        e.preventDefault();
-        var dx = e.clientX - lastMouseX;
-        var dy = e.clientY - lastMouseY;
-        world.view.x += dx;
-        world.view.y += dy;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        set_transform();
-    });
-    mapPortDiv.addEventListener("wheel", function(e){
-        e.preventDefault();
-        var zoomChange = Math.exp(e.deltaY * -0.001);
-        var rect = mapPortDiv.getBoundingClientRect();
-        var xInPort = e.clientX - rect.left;
-        var yInPort = e.clientY - rect.top;
-        world.view.x = xInPort - (xInPort - world.view.x) * zoomChange;
-        world.view.y = yInPort - (yInPort - world.view.y) * zoomChange;
-        world.view.scale *= zoomChange;
-        set_transform();
-    });
+    lastAvatarX = xInWorld;
+    lastAvatarY = yInWorld;
+    enter_state("map_move");
+}
+
+function wheel_zoom(e) {
+    e.preventDefault();
+    var zoomChange = Math.exp(e.deltaY * -0.001);
+    var rect = I("mapport").getBoundingClientRect();
+    var xInPort = e.clientX - rect.left;
+    var yInPort = e.clientY - rect.top;
+    world.view.x = xInPort - (xInPort - world.view.x) * zoomChange;
+    world.view.y = yInPort - (yInPort - world.view.y) * zoomChange;
+    world.view.scale *= zoomChange;
+    set_transform();
+}
+
+function mousemove_map_move(e) {
+    e.preventDefault();
+    var dx = e.clientX - lastMouseX;
+    var dy = e.clientY - lastMouseY;
+    world.view.x += dx;
+    world.view.y += dy;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    set_transform();
+}
+
+function mouseup_during_map_move(e) {
+    enter_state("default");
+}
+
+function click_start_triangle() {
+    I("NewTriangle").classList.add("ActiveTool");
+    enter_state("place_triangle");
+}
+
+function click_abort_triangle() {
+    I("NewTriangle").classList.remove("ActiveTool");
+    enter_state("default");
+}
+
+function enter_state(name) {
+    switch (name) {
+    case "default":
+        I("mapport").onmousedown = mousedown_begin_map_move;
+        I("mapport").onmousemove = undefined;
+        I("mapport").onmouseup = undefined;
+        I("mapport").onwheel = wheel_zoom;
+        I("NewTriangle").onclick = click_start_triangle;
+        break;
+    case "map_move":
+        I("mapport").onmousedown = undefined;
+        I("mapport").onmousemove = mousemove_map_move;
+        I("mapport").onmouseup = mouseup_during_map_move
+        I("mapport").onwheel = undefined;
+        I("NewTriangle").onclick = undefined;
+        break;
+    case "place_triangle":
+        I("mapport").onmousedown = undefined; // TODO
+        I("mapport").onmousemove = undefined;
+        I("mapport").onmouseup = undefined;
+        I("mapport").onwheel = wheel_zoom;
+        I("NewTriangle").onclick = click_abort_triangle;
+        break;
+    default:
+        throw name + " is not a state";
+    }
+    console.log("Entered state " + name);
 }
 
 function expand_background() {
     const slack = 10;
     const x = -world.view.x / world.view.scale - slack;
     const y = -world.view.y / world.view.scale - slack;
-    var w = (mapPortDiv.clientWidth - world.view.x) / world.view.scale + 2 * slack - x;
-    var h = (mapPortDiv.clientHeight - world.view.y) / world.view.scale + 2 * slack - y;
-    var backgroundRect = document.getElementById("BackgroundRect");
+    var w = (I("mapport").clientWidth - world.view.x) / world.view.scale + 2 * slack - x;
+    var h = (I("mapport").clientHeight - world.view.y) / world.view.scale + 2 * slack - y;
     // TODO only do this if rect needs to grow, test if faster
-    backgroundRect.setAttribute("x", x);
-    backgroundRect.setAttribute("y", y);
-    backgroundRect.setAttribute("width", w);
-    backgroundRect.setAttribute("height", h);
+    I("BackgroundRect").setAttribute("x", x);
+    I("BackgroundRect").setAttribute("y", y);
+    I("BackgroundRect").setAttribute("width", w);
+    I("BackgroundRect").setAttribute("height", h);
 }
 
 console.log(twemoji.convert.toCodePoint("🐸"));
 
-// TODO needs /2/ base to obtain
-// https://twemoji.maxcdn.com/2/svg/1f9d9-1f3fc-200d-2642-fe0f.svg
+// Note: needs v2 to obtain https://twemoji.maxcdn.com/2/svg/1f9d9-1f3fc-200d-2642-fe0f.svg
 // Use https://emojipedia.org/twitter/ as the emoji picker
 console.log(get_emoji_url("🧙🏼‍♂️"));
 
@@ -148,37 +182,30 @@ function setup_avatar(avatar_str) {
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
     avatarG = svg("g", {"class": "avatar"},
                   [svg("circle", {cx: lastAvatarX, cy: lastAvatarY, r: 35, fill: "yellow"}), img]);
-    mainSvgElem.appendChild(avatarG);
+    I("mainsvg").appendChild(avatarG);
 }
 
 var selectedElement = null;
 
 function set_selected(elem) {
-    if (!document.getElementById("SvgEdit")) return; // TODO remove and build DOM in js
-
     selectedElement = elem;
     if (elem) {
-        document.getElementById("SvgEdit").value = elem.outerHTML;
+        I("SvgEdit").value = elem.outerHTML;
     } else {
-        document.getElementById("SvgEdit").value = "";
+        I("SvgEdit").value = "";
     }
 }
 
 function setup_edit_handlers() {
-    var editableElementsG = document.getElementById("EditableElements");
-    if (!editableElementsG) return; // TODO remove and build DOM in js
-
-    for (const elem of editableElementsG.children) {
+    /* TODO reactivate
+    for (const elem of I("EditableElements").children) {
         elem.onclick = (e) => {
             set_selected(e.target);
         }
     }
+    */
 
-    const newTriangle = document.getElementById("NewTriangle");
-    newTriangle.style.backgroundImage = `url('${get_emoji_url("🔺")}')`;
-    newTriangle.onclick = () => {
-        newTriangle.classList.toggle("ActiveTool");
-    }
+    I("NewTriangle").style.backgroundImage = `url('${get_emoji_url("🔺")}')`;
 }
 
 function elem2svg(j) {
@@ -217,8 +244,8 @@ function json2svg(j) {
 
 function init_with_json(j) {
     world = j;
-    replace_node(json2svg(j), document.getElementById("mainsvg"));
-    setup_scroll_and_zoom();
+    replace_node(json2svg(j), I("mainsvg"));
+    enter_state("default");
     set_transform();
     setup_avatar("🐸");
     setup_edit_handlers();
