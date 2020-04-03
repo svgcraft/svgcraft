@@ -1,7 +1,7 @@
 "use strict";
 
+var avatarPos = null;
 var lastMousePos = null;
-var lastAvatarPos = null;
 var world = null;
 
 function I(id) {
@@ -10,6 +10,10 @@ function I(id) {
 
 function port_coord_to_world(p) {
     return p.add(new Point(world.view.x, world.view.y)).scale(world.view.scale);
+}
+
+function set_lastMousePos(e) {
+    lastMousePos = new Point(e.clientX, e.clientY);
 }
 
 function encode_transform() {
@@ -35,10 +39,8 @@ function event_to_world_coords(e) {
     var rect = I("mapport").getBoundingClientRect();
     var xInPort = e.clientX - rect.left;
     var yInPort = e.clientY - rect.top;
-    return {
-        x: (xInPort - world.view.x) / world.view.scale,
-        y: (yInPort - world.view.y) / world.view.scale
-    }
+    return new Point((xInPort - world.view.x) / world.view.scale,
+                     (yInPort - world.view.y) / world.view.scale);
 }
 
 function jump_path_d(from, to, jumpHeight) {
@@ -46,10 +48,10 @@ function jump_path_d(from, to, jumpHeight) {
 }
 
 function mousedown_begin_map_move(e) {
-    lastMousePos = {x: e.clientX, y: e.clientY};
+    set_lastMousePos(e);
     const p = event_to_world_coords(e);
 
-    var d = jump_path_d(lastAvatarPos, p, 400);
+    var d = jump_path_d(avatarPos, p, 400);
 
     var showJumpTrace = false;
     if (showJumpTrace) {
@@ -64,8 +66,8 @@ function mousedown_begin_map_move(e) {
     // But since that doesn't work, we re-trigger the animation by removing and adding the node:
     avatarG = replace_with_clone(avatarG);
 
-    lastAvatarPos.x = p.x;
-    lastAvatarPos.y = p.y;
+    avatarPos.x = p.x;
+    avatarPos.y = p.y;
     enter_state("map_move");
 }
 
@@ -87,12 +89,8 @@ function mousemove_map_move(e) {
     var dy = e.clientY - lastMousePos.y;
     world.view.x += dx;
     world.view.y += dy;
-    lastMousePos = {x: e.clientX, y: e.clientY};
+    set_lastMousePos(e)
     set_transform();
-}
-
-function mouseup_during_map_move(e) {
-    enter_state("default");
 }
 
 function click_start_triangle() {
@@ -100,9 +98,60 @@ function click_start_triangle() {
     enter_state("place_triangle");
 }
 
-function click_abort_triangle() {
+function back_to_default_state() {
     I("NewTriangle").classList.remove("ActiveTool");
     enter_state("default");
+}
+
+class Point {
+    constructor(x, y) {
+        this.x = x || 0;
+        this.y = y || 0;
+    }
+
+    static polar(r, alpha){
+        return new Point(r * Math.cos(alpha), r * Math.sin(alpha));
+    }
+
+    add(that) {
+        return new Point(this.x + that.x, this.y + that.y);
+    }
+
+    sub(that) {
+        return new Point(this.x - that.x, this.y - that.y);
+    }
+
+    norm() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    rotate(alpha) {
+        return Point.polar(this.norm(), Math.atan2(this.y, this.x) + alpha);
+    }
+}
+
+function equilateral_triangle(center, corner) {
+    const r = corner.sub(center);
+    const p1 = corner;
+    const p2 = center.add(r.rotate(Math.PI*2/3));
+    const p3 = center.add(r.rotate(-Math.PI*2/3));
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${p3.x} ${p3.y} ${p1.x} ${p1.y}`});
+}
+
+function mousedown_place_triangle_here(e) {
+    const p = event_to_world_coords(e);
+    selectedElement = equilateral_triangle(avatarPos, p);
+    I("EditableElements").appendChild(selectedElement);
+    enter_state("adjust_triangle");
+    set_lastMousePos(e);
+}
+
+function mousemove_adjust_triangle(e) {
+    const p = event_to_world_coords(e);
+    I("EditableElements").removeChild(selectedElement);
+    selectedElement = equilateral_triangle(avatarPos, p);
+    I("EditableElements").appendChild(selectedElement);
+    set_lastMousePos(e);
 }
 
 function enter_state(name) {
@@ -117,21 +166,28 @@ function enter_state(name) {
     case "map_move":
         I("mapport").onmousedown = undefined;
         I("mapport").onmousemove = mousemove_map_move;
-        I("mapport").onmouseup = mouseup_during_map_move
+        I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
         I("NewTriangle").onclick = undefined;
         break;
     case "place_triangle":
-        I("mapport").onmousedown = undefined; // TODO
+        I("mapport").onmousedown = mousedown_place_triangle_here;
         I("mapport").onmousemove = undefined;
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
-        I("NewTriangle").onclick = click_abort_triangle;
+        I("NewTriangle").onclick = back_to_default_state;
+        break;
+    case "adjust_triangle":
+        I("mapport").onmousedown = undefined;
+        I("mapport").onmousemove = mousemove_adjust_triangle;
+        I("mapport").onmouseup = back_to_default_state;
+        I("mapport").onwheel = undefined;
+        I("NewTriangle").onclick = undefined;
         break;
     default:
         throw name + " is not a state";
     }
-    console.log("Entered state " + name);
+    console.log("Entered state", name);
 }
 
 function expand_background() {
@@ -180,11 +236,11 @@ function svg(tag, attrs, children, allowedAttrs) {
 var avatarG = null;
 
 function setup_avatar(avatar_str) {
-    lastAvatarPos = {x: 0, y: 0};
+    avatarPos = new Point();
     var img = svg("image", {x: -25, y: -25, height: 50, width: 50});
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
     avatarG = svg("g", {"class": "avatar"},
-                  [svg("circle", {cx: lastAvatarPos.x, cy: lastAvatarPos.y, r: 35, fill: "yellow"}), img]);
+                  [svg("circle", {cx: avatarPos.x, cy: avatarPos.y, r: 35, fill: "yellow"}), img]);
     I("mainsvg").appendChild(avatarG);
 }
 
