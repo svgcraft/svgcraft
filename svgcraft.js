@@ -1,9 +1,7 @@
 "use strict";
 
-var lastMouseX = null;
-var lastMouseY = null;
-var lastAvatarX = null;
-var lastAvatarY = null;
+var lastMousePos = null;
+var lastAvatarPos = null;
 var world = null;
 
 function I(id) {
@@ -33,18 +31,25 @@ function replace_with_clone(elem) {
     return newone;
 }
 
-function mousedown_begin_map_move(e) {
-    set_selected(null);
-    lastMouseX = e.clientX;
-    lastMouseY = e.clientY;
+function event_to_world_coords(e) {
     var rect = I("mapport").getBoundingClientRect();
     var xInPort = e.clientX - rect.left;
     var yInPort = e.clientY - rect.top;
-    var xInWorld = (xInPort - world.view.x) / world.view.scale;
-    var yInWorld = (yInPort - world.view.y) / world.view.scale;
+    return {
+        x: (xInPort - world.view.x) / world.view.scale,
+        y: (yInPort - world.view.y) / world.view.scale
+    }
+}
 
-    var jumpHeight = 400;
-    var d = `M${lastAvatarX},${lastAvatarY} C${lastAvatarX},${lastAvatarY-jumpHeight} ${xInWorld},${yInWorld-jumpHeight} ${xInWorld},${yInWorld}`;
+function jump_path_d(from, to, jumpHeight) {
+    return `M${from.x},${from.y} C${from.x},${from.y-jumpHeight} ${to.x},${to.y-jumpHeight} ${to.x},${to.y}`;
+}
+
+function mousedown_begin_map_move(e) {
+    lastMousePos = {x: e.clientX, y: e.clientY};
+    const p = event_to_world_coords(e);
+
+    var d = jump_path_d(lastAvatarPos, p, 400);
 
     var showJumpTrace = false;
     if (showJumpTrace) {
@@ -59,8 +64,8 @@ function mousedown_begin_map_move(e) {
     // But since that doesn't work, we re-trigger the animation by removing and adding the node:
     avatarG = replace_with_clone(avatarG);
 
-    lastAvatarX = xInWorld;
-    lastAvatarY = yInWorld;
+    lastAvatarPos.x = p.x;
+    lastAvatarPos.y = p.y;
     enter_state("map_move");
 }
 
@@ -78,12 +83,11 @@ function wheel_zoom(e) {
 
 function mousemove_map_move(e) {
     e.preventDefault();
-    var dx = e.clientX - lastMouseX;
-    var dy = e.clientY - lastMouseY;
+    var dx = e.clientX - lastMousePos.x;
+    var dy = e.clientY - lastMousePos.y;
     world.view.x += dx;
     world.view.y += dy;
-    lastMouseX = e.clientX;
-    lastMouseY = e.clientY;
+    lastMousePos = {x: e.clientX, y: e.clientY};
     set_transform();
 }
 
@@ -176,18 +180,17 @@ function svg(tag, attrs, children, allowedAttrs) {
 var avatarG = null;
 
 function setup_avatar(avatar_str) {
-    lastAvatarX = 0;
-    lastAvatarY = 0;
+    lastAvatarPos = {x: 0, y: 0};
     var img = svg("image", {x: -25, y: -25, height: 50, width: 50});
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
     avatarG = svg("g", {"class": "avatar"},
-                  [svg("circle", {cx: lastAvatarX, cy: lastAvatarY, r: 35, fill: "yellow"}), img]);
+                  [svg("circle", {cx: lastAvatarPos.x, cy: lastAvatarPos.y, r: 35, fill: "yellow"}), img]);
     I("mainsvg").appendChild(avatarG);
 }
 
 var selectedElement = null;
 
-function set_selected(elem) {
+function set_selected_INACTIVE(elem) {
     selectedElement = elem;
     if (elem) {
         I("SvgEdit").value = elem.outerHTML;
