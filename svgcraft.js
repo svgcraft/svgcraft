@@ -57,15 +57,15 @@ function replace_node(newElem, oldElem) {
 }
 
 function replace_with_clone(elem) {
-    var newone = elem.cloneNode(true);
+    const newone = elem.cloneNode(true);
     replace_node(newone, elem);
     return newone;
 }
 
 function event_to_world_coords(e) {
-    var rect = I("mapport").getBoundingClientRect();
-    var xInPort = e.clientX - rect.left;
-    var yInPort = e.clientY - rect.top;
+    const rect = I("mapport").getBoundingClientRect();
+    const xInPort = e.clientX - rect.left;
+    const yInPort = e.clientY - rect.top;
     return new Point((xInPort - world.view.x) / world.view.scale,
                      (yInPort - world.view.y) / world.view.scale);
 }
@@ -78,11 +78,11 @@ function mousedown_begin_map_move(e) {
     set_lastMousePos(e);
     const p = event_to_world_coords(e);
 
-    var d = jump_path_d(avatarPos, p, 400);
+    const d = jump_path_d(avatarPos, p, 400);
 
-    var showJumpTrace = false;
+    const showJumpTrace = false;
     if (showJumpTrace) {
-        var path = svg("path", {d: d, fill: "transparent", stroke: "yellow"});
+        const path = svg("path", {d: d, fill: "transparent", stroke: "yellow"});
         I("mainsvg").appendChild(path);
     }
 
@@ -100,10 +100,10 @@ function mousedown_begin_map_move(e) {
 
 function wheel_zoom(e) {
     e.preventDefault();
-    var zoomChange = Math.exp(e.deltaY * -0.001);
-    var rect = I("mapport").getBoundingClientRect();
-    var xInPort = e.clientX - rect.left;
-    var yInPort = e.clientY - rect.top;
+    const zoomChange = Math.exp(e.deltaY * -0.001);
+    const rect = I("mapport").getBoundingClientRect();
+    const xInPort = e.clientX - rect.left;
+    const yInPort = e.clientY - rect.top;
     world.view.x = xInPort - (xInPort - world.view.x) * zoomChange;
     world.view.y = yInPort - (yInPort - world.view.y) * zoomChange;
     world.view.scale *= zoomChange;
@@ -112,8 +112,8 @@ function wheel_zoom(e) {
 
 function mousemove_map_move(e) {
     e.preventDefault();
-    var dx = e.clientX - lastMousePos.x;
-    var dy = e.clientY - lastMousePos.y;
+    const dx = e.clientX - lastMousePos.x;
+    const dy = e.clientY - lastMousePos.y;
     world.view.x += dx;
     world.view.y += dy;
     set_lastMousePos(e)
@@ -225,8 +225,8 @@ function expand_background() {
     const slack = 10;
     const x = -world.view.x / world.view.scale - slack;
     const y = -world.view.y / world.view.scale - slack;
-    var w = (I("mapport").clientWidth - world.view.x) / world.view.scale + 2 * slack - x;
-    var h = (I("mapport").clientHeight - world.view.y) / world.view.scale + 2 * slack - y;
+    const w = (I("mapport").clientWidth - world.view.x) / world.view.scale + 2 * slack - x;
+    const h = (I("mapport").clientHeight - world.view.y) / world.view.scale + 2 * slack - y;
     // TODO only do this if rect needs to grow, test if faster
     I("BackgroundRect").setAttribute("x", x);
     I("BackgroundRect").setAttribute("y", y);
@@ -250,7 +250,7 @@ function get_emoji_url(s) {
 }
 
 function svg(tag, attrs, children, allowedAttrs) {
-    var res = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    const res = document.createElementNS("http://www.w3.org/2000/svg", tag);
     if (attrs) {
         for (const attrName in attrs) {
             if (!allowedAttrs || allowedAttrs.includes(attrName)) res.setAttribute(attrName, attrs[attrName]);
@@ -268,7 +268,7 @@ var avatarG = null;
 
 function setup_avatar(avatar_str) {
     avatarPos = new Point();
-    var img = svg("image", {x: -25, y: -25, height: 50, width: 50});
+    const img = svg("image", {x: -25, y: -25, height: 50, width: 50});
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
     avatarG = svg("g", {"class": "avatar"},
                   [svg("circle", {cx: avatarPos.x, cy: avatarPos.y, r: 35, fill: "yellow"}), img]);
