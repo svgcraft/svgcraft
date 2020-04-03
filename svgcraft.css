@@ -45,6 +45,18 @@ body {
     width: 120px;
 }
 
+.ToolButton {
+    width: 35px;
+    height: 35px;
+    background: no-repeat scroll 0 0 transparent;
+    border: 1px solid #555;
+    border-radius: 5px;
+}
+
+.ToolButton.ActiveTool {
+    border: 1px solid white;
+}
+
 #SvgEditWrapper {
     position: absolute;
     left: 160px;

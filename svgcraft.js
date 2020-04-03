@@ -173,6 +173,12 @@ function setup_edit_handlers() {
             set_selected(e.target);
         }
     }
+
+    const newTriangle = document.getElementById("NewTriangle");
+    newTriangle.style.backgroundImage = `url('${get_emoji_url("🔺")}')`;
+    newTriangle.onclick = () => {
+        newTriangle.classList.toggle("ActiveTool");
+    }
 }
 
 function elem2svg(j) {
