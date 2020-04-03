@@ -1,5 +1,32 @@
 "use strict";
 
+class Point {
+    constructor(x, y) {
+        this.x = x || 0;
+        this.y = y || 0;
+    }
+
+    static polar(r, alpha){
+        return new Point(r * Math.cos(alpha), r * Math.sin(alpha));
+    }
+
+    add(that) {
+        return new Point(this.x + that.x, this.y + that.y);
+    }
+
+    sub(that) {
+        return new Point(this.x - that.x, this.y - that.y);
+    }
+
+    norm() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    rotate(alpha) {
+        return Point.polar(this.norm(), Math.atan2(this.y, this.x) + alpha);
+    }
+}
+
 var avatarPos = null;
 var lastMousePos = null;
 var world = null;
@@ -93,41 +120,24 @@ function mousemove_map_move(e) {
     set_transform();
 }
 
-function click_start_triangle() {
-    I("NewTriangle").classList.add("ActiveTool");
-    enter_state("place_triangle");
+var currentShape = null;
+
+function tool_id_to_shape_name(id) {
+    if (!id.startsWith("new-")) throw id + "does not start with 'new-'";
+    return id.substring(4, id.length)
+}
+
+function click_start_shape(e) {
+    e.currentTarget.classList.add("ActiveTool");
+    currentShape = tool_id_to_shape_name(e.currentTarget.id);
+    enter_state("place_shape");
 }
 
 function back_to_default_state() {
-    I("NewTriangle").classList.remove("ActiveTool");
+    for (const toolBtn of I("Tools").children) {
+        toolBtn.classList.remove("ActiveTool");
+    }
     enter_state("default");
-}
-
-class Point {
-    constructor(x, y) {
-        this.x = x || 0;
-        this.y = y || 0;
-    }
-
-    static polar(r, alpha){
-        return new Point(r * Math.cos(alpha), r * Math.sin(alpha));
-    }
-
-    add(that) {
-        return new Point(this.x + that.x, this.y + that.y);
-    }
-
-    sub(that) {
-        return new Point(this.x - that.x, this.y - that.y);
-    }
-
-    norm() {
-        return Math.sqrt(this.x * this.x + this.y * this.y);
-    }
-
-    rotate(alpha) {
-        return Point.polar(this.norm(), Math.atan2(this.y, this.x) + alpha);
-    }
 }
 
 function equilateral_triangle(center, corner) {
@@ -138,20 +148,41 @@ function equilateral_triangle(center, corner) {
     return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${p3.x} ${p3.y} ${p1.x} ${p1.y}`});
 }
 
-function mousedown_place_triangle_here(e) {
+function rectangle(origin, corner) {
+    const x = Math.min(origin.x, corner.x);
+    const y = Math.min(origin.y, corner.y);
+    const w = Math.abs(origin.x - corner.x);
+    const h = Math.abs(origin.y - corner.y);
+    return svg("rect", {x: x, y: y, width: w, height: h});
+}
+
+function create_shape(name, originPoint, secondPoint) {
+    return {
+        triangle: equilateral_triangle,
+        rectangle: rectangle
+    }[name](originPoint, secondPoint);
+}
+
+function mousedown_place_shape_here(e) {
     const p = event_to_world_coords(e);
-    selectedElement = equilateral_triangle(avatarPos, p);
+    selectedElement = create_shape(currentShape, avatarPos, p);
     I("EditableElements").appendChild(selectedElement);
-    enter_state("adjust_triangle");
+    enter_state("adjust_shape");
     set_lastMousePos(e);
 }
 
-function mousemove_adjust_triangle(e) {
+function mousemove_adjust_shape(e) {
     const p = event_to_world_coords(e);
     I("EditableElements").removeChild(selectedElement);
-    selectedElement = equilateral_triangle(avatarPos, p);
+    selectedElement = create_shape(currentShape, avatarPos, p);
     I("EditableElements").appendChild(selectedElement);
     set_lastMousePos(e);
+}
+
+function set_tool_onclick(f) {
+    for (const toolBtn of I("Tools").children) {
+        toolBtn.onclick = f;
+    }
 }
 
 function enter_state(name) {
@@ -161,28 +192,28 @@ function enter_state(name) {
         I("mapport").onmousemove = undefined;
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
-        I("NewTriangle").onclick = click_start_triangle;
+        set_tool_onclick(click_start_shape);
         break;
     case "map_move":
         I("mapport").onmousedown = undefined;
         I("mapport").onmousemove = mousemove_map_move;
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
-        I("NewTriangle").onclick = undefined;
+        set_tool_onclick(undefined);
         break;
-    case "place_triangle":
-        I("mapport").onmousedown = mousedown_place_triangle_here;
+    case "place_shape":
+        I("mapport").onmousedown = mousedown_place_shape_here;
         I("mapport").onmousemove = undefined;
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
-        I("NewTriangle").onclick = back_to_default_state;
+        set_tool_onclick(back_to_default_state);
         break;
-    case "adjust_triangle":
+    case "adjust_shape":
         I("mapport").onmousedown = undefined;
-        I("mapport").onmousemove = mousemove_adjust_triangle;
+        I("mapport").onmousemove = mousemove_adjust_shape;
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
-        I("NewTriangle").onclick = undefined;
+        set_tool_onclick(undefined);
         break;
     default:
         throw name + " is not a state";
@@ -263,8 +294,6 @@ function setup_edit_handlers() {
         }
     }
     */
-
-    I("NewTriangle").style.backgroundImage = `url('${get_emoji_url("🔺")}')`;
 }
 
 function elem2svg(j) {
