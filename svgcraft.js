@@ -6,6 +6,10 @@ class Point {
         this.y = y || 0;
     }
 
+    static zero() {
+        return new Point(0, 0);
+    }
+
     static polar(r, alpha){
         return new Point(r * Math.cos(alpha), r * Math.sin(alpha));
     }
@@ -36,11 +40,23 @@ class Point {
 }
 
 var avatarPos = null;
+var avatarHue = Date.now() % 360;
 var lastMousePos = null;
 var world = null;
 
 function I(id) {
     return document.getElementById(id);
+}
+
+function avatarColor() {
+    return `hsl(${avatarHue}, 100%, 50%)`;
+}
+
+const debug = false;
+
+function set_cursor(name) {
+    if (debug && name === "none") name = "crosshair";
+    I("mapport").style.cursor = name;
 }
 
 function port_coord_to_world(p) {
@@ -87,7 +103,7 @@ function jump_to(p) {
 
     const showJumpTrace = false;
     if (showJumpTrace) {
-        const path = svg("path", {d: d, fill: "transparent", stroke: "yellow"});
+        const path = svg("path", {d: d, fill: "transparent", stroke: avatarColor()});
         I("mainsvg").appendChild(path);
     }
 
@@ -105,6 +121,7 @@ function jump_to(p) {
 }
 
 function mousedown_begin_map_move(e) {
+    if (!is_left_button(e)) return;
     jump_to(event_to_world_coords(e));
     enter_state("map_move");
     set_lastMousePos(e);
@@ -134,6 +151,7 @@ function mousemove_map_move(e) {
 
 var currentShape = null;
 var mouseDownPos = null;
+var mouseDownPosWithinAvatar = null;
 
 function tool_id_to_shape_name(id) {
     if (!id.startsWith("new-")) throw id + "does not start with 'new-'";
@@ -141,6 +159,7 @@ function tool_id_to_shape_name(id) {
 }
 
 function click_start_shape(e) {
+    if (!is_left_button(e)) return;
     e.currentTarget.classList.add("ActiveTool");
     currentShape = tool_id_to_shape_name(e.currentTarget.id);
     enter_state("place_shape");
@@ -170,6 +189,13 @@ function equilateral_triangle(mid, tip) {
     return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`});
 }
 
+function isosceles_triangle(baseMid, baseLength, rotation, height) {
+    const tip = baseMid.add(Point.polar(height, rotation));
+    const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
+    const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`});
+}
+
 function rectangle(origin, corner) {
     const x = Math.min(origin.x, corner.x);
     const y = Math.min(origin.y, corner.y);
@@ -185,7 +211,16 @@ function create_shape(name, originPoint, secondPoint) {
     }[name](originPoint, secondPoint);
 }
 
+function is_left_button(e) {
+    return e.button === 0;
+}
+
+function is_right_button(e) {
+    return e.button === 2;
+}
+
 function mousedown_place_shape_here(e) {
+    if (!is_left_button(e)) return;
     mouseDownPos = event_to_world_coords(e);
     jump_to(mouseDownPos);
     enter_state("adjust_shape");
@@ -195,9 +230,7 @@ function mousedown_place_shape_here(e) {
 // without jump animation
 function place_avatar(p) {
     avatarG.style.removeProperty("offset-path");
-    console.log(avatarG.style.offsetPath);
     avatarG.style.transform = `translate(${p.x}px, ${p.y}px)`;
-    console.log(avatarG.style.cssText);
     avatarPos = p;
 }
 
@@ -227,6 +260,35 @@ function set_tool_onclick(f) {
     }
 }
 
+function mousedown_begin_point_at(e) {
+    if (!is_left_button(e)) return;
+    mouseDownPos = event_to_world_coords(e);
+    mouseDownPosWithinAvatar = mouseDownPos.sub(avatarPos);
+    // coordinates are relative to avatarPos because it will be put inside avatarG
+    const t = isosceles_triangle(Point.zero(), avatarRadius * 1.6,
+                                 mouseDownPosWithinAvatar.angle(), avatarRadius * 1.9);
+    t.setAttribute("fill", avatarColor());
+    t.setAttribute("id", "avatar-pointer");
+    I("avatar-clickable").parentNode.insertBefore(t, I("avatar-clickable"));
+    enter_state("point_at");
+    e.stopImmediatePropagation(); // don't let mapport start a map_move
+}
+
+function mousemove_point_at(e) {
+    const p = event_to_world_coords(e);
+    place_avatar(p.sub(mouseDownPosWithinAvatar));
+    set_lastMousePos(e);
+}
+
+function mouseup_point_at(e) {
+    if (!is_left_button(e)) return;
+    I("avatar-pointer").remove();
+    back_to_default_state(e);
+    // TODO jump_to is too distracting, but maybe go back linearly?
+    // Also note that jump_to replaces avatarG by a clone, which removes its event listeners
+    // jump_to(mouseDownPos);
+}
+
 function enter_state(name) {
     switch (name) {
     case "default":
@@ -234,28 +296,45 @@ function enter_state(name) {
         I("mapport").onmousemove = undefined;
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
+        I("avatar-clickable").onmousedown = mousedown_begin_point_at;
         set_tool_onclick(click_start_shape);
+        set_cursor("default");
         break;
     case "map_move":
         I("mapport").onmousedown = undefined;
         I("mapport").onmousemove = mousemove_map_move;
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
+        I("avatar-clickable").onmousedown = undefined;
         set_tool_onclick(undefined);
+        set_cursor("none");
         break;
     case "place_shape":
         I("mapport").onmousedown = mousedown_place_shape_here;
         I("mapport").onmousemove = undefined;
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
+        I("avatar-clickable").onmousedown = undefined;
         set_tool_onclick(back_to_default_state);
+        set_cursor("crosshair");
         break;
     case "adjust_shape":
         I("mapport").onmousedown = undefined;
         I("mapport").onmousemove = mousemove_adjust_shape;
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
+        I("avatar-clickable").onmousedown = undefined;
         set_tool_onclick(undefined);
+        set_cursor("none");
+        break;
+    case "point_at":
+        I("mapport").onmousedown = undefined;
+        I("mapport").onmousemove = mousemove_point_at;
+        I("mapport").onmouseup = mouseup_point_at;
+        I("mapport").onwheel = undefined;
+        I("avatar-clickable").onmousedown = undefined;
+        set_tool_onclick(undefined);
+        set_cursor("none");
         break;
     default:
         throw name + " is not a state";
@@ -313,8 +392,11 @@ function setup_avatar(avatar_str) {
     avatarPos = new Point();
     const img = svg("image", {x: -25, y: -25, height: 50, width: 50});
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
+    img.setAttribute("pointer-events", "none"); // they should go to circle underneath
     avatarG = svg("g", {"class": "avatar"},
-                  [svg("circle", {cx: avatarPos.x, cy: avatarPos.y, r: avatarRadius, fill: "yellow"}), img]);
+                  [svg("circle", {cx: avatarPos.x, cy: avatarPos.y,
+                                  r: avatarRadius, fill: avatarColor(),
+                                  id: "avatar-clickable"}), img]);
     I("mainsvg").appendChild(avatarG);
 }
 
@@ -376,9 +458,9 @@ function json2svg(j) {
 function init_with_json(j) {
     world = j;
     replace_node(json2svg(j), I("mainsvg"));
+    setup_avatar("🐸");
     enter_state("default");
     set_transform();
-    setup_avatar("🐸");
     setup_edit_handlers();
     console.log("initialization done");
 }
