@@ -22,8 +22,16 @@ class Point {
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }
 
+    angle() {
+        return Math.atan2(this.y, this.x);
+    }
+
+    distanceTo(that) {
+        return this.sub(that).norm();
+    }
+
     rotate(alpha) {
-        return Point.polar(this.norm(), Math.atan2(this.y, this.x) + alpha);
+        return Point.polar(this.norm(), this.angle() + alpha);
     }
 }
 
@@ -74,10 +82,7 @@ function jump_path_d(from, to, jumpHeight) {
     return `M${from.x},${from.y} C${from.x},${from.y-jumpHeight} ${to.x},${to.y-jumpHeight} ${to.x},${to.y}`;
 }
 
-function mousedown_begin_map_move(e) {
-    set_lastMousePos(e);
-    const p = event_to_world_coords(e);
-
+function jump_to(p) {
     const d = jump_path_d(avatarPos, p, 400);
 
     const showJumpTrace = false;
@@ -86,7 +91,9 @@ function mousedown_begin_map_move(e) {
         I("mainsvg").appendChild(path);
     }
 
+    avatarG.style.removeProperty("transform");
     avatarG.style.offsetPath = `path('${d}')`;
+    console.log(avatarG.style.cssText);
 
     // The right way would be something like this:
     // avatarG.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
@@ -95,7 +102,12 @@ function mousedown_begin_map_move(e) {
 
     avatarPos.x = p.x;
     avatarPos.y = p.y;
+}
+
+function mousedown_begin_map_move(e) {
+    jump_to(event_to_world_coords(e));
     enter_state("map_move");
+    set_lastMousePos(e);
 }
 
 function wheel_zoom(e) {
@@ -121,6 +133,7 @@ function mousemove_map_move(e) {
 }
 
 var currentShape = null;
+var mouseDownPos = null;
 
 function tool_id_to_shape_name(id) {
     if (!id.startsWith("new-")) throw id + "does not start with 'new-'";
@@ -137,15 +150,24 @@ function back_to_default_state() {
     for (const toolBtn of I("Tools").children) {
         toolBtn.classList.remove("ActiveTool");
     }
+    selectedElement = null;
     enter_state("default");
 }
 
-function equilateral_triangle(center, corner) {
+function equilateral_triangle_from_center(center, corner) {
     const r = corner.sub(center);
     const p1 = corner;
     const p2 = center.add(r.rotate(Math.PI*2/3));
     const p3 = center.add(r.rotate(-Math.PI*2/3));
     return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${p3.x} ${p3.y} ${p1.x} ${p1.y}`});
+}
+
+function equilateral_triangle(mid, tip) {
+    const h = tip.sub(mid);
+    const l = h.norm() / Math.sqrt(3.0);
+    const p1 = mid.add(Point.polar(l, h.angle() + Math.PI/2));
+    const p2 = mid.add(Point.polar(l, h.angle() - Math.PI/2));
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`});
 }
 
 function rectangle(origin, corner) {
@@ -164,18 +186,38 @@ function create_shape(name, originPoint, secondPoint) {
 }
 
 function mousedown_place_shape_here(e) {
-    const p = event_to_world_coords(e);
-    selectedElement = create_shape(currentShape, avatarPos, p);
-    I("EditableElements").appendChild(selectedElement);
+    mouseDownPos = event_to_world_coords(e);
+    jump_to(mouseDownPos);
     enter_state("adjust_shape");
     set_lastMousePos(e);
 }
 
+// without jump animation
+function place_avatar(p) {
+    avatarG.style.removeProperty("offset-path");
+    console.log(avatarG.style.offsetPath);
+    avatarG.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    console.log(avatarG.style.cssText);
+    avatarPos = p;
+}
+
+function handleRadius() {
+    return 20 / world.view.scale;
+}
+
 function mousemove_adjust_shape(e) {
     const p = event_to_world_coords(e);
-    I("EditableElements").removeChild(selectedElement);
-    selectedElement = create_shape(currentShape, avatarPos, p);
-    I("EditableElements").appendChild(selectedElement);
+    if (selectedElement) {
+        I("EditableElements").removeChild(selectedElement);
+        selectedElement = null;
+    }
+    const l = p.distanceTo(mouseDownPos) - avatarRadius - handleRadius();
+    if (l > 0) {
+        const p2 = mouseDownPos.add(Point.polar(l, p.sub(mouseDownPos).angle()))
+        selectedElement = create_shape(currentShape, mouseDownPos, p2);
+        I("EditableElements").appendChild(selectedElement);
+    }
+    place_avatar(p);
     set_lastMousePos(e);
 }
 
@@ -265,13 +307,14 @@ function svg(tag, attrs, children, allowedAttrs) {
 }
 
 var avatarG = null;
+const avatarRadius = 35;
 
 function setup_avatar(avatar_str) {
     avatarPos = new Point();
     const img = svg("image", {x: -25, y: -25, height: 50, width: 50});
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
     avatarG = svg("g", {"class": "avatar"},
-                  [svg("circle", {cx: avatarPos.x, cy: avatarPos.y, r: 35, fill: "yellow"}), img]);
+                  [svg("circle", {cx: avatarPos.x, cy: avatarPos.y, r: avatarRadius, fill: "yellow"}), img]);
     I("mainsvg").appendChild(avatarG);
 }
 
