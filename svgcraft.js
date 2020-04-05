@@ -484,12 +484,12 @@ function init() {
 
         conn.on('open', function () {
             console.log("Connected to " + conn.peer);
-            conn.send("Hello server I can haz json pls?");
         });
 
         conn.on('data', function (data) {
             console.log(`Data received from svgcraft server`);
             console.log(data);
+            init_with_json(data);
         });
 
         conn.on('close', function () {

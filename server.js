@@ -23,10 +23,14 @@ function init_with_json(j) {
         nextFreeClientId++;
 
         console.log("Connected to " + conn.peer + ", clientId: " + clientId);
+
+        conn.on('open', function () {
+            conn.send(j);
+        });
+
         conn.on('data', function (data) {
             console.log(`Data received from client ${clientId}:`);
             console.log(data);
-            conn.send("Hi there!");
         });
         conn.on('close', function () {
             console.log(`Connection to client ${clientId} closed`);
