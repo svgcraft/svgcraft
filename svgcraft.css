@@ -18,6 +18,19 @@ body {
     right: 0;
 }
 
+.bsod {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-color: blue;
+    text-align: center;
+    color: white;
+    font-family: monospace;
+    font-size: 20px;
+}
+
 #mapport {
     position: absolute;
     top: 20px;

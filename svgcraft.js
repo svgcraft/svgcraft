@@ -40,7 +40,7 @@ class Point {
 }
 
 var avatarPos = null;
-var avatarHue = Date.now() % 360;
+var avatarHue = null;
 var lastMousePos = null;
 var world = null;
 
@@ -406,17 +406,21 @@ function setup_edit_handlers() {
     */
 }
 
+function fatal(msg) {
+    const d = document.createElement("div");
+    d.classList.add("bsod");
+    d.innerHTML = `<p>Error: ${msg}</p>`;
+    document.body.appendChild(d); // append rather than replace so that we can still inspect the DOM
+    throw msg;
+}
+
+var app = null;
+
 function init() {
     const urlParams = new URLSearchParams(window.location.search);
 
-    const serverId = urlParams.get("serverId");
-    if (!serverId) throw "Error: No serverId";
-
-    const avatarEmoji = urlParams.get("avatarEmoji");
-    if (!avatarEmoji) throw "Error: No avatarEmoji";
-
-    avatarHue = urlParams.get("avatarHue");
-    if (!avatarHue) throw "Error: No avatarHue";
+    const avatarEmoji = urlParams.get("avatarEmoji") || "🙂";
+    avatarHue = urlParams.get("avatarHue") || Date.now() % 360;
 
     world = {view: {x: 0, y: 0, scale: 1.0}}; // TODO actually set value from server
     replace_node(initial_svg(), I("mainsvg"));
@@ -425,43 +429,26 @@ function init() {
     set_transform();
     setup_edit_handlers();
 
-    const peer = new Peer(null, {debug: 2});
+    const mode = urlParams.get("mode");
+    const worldJsonUrl = urlParams.get("worldJsonUrl");
 
-    peer.on('open', function (id) {
-        console.log("PeerJS server gave us ID " + id);
-
-        const conn = peer.connect(serverId, {
-            reliable: true
-        });
-        console.log(conn);
-
-        conn.on('open', function () {
-            console.log("Connected to " + conn.peer);
-        });
-
-        conn.on('data', function (data) {
-            console.log(`Data received from svgcraft server`);
-            console.log(data);
-            process_json_actions(data);
-        });
-
-        conn.on('close', function () {
-            console.log("Connection to svgcraft server closed");
-        });
-    });
-
-    peer.on('disconnected', function () {
-        console.log("disconnected!");
-    });
-
-    peer.on('close', function() {
-        console.log('Connection to PeerJS server closed');
-    });
-
-    peer.on('error', function (err) {
-        console.log(err);
-    });
-
-    // const jsonUrl = `${urlParams.get("world")}.json`;
-    // fetch(jsonUrl).then(res => res.json()).then(init_with_json);
+    switch (mode) {
+    case "server":
+        const peerId = urlParams.get("peerId");
+        if (!peerId) fatal("No peerId");
+        if (!worldJsonUrl) fatal("No worldJsonUrl");
+        app = new Server(peerId, worldJsonUrl);
+        break;
+    case "client":
+        const serverId = urlParams.get("serverId");
+        if (!serverId) fatal("No serverId");
+        app = new Client(serverId);
+        break;
+    case "solo":
+        if (!worldJsonUrl) fatal("No worldJsonUrl");
+        app = new Solo(worldJsonUrl);
+        break;
+    default:
+        fatal(`unknown mode ${mode}`);
+    }
 }

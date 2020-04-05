@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>svgcraft start page</title>
+    <style type="text/css">
+      a:link, a:visited, a:hover, a:active {color: black;}
+    </style>
+    <script>
+      const charset62 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+      function gen_uid() {
+          const l = [];
+          for (var i = 0; i < 16; i++) {
+              l.push(charset62.charAt(Math.floor(Math.random() * 62)));
+          }
+          return l.join('');
+      }
+
+      function add_url(u) {
+          const n = document.createElement("li");
+          n.innerHTML = `<a href='${u}'>${u}</a>`;
+          document.getElementById("url-list").appendChild(n);
+      }
+
+      function init() {
+          const serverId = gen_uid();
+
+          const no_id = [
+              './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json',
+              './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json&avatarEmoji=🐸&avatarHue=0',
+              './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60',
+          ];
+          const needs_id = [
+              './svgcraft.html?mode=client&worldJsonUrl=archipelago.json&serverId=',
+              './svgcraft.html?mode=client&worldJsonUrl=archipelago.json&avatarEmoji=🐸&avatarHue=0&serverId=',
+              './svgcraft.html?mode=client&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60&serverId=',
+              './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&peerId=',
+              './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&avatarEmoji=🐸&avatarHue=0&peerId=',
+              './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60&peerId='
+          ];
+          for (const u of no_id) add_url(u);
+          for (const u of needs_id) add_url(u + encodeURIComponent(serverId));
+      }
+      window.onload = init;
+    </script>
+    <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
+  </head>
+
+  <body>
+    <p>Some sample URLs:
+      <ul id="url-list"></ul>
+    </p>
+  </body>
+</html>
