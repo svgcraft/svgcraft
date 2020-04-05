@@ -1,4 +1,4 @@
-"use strict";
+import twemoji from "./third_party/twemoji.js";
 
 class Point {
     constructor(x, y) {
@@ -465,7 +465,7 @@ function init_with_json(j) {
     console.log("initialization done");
 }
 
-function init() {
+export function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const jsonUrl = `${urlParams.get("world")}.json`;
     fetch(jsonUrl).then(res => res.json()).then(init_with_json);

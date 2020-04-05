@@ -3,10 +3,9 @@
   <head>
     <meta charset="utf-8">
     <title>svgcraft</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/12.0.4/2/twemoji.min.js"></script>
-    <script src="./svgcraft.js"></script>
-    <script>
-      window.onload = init;
+    <script type="module">
+      import * as svgcraft from "./svgcraft.js";
+      window.onload = svgcraft.init;
     </script>
     <link rel="stylesheet" href="./svgcraft.css"/>
     <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
