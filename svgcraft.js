@@ -407,18 +407,23 @@ function setup_edit_handlers() {
 }
 
 function init() {
-    world = {view: {x: 0, y: 0, scale: 1.0}}; // TODO actually set value from server
-    replace_node(initial_svg(), I("mainsvg"));
-    setup_avatar("🐸");
-    enter_state("default");
-    set_transform();
-    setup_edit_handlers();
-
     const urlParams = new URLSearchParams(window.location.search);
 
     const serverId = urlParams.get("serverId");
     if (!serverId) throw "Error: No serverId";
-    console.log(serverId);
+
+    const avatarEmoji = urlParams.get("avatarEmoji");
+    if (!avatarEmoji) throw "Error: No avatarEmoji";
+
+    avatarHue = urlParams.get("avatarHue");
+    if (!avatarHue) throw "Error: No avatarHue";
+
+    world = {view: {x: 0, y: 0, scale: 1.0}}; // TODO actually set value from server
+    replace_node(initial_svg(), I("mainsvg"));
+    setup_avatar(avatarEmoji);
+    enter_state("default");
+    set_transform();
+    setup_edit_handlers();
 
     const peer = new Peer(null, {debug: 2});
 
