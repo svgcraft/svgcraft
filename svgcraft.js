@@ -467,6 +467,48 @@ function init_with_json(j) {
 
 function init() {
     const urlParams = new URLSearchParams(window.location.search);
-    const jsonUrl = `${urlParams.get("world")}.json`;
-    fetch(jsonUrl).then(res => res.json()).then(init_with_json);
+
+    const serverId = urlParams.get("serverId");
+    if (!serverId) throw "Error: No serverId";
+    console.log(serverId);
+
+    const peer = new Peer(null, {debug: 2});
+
+    peer.on('open', function (id) {
+        console.log("PeerJS server gave us ID " + id);
+
+        const conn = peer.connect(serverId, {
+            reliable: true
+        });
+        console.log(conn);
+
+        conn.on('open', function () {
+            console.log("Connected to " + conn.peer);
+            conn.send("Hello server I can haz json pls?");
+        });
+
+        conn.on('data', function (data) {
+            console.log(`Data received from svgcraft server`);
+            console.log(data);
+        });
+
+        conn.on('close', function () {
+            console.log("Connection to svgcraft server closed");
+        });
+    });
+
+    peer.on('disconnected', function () {
+        console.log("disconnected!");
+    });
+
+    peer.on('close', function() {
+        console.log('Connection to PeerJS server closed');
+    });
+
+    peer.on('error', function (err) {
+        console.log(err);
+    });
+
+    // const jsonUrl = `${urlParams.get("world")}.json`;
+    // fetch(jsonUrl).then(res => res.json()).then(init_with_json);
 }
