@@ -370,21 +370,6 @@ function get_emoji_url(s) {
     return `${twemoji.base}svg/${twemoji.convert.toCodePoint(s)}.svg`;
 }
 
-function svg(tag, attrs, children, allowedAttrs) {
-    const res = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    if (attrs) {
-        for (const attrName in attrs) {
-            if (!allowedAttrs || allowedAttrs.includes(attrName)) res.setAttribute(attrName, attrs[attrName]);
-        }
-    }
-    if (children) {
-        for (const child of children) {
-            res.appendChild(child);
-        }
-    }
-    return res;
-}
-
 var avatarG = null;
 const avatarRadius = 35;
 
@@ -421,51 +406,14 @@ function setup_edit_handlers() {
     */
 }
 
-function elem2svg(j) {
-    const style = ["stroke", "white", "stroke-width", "fill", "fill-opacity"];
-    const funs = {
-        circle: (j) => svg("circle", j, [], ["cx", "cy", "r"].concat(style)),
-        ellipse: (j) => svg("ellipse", j, [], ["cx", "cy", "rx", "ry"].concat(style)),
-        path: (j) => svg("path", j, [], ["d"].concat(style)),
-        rect: (j) => svg("rect", j, [], ["x", "y", "width", "height"].concat(style)),
-    }
-    return funs[j.kind](j);
-}
-
-function pattern2svg([patternName, patternObj]) {
-    const res = svg("pattern", patternObj, patternObj.elems.map(elem2svg), ["x", "y", "width", "height"]);
-    res.setAttribute("id", patternName);
-    res.setAttribute("patternUnits", "userSpaceOnUse");
-    return res;
-}
-
-function patterns2svg(patterns) {
-    const res = svg("defs");
-    for (const p of Object.entries(patterns)) {
-        res.appendChild(pattern2svg(p));
-    }
-    return res;
-}
-
-function json2svg(j) {
-    const res = svg("svg", {id: "mainsvg"});
-    res.appendChild(patterns2svg(j.patterns));
-    res.appendChild(svg("rect", {id: "BackgroundRect", fill: j.backgroundFill}));
-    res.appendChild(svg("g", {id: "EditableElements"}, j.elems.map(elem2svg)));
-    return res;
-}
-
-function init_with_json(j) {
-    world = j;
-    replace_node(json2svg(j), I("mainsvg"));
+function init() {
+    world = {view: {x: 0, y: 0, scale: 1.0}}; // TODO actually set value from server
+    replace_node(initial_svg(), I("mainsvg"));
     setup_avatar("🐸");
     enter_state("default");
     set_transform();
     setup_edit_handlers();
-    console.log("initialization done");
-}
 
-function init() {
     const urlParams = new URLSearchParams(window.location.search);
 
     const serverId = urlParams.get("serverId");
@@ -489,7 +437,7 @@ function init() {
         conn.on('data', function (data) {
             console.log(`Data received from svgcraft server`);
             console.log(data);
-            init_with_json(data);
+            process_json_actions(data);
         });
 
         conn.on('close', function () {
