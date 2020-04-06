@@ -39,17 +39,10 @@ class Point {
     }
 }
 
-var avatarPos = null;
-var avatarHue = null;
 var lastMousePos = null;
-var world = null;
 
 function I(id) {
     return document.getElementById(id);
-}
-
-function avatarColor() {
-    return `hsl(${avatarHue}, 100%, 50%)`;
 }
 
 const debug = false;
@@ -60,7 +53,7 @@ function set_cursor(name) {
 }
 
 function port_coord_to_world(p) {
-    return p.add(new Point(world.view.x, world.view.y)).scale(world.view.scale);
+    return p.add(new Point(app.myAvatar.view.x, app.myAvatar.view.y)).scale(app.myAvatar.view.scale);
 }
 
 function set_lastMousePos(e) {
@@ -68,7 +61,7 @@ function set_lastMousePos(e) {
 }
 
 function encode_transform() {
-    return `translate(${world.view.x}px, ${world.view.y}px) scale(${world.view.scale})`;
+    return `translate(${app.myAvatar.view.x}px, ${app.myAvatar.view.y}px) scale(${app.myAvatar.view.scale})`;
 }
 
 function set_transform() {
@@ -90,39 +83,37 @@ function event_to_world_coords(e) {
     const rect = I("mapport").getBoundingClientRect();
     const xInPort = e.clientX - rect.left;
     const yInPort = e.clientY - rect.top;
-    return new Point((xInPort - world.view.x) / world.view.scale,
-                     (yInPort - world.view.y) / world.view.scale);
+    return new Point((xInPort - app.myAvatar.view.x) / app.myAvatar.view.scale,
+                     (yInPort - app.myAvatar.view.y) / app.myAvatar.view.scale);
 }
 
 function jump_path_d(from, to, jumpHeight) {
     return `M${from.x},${from.y} C${from.x},${from.y-jumpHeight} ${to.x},${to.y-jumpHeight} ${to.x},${to.y}`;
 }
 
-function jump_to(p) {
-    const d = jump_path_d(avatarPos, p, 400);
+function avatar_jump_to(a, p) {
+    const d = jump_path_d(a.pos, p, 400);
 
     const showJumpTrace = false;
     if (showJumpTrace) {
-        const path = svg("path", {d: d, fill: "transparent", stroke: avatarColor()});
+        const path = svg("path", {d: d, fill: "transparent", stroke: a.color});
         I("mainsvg").appendChild(path);
     }
 
-    avatarG.style.removeProperty("transform");
-    avatarG.style.offsetPath = `path('${d}')`;
-    console.log(avatarG.style.cssText);
+    a.g.style.removeProperty("transform");
+    a.g.style.offsetPath = `path('${d}')`;
+    console.log(a.g.style.cssText);
 
     // The right way would be something like this:
-    // avatarG.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
+    // app.myAvatar.g.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
     // But since that doesn't work, we re-trigger the animation by removing and adding the node:
-    avatarG = replace_with_clone(avatarG);
-
-    avatarPos.x = p.x;
-    avatarPos.y = p.y;
+    replace_with_clone(a.g);
+    a.pos = p;
 }
 
 function mousedown_begin_map_move(e) {
     if (!is_left_button(e)) return;
-    jump_to(event_to_world_coords(e));
+    avatar_jump_to(app.myAvatar, event_to_world_coords(e));
     enter_state("map_move");
     set_lastMousePos(e);
 }
@@ -133,9 +124,9 @@ function wheel_zoom(e) {
     const rect = I("mapport").getBoundingClientRect();
     const xInPort = e.clientX - rect.left;
     const yInPort = e.clientY - rect.top;
-    world.view.x = xInPort - (xInPort - world.view.x) * zoomChange;
-    world.view.y = yInPort - (yInPort - world.view.y) * zoomChange;
-    world.view.scale *= zoomChange;
+    app.myAvatar.view.x = xInPort - (xInPort - app.myAvatar.view.x) * zoomChange;
+    app.myAvatar.view.y = yInPort - (yInPort - app.myAvatar.view.y) * zoomChange;
+    app.myAvatar.view.scale *= zoomChange;
     set_transform();
 }
 
@@ -143,8 +134,8 @@ function mousemove_map_move(e) {
     e.preventDefault();
     const dx = e.clientX - lastMousePos.x;
     const dy = e.clientY - lastMousePos.y;
-    world.view.x += dx;
-    world.view.y += dy;
+    app.myAvatar.view.x += dx;
+    app.myAvatar.view.y += dy;
     set_lastMousePos(e)
     set_transform();
 }
@@ -222,20 +213,20 @@ function is_right_button(e) {
 function mousedown_place_shape_here(e) {
     if (!is_left_button(e)) return;
     mouseDownPos = event_to_world_coords(e);
-    jump_to(mouseDownPos);
+    avatar_jump_to(app.myAvatar, mouseDownPos);
     enter_state("adjust_shape");
     set_lastMousePos(e);
 }
 
 // without jump animation
 function place_avatar(p) {
-    avatarG.style.removeProperty("offset-path");
-    avatarG.style.transform = `translate(${p.x}px, ${p.y}px)`;
-    avatarPos = p;
+    app.myAvatar.g.style.removeProperty("offset-path");
+    app.myAvatar.g.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    app.myAvatar.pos = p;
 }
 
 function handleRadius() {
-    return 20 / world.view.scale;
+    return 20 / app.myAvatar.view.scale;
 }
 
 function mousemove_adjust_shape(e) {
@@ -244,7 +235,7 @@ function mousemove_adjust_shape(e) {
         I("EditableElements").removeChild(selectedElement);
         selectedElement = null;
     }
-    const l = p.distanceTo(mouseDownPos) - avatarRadius - handleRadius();
+    const l = p.distanceTo(mouseDownPos) - Avatar.radius - handleRadius();
     if (l > 0) {
         const p2 = mouseDownPos.add(Point.polar(l, p.sub(mouseDownPos).angle()))
         selectedElement = create_shape(currentShape, mouseDownPos, p2);
@@ -263,11 +254,11 @@ function set_tool_onclick(f) {
 function mousedown_begin_point_at(e) {
     if (!is_left_button(e)) return;
     mouseDownPos = event_to_world_coords(e);
-    mouseDownPosWithinAvatar = mouseDownPos.sub(avatarPos);
-    // coordinates are relative to avatarPos because it will be put inside avatarG
-    const t = isosceles_triangle(Point.zero(), avatarRadius * 1.6,
-                                 mouseDownPosWithinAvatar.angle(), avatarRadius * 1.9);
-    t.setAttribute("fill", avatarColor());
+    mouseDownPosWithinAvatar = mouseDownPos.sub(app.myAvatar.pos);
+    // coordinates are relative to app.myAvatar.pos because it will be put inside app.myAvatar.g
+    const t = isosceles_triangle(Point.zero(), Avatar.radius * 1.6,
+                                 mouseDownPosWithinAvatar.angle(), Avatar.radius * 1.9);
+    t.setAttribute("fill", app.myAvatar.color);
     t.setAttribute("id", "avatar-pointer");
     I("avatar-clickable").parentNode.insertBefore(t, I("avatar-clickable"));
     enter_state("point_at");
@@ -285,7 +276,7 @@ function mouseup_point_at(e) {
     I("avatar-pointer").remove();
     back_to_default_state(e);
     // TODO jump_to is too distracting, but maybe go back linearly?
-    // Also note that jump_to replaces avatarG by a clone, which removes its event listeners
+    // Also note that jump_to replaces app.myAvatar.g by a clone, which removes its event listeners
     // jump_to(mouseDownPos);
 }
 
@@ -344,45 +335,15 @@ function enter_state(name) {
 
 function expand_background() {
     const slack = 10;
-    const x = -world.view.x / world.view.scale - slack;
-    const y = -world.view.y / world.view.scale - slack;
-    const w = (I("mapport").clientWidth - world.view.x) / world.view.scale + 2 * slack - x;
-    const h = (I("mapport").clientHeight - world.view.y) / world.view.scale + 2 * slack - y;
+    const x = -app.myAvatar.view.x / app.myAvatar.view.scale - slack;
+    const y = -app.myAvatar.view.y / app.myAvatar.view.scale - slack;
+    const w = (I("mapport").clientWidth - app.myAvatar.view.x) / app.myAvatar.view.scale + 2 * slack - x;
+    const h = (I("mapport").clientHeight - app.myAvatar.view.y) / app.myAvatar.view.scale + 2 * slack - y;
     // TODO only do this if rect needs to grow, test if faster
     I("BackgroundRect").setAttribute("x", x);
     I("BackgroundRect").setAttribute("y", y);
     I("BackgroundRect").setAttribute("width", w);
     I("BackgroundRect").setAttribute("height", h);
-}
-
-console.log(twemoji.convert.toCodePoint("🐸"));
-
-// Note: needs v2 to obtain https://twemoji.maxcdn.com/2/svg/1f9d9-1f3fc-200d-2642-fe0f.svg
-// Use https://emojipedia.org/twitter/ as the emoji picker
-console.log(get_emoji_url("🧙🏼‍♂️"));
-
-console.log(twemoji.parse("🐸", {
-  folder: 'svg',
-  ext: '.svg'
-}));
-
-function get_emoji_url(s) {
-    return `${twemoji.base}svg/${twemoji.convert.toCodePoint(s)}.svg`;
-}
-
-var avatarG = null;
-const avatarRadius = 35;
-
-function setup_avatar(avatar_str) {
-    avatarPos = new Point();
-    const img = svg("image", {x: -25, y: -25, height: 50, width: 50});
-    img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', get_emoji_url(avatar_str));
-    img.setAttribute("pointer-events", "none"); // they should go to circle underneath
-    avatarG = svg("g", {"class": "avatar"},
-                  [svg("circle", {cx: avatarPos.x, cy: avatarPos.y,
-                                  r: avatarRadius, fill: avatarColor(),
-                                  id: "avatar-clickable"}), img]);
-    I("mainsvg").appendChild(avatarG);
 }
 
 var selectedElement = null;
@@ -419,18 +380,10 @@ var app = null;
 function init() {
     const urlParams = new URLSearchParams(window.location.search);
 
-    const avatarEmoji = urlParams.get("avatarEmoji") || "🙂";
-    avatarHue = urlParams.get("avatarHue") || Date.now() % 360;
-
-    world = {view: {x: 0, y: 0, scale: 1.0}}; // TODO actually set value from server
-    replace_node(initial_svg(), I("mainsvg"));
-    setup_avatar(avatarEmoji);
-    enter_state("default");
-    set_transform();
-    setup_edit_handlers();
-
     const mode = urlParams.get("mode");
     const worldJsonUrl = urlParams.get("worldJsonUrl");
+
+    replace_node(initial_svg(), I("mainsvg"));
 
     switch (mode) {
     case "server":
@@ -451,4 +404,16 @@ function init() {
     default:
         fatal(`unknown mode ${mode}`);
     }
+
+    const avatar_update = {
+        action: "upd",
+        hue: urlParams.get("avatarHue"),
+        emojiUtf: urlParams.get("avatarEmoji")
+    };
+    if (mode !== "client") {
+        avatar_update.id = "avatar0";
+        // TODO else make sure client sets it as well
+        // or change protocol so that it sends it without id to server to say hi
+    }
+    app.init(avatar_update);
 }

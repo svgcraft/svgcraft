@@ -11,9 +11,13 @@ class Server extends App {
         super();
         this.peerId = peerId;
         this.worldJsonUrl = worldJsonUrl;
+        this.avatarId = "avatar0";
+    }
+
+    init(avatar_update) {
         fetch(this.worldJsonUrl)
             .then(res => res.json())
-            .then((j) => this.init_with_json(j));
+            .then((j) => { j.push(avatar_update); this.init_with_json(j) });
     }
 
     init_with_json(j) {
@@ -25,23 +29,26 @@ class Server extends App {
         peer.on('open', (id) => {
             console.log("PeerJS server gave us ID " + id);
             console.log("Waiting for peers to connect");
+            this.finish_init();
         });
 
-        var nextFreeClientId = 0;
+        var nextFreeClientId = 1; // 0 is ourselves
 
         peer.on('connection', (conn) => {
-            const clientId = nextFreeClientId;
+            const clientId = `avatar${nextFreeClientId}`;
             nextFreeClientId++;
 
             console.log("Connected to " + conn.peer + ", clientId: " + clientId);
 
             conn.on('open', () => {
+                conn.send({your_id: clientId});
                 conn.send(this.history);
             });
 
             conn.on('data', (data) => {
                 console.log(`Data received from client ${clientId}:`);
                 console.log(data);
+                // TODO send to all clients except to clientId
             });
             conn.on('close', () => {
                 console.log(`Connection to client ${clientId} closed`);
@@ -59,5 +66,10 @@ class Server extends App {
         peer.on('error', (err) => {
             console.log(err);
         });
+    }
+
+    post(actions) {
+        process_json_actions(actions);
+        // TODO send to clients
     }
 }
