@@ -16,7 +16,6 @@ function get_emoji_url(s) {
 console.log(get_emoji_url("🧙🏼‍♂️"));
 
 class Avatar {
-    static radius = 35;
 
     // Note: avatar id (string) is implied by key in avatar map, but we also want it as a field
     constructor(id) {
@@ -39,3 +38,7 @@ class Avatar {
         return I(this.id);
     }
 }
+
+Avatar.radius = 35;
+Avatar.pointerRadius = Avatar.radius * 1.9;
+Avatar.pointerBaseWidth = Avatar.radius * 1.6;

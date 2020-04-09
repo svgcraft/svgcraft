@@ -24,7 +24,7 @@ function check_fields(j, fieldNames) {
 
 function transfer_attrs_to_dom(j, attrs, target) {
     for (const attr of attrs) {
-        if (j[attr]) target.setAttr(attr, j[attr]);
+        if (j[attr]) target.setAttribute(attr, j[attr]);
     }
 }
 
@@ -107,16 +107,17 @@ function upd_avatar(a, j) {
             avatar_place_at(a, new Point(j.pos.x, j.pos.y));
         }
     }
-    if (j.pointer === 'none') {
+    if (j.pointer !== null && j.pointer !== undefined) {
         for (const p of a.g.getElementsByClassName("avatar-pointer")) p.remove();
-    } else if (j.pointer !== null && j.pointer !== undefined) {
-        const angle = parseFloat(j.pointer);
-        if (isNaN(angle)) throw `${angle} is not a number`;
-        // coordinates are relative to a.pos because it will be put inside a.g
-        const t = isosceles_triangle(Point.zero(), Avatar.radius * 1.6, angle, Avatar.radius * 1.9);
-        t.setAttribute("fill", a.color);
-        t.setAttribute("class", "avatar-pointer");
-        a.g.prepend(t);
+        if (j.pointer !== 'none') {
+            const angle = parseFloat(j.pointer);
+            if (isNaN(angle)) throw `${angle} is not a number`;
+            // coordinates are relative to a.pos because it will be put inside a.g
+            const t = isosceles_triangle(Point.zero(), Avatar.pointerBaseWidth, angle, Avatar.pointerRadius);
+            t.setAttribute("fill", a.color);
+            t.setAttribute("class", "avatar-pointer");
+            a.g.prepend(t);
+        }
     }
 }
 

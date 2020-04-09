@@ -114,7 +114,12 @@ function back_to_default_state() {
     for (const toolBtn of I("Tools").children) {
         toolBtn.classList.remove("ActiveTool");
     }
-    selectedElement = null;
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        pointer: "none"
+    });
+    selectedElemId = null;
     enter_state("default");
 }
 
@@ -131,7 +136,7 @@ function equilateral_triangle(mid, tip) {
     const l = h.norm() / Math.sqrt(3.0);
     const p1 = mid.add(Point.polar(l, h.angle() + Math.PI/2));
     const p2 = mid.add(Point.polar(l, h.angle() - Math.PI/2));
-    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`});
+    return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`};
 }
 
 function isosceles_triangle(baseMid, baseLength, rotation, height) {
@@ -146,7 +151,7 @@ function rectangle(origin, corner) {
     const y = Math.min(origin.y, corner.y);
     const w = Math.abs(origin.x - corner.x);
     const h = Math.abs(origin.y - corner.y);
-    return svg("rect", {x: x, y: y, width: w, height: h});
+    return {x: x, y: y, width: w, height: h};
 }
 
 function create_shape(name, originPoint, secondPoint) {
@@ -177,24 +182,38 @@ function mousedown_place_shape_here(e) {
     set_lastMousePos(e);
 }
 
-function handleRadius() {
-    return 20 / app.myAvatar.view.scale;
+var nextFreshElemId = 0;
+
+function gen_elem_id(tag) {
+    return `${app.avatarId}_${tag}${nextFreshElemId++}`;
 }
 
+// the first time this function is called, it's not actually "adjust", but "create"
 function mousemove_adjust_shape(e) {
-    throw "TODO udpate this function";
     const p = event_to_world_coords(e);
-    if (selectedElement) {
-        I("EditableElements").removeChild(selectedElement);
-        selectedElement = null;
+    const d = p.distanceTo(mouseDownPos) + Avatar.pointerRadius;
+    const alpha = p.sub(mouseDownPos).angle();
+    const m = {
+        action: "upd",
+        id: app.avatarId,
+        pos: mouseDownPos.add(Point.polar(d, alpha)),
+        pointer: alpha + Math.PI
+    };
+    const s = create_shape(currentShape, mouseDownPos, p);
+    if (selectedElemId) {
+        s.action = 'upd';
+        s.id = selectedElemId;
+    } else {
+        s.action = 'new';
+        if (currentShape === 'rectangle') {
+            s.tag = 'rect';
+        } else {
+            s.tag = 'path';
+        }
+        s.id = gen_elem_id(s.tag);
+        selectedElemId = s.id;
     }
-    const l = p.distanceTo(mouseDownPos) - Avatar.radius - handleRadius();
-    if (l > 0) {
-        const p2 = mouseDownPos.add(Point.polar(l, p.sub(mouseDownPos).angle()))
-        selectedElement = create_shape(currentShape, mouseDownPos, p2);
-        I("EditableElements").appendChild(selectedElement);
-    }
-    place_avatar(p);
+    app.post([m, s]);
     set_lastMousePos(e);
 }
 
@@ -225,19 +244,6 @@ function mousemove_point_at(e) {
         pos: p.sub(mouseDownPosWithinAvatar)
     });
     set_lastMousePos(e);
-}
-
-function mouseup_point_at(e) {
-    if (!is_left_button(e)) return;
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        pointer: "none"
-    });
-    back_to_default_state(e);
-    // TODO jump_to is too distracting, but maybe go back linearly?
-    // Also note that jump_to replaces app.myAvatar.g by a clone, which removes its event listeners
-    // jump_to(mouseDownPos);
 }
 
 function enter_state(name) {
@@ -281,7 +287,7 @@ function enter_state(name) {
     case "point_at":
         I("mapport").onmousedown = undefined;
         I("mapport").onmousemove = mousemove_point_at;
-        I("mapport").onmouseup = mouseup_point_at;
+        I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         set_tool_onclick(undefined);
@@ -306,10 +312,10 @@ function expand_background() {
     I("BackgroundRect").setAttribute("height", h);
 }
 
-var selectedElement = null;
+var selectedElemId = null;
 
 function set_selected_INACTIVE(elem) {
-    selectedElement = elem;
+    selectedElemId = elem.getAttribute("id");
     if (elem) {
         I("SvgEdit").value = elem.outerHTML;
     } else {

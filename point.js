@@ -37,4 +37,8 @@ class Point {
     rotate(alpha) {
         return Point.polar(this.norm(), this.angle() + alpha);
     }
+
+    json() {
+        return {x: this.x, y: this.y};
+    }
 }
