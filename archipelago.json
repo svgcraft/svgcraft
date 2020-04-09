@@ -1,5 +1,5 @@
 [{"action": "upd", "id": "document", "title": "Archipelago"},
- {"action": "new", "tag": "avatar", "id": "avatar0", "pos": {"x": 10, "y": 10}, "view": {"x": 322, "y": 145, "scale": 0.5}},
+ {"action": "new", "tag": "avatar", "id": "avatar0", "pos": {"x": -230, "y": 1040}, "view": {"x": 400, "y": -1000, "scale": 1.2}},
  {"action": "new", "id": "SimpleBlueCircles", "tag": "pattern", "x": 0, "y": 0, "width": 40, "height": 40},
  {"action": "new", "parent": "SimpleBlueCircles", "tag": "circle", "cx": 20, "cy": 20, "r": 20, "fill": "#64bee3"},
  {"action": "new", "id": "CobbledWestEast", "tag": "pattern", "x": 0, "y": 0, "width": 40, "height": 40 },

@@ -404,16 +404,5 @@ function init() {
     default:
         fatal(`unknown mode ${mode}`);
     }
-
-    const avatar_update = {
-        action: "upd",
-        hue: urlParams.get("avatarHue"),
-        emojiUtf: urlParams.get("avatarEmoji")
-    };
-    if (mode !== "client") {
-        avatar_update.id = "avatar0";
-        // TODO else make sure client sets it as well
-        // or change protocol so that it sends it without id to server to say hi
-    }
-    app.init(avatar_update);
+    app.init();
 }

@@ -12,12 +12,13 @@ class Server extends App {
         this.peerId = peerId;
         this.worldJsonUrl = worldJsonUrl;
         this.avatarId = "avatar0";
+        this.clientConns = {}; // maps clientId to PeerJS connection
     }
 
-    init(avatar_update) {
+    init() {
         fetch(this.worldJsonUrl)
             .then(res => res.json())
-            .then((j) => { j.push(avatar_update); this.init_with_json(j) });
+            .then((j) => this.init_with_json(j));
     }
 
     init_with_json(j) {
@@ -35,22 +36,30 @@ class Server extends App {
         var nextFreeClientId = 1; // 0 is ourselves
 
         peer.on('connection', (conn) => {
-            const clientId = `avatar${nextFreeClientId}`;
+            const clientIdNumber = nextFreeClientId;
+            const clientId = `avatar${clientIdNumber}`;
             nextFreeClientId++;
 
             console.log("Connected to " + conn.peer + ", clientId: " + clientId);
 
             conn.on('open', () => {
-                conn.send({your_id: clientId});
+                this.clientConns[clientId] = conn;
                 conn.send(this.history);
+                this.post([this.new_client_avatar_command(clientIdNumber)]);
+                conn.send([{action: "your_id", id: clientId}]);
             });
 
-            conn.on('data', (data) => {
-                console.log(`Data received from client ${clientId}:`);
-                console.log(data);
-                // TODO send to all clients except to clientId
+            conn.on('data', (actions) => {
+                console.log(`actions received from client ${clientId}:`);
+                console.log(actions);
+                // to make sure we know whether we have to avoid sending this update back to client
+                for (const a of actions) {
+                    a.creatorId = clientId;
+                }
+                this.post(actions);
             });
             conn.on('close', () => {
+                delete this.clientConns[clientId];
                 console.log(`Connection to client ${clientId} closed`);
             });
         });
@@ -68,8 +77,22 @@ class Server extends App {
         });
     }
 
-    post(actions) {
-        process_json_actions(actions);
-        // TODO send to clients
+    new_client_avatar_command(clientIdNumber) {
+        const c = this.new_avatar0_command();
+        const shiftX = Avatar.radius * 4 * clientIdNumber;
+        return {
+            action: "new",
+            tag: "avatar",
+            id: `avatar${clientIdNumber}`,
+            pos: {x: c.pos.x - shiftX, y: c.pos.y},
+            view: {x: c.view.x + shiftX, y: c.view.y, scale: c.view.scale}
+        };
+    }
+
+    publish(actions) {
+        for (const clientId in this.clientConns) {
+            const f = actions.filter((a) => a.creatorId !== clientId);
+            if (f.length) this.clientConns[clientId].send(f);
+        }
     }
 }

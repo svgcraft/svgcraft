@@ -47,7 +47,6 @@ function new_avatar(j) {
     const a = new Avatar(j.id);
     app.avatars[j.id] = a;
     const c = svg("circle", {cx: a.pos.x, cy: a.pos.y, r: Avatar.radius, fill: a.color});
-    if (a.id === app.myAvatar.id) c.setAttribute("id", "avatar-clickable"); // for pointer
     const g = svg("g", {"id": j.id, "class": "avatar"}, [c]);
     I("mainsvg").appendChild(g);
     add_emoji_to_avatar(a);
@@ -66,7 +65,7 @@ function upd_avatar(a, j) {
     }
     if (j.view) {
         transfer_attrs_to_obj(j.view, ["x", "y", "scale"], a.view);
-        if (a.id === app.myAvatar.id) {
+        if (app.myAvatar && a.id === app.myAvatar.id) {
             set_transform();
         }
     }
@@ -126,6 +125,12 @@ function process_json_action(j) {
         } else {
             new_elem(j);
         }
+        break;
+    case "your_id":
+        // indicates that all initial history has been sent, and avatars have been set up
+        check_field(j, "id");
+        app.avatarId = j.id;
+        app.finish_init(); // only needed in client
         break;
     default:
         throw `unknown action ${j.action}`;

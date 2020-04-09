@@ -8,14 +8,15 @@ class Client extends App {
         this.conn = null;
     }
 
-    init (avatar_update) {
+    init () {
         const peer = new Peer(null, {debug: 2});
 
         peer.on('open', (id) => {
             console.log("PeerJS server gave us ID " + id);
 
             this.conn = peer.connect(this.serverId, {
-                reliable: true
+                reliable: true,
+                serialization: 'json'
             });
 
             this.conn.on('open', () => {
@@ -25,17 +26,8 @@ class Client extends App {
             this.conn.on('data', (data) => {
                 console.log(`Data received from svgcraft server`);
                 console.log(data);
-                if (data.your_id) {
-                    this.avatarId = data.your_id;
-                    // TODO server or client needs to issue avatar creation event
-                    avatar_update.id = data.your_id;
-                    this.post([avatar_update]); // TODO how does this interleave with server sending history?
-
-                    this.finish_init();
-                } else {
-                    process_json_actions(data);
-                    this.history.push(...data);
-                }
+                process_json_actions(data);
+                this.history.push(...data);
             });
 
             this.conn.on('close', () => {
@@ -56,8 +48,7 @@ class Client extends App {
         });
     }
 
-    post(actions) {
-        process_json_actions(actions);
+    publish(actions) {
         this.conn.send(actions);
     }
 }
