@@ -43,6 +43,7 @@ class Server extends App {
             console.log("Connected to " + conn.peer + ", clientId: " + clientId);
 
             conn.on('open', () => {
+                console.log("Connection to " + conn.peer + " open");
                 this.clientConns[clientId] = conn;
                 conn.send(this.history);
                 this.post([this.new_client_avatar_command(clientIdNumber)]);

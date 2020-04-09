@@ -53,7 +53,8 @@ function mousedown_begin_map_move(e) {
     app.post({
         action: "upd",
         id: app.avatarId,
-        pos: event_to_world_coords(e)
+        pos: event_to_world_coords(e),
+        animate: 'jump'
     });
     enter_state("map_move");
     set_lastMousePos(e);
@@ -65,20 +66,32 @@ function wheel_zoom(e) {
     const rect = I("mapport").getBoundingClientRect();
     const xInPort = e.clientX - rect.left;
     const yInPort = e.clientY - rect.top;
-    app.myAvatar.view.x = xInPort - (xInPort - app.myAvatar.view.x) * zoomChange;
-    app.myAvatar.view.y = yInPort - (yInPort - app.myAvatar.view.y) * zoomChange;
-    app.myAvatar.view.scale *= zoomChange;
-    set_transform();
+    // everybody knows what you're looking at!
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        view: {
+            x: xInPort - (xInPort - app.myAvatar.view.x) * zoomChange,
+            y: yInPort - (yInPort - app.myAvatar.view.y) * zoomChange,
+            scale: app.myAvatar.view.scale * zoomChange
+        }
+    });
 }
 
 function mousemove_map_move(e) {
     e.preventDefault();
     const dx = e.clientX - lastMousePos.x;
     const dy = e.clientY - lastMousePos.y;
-    app.myAvatar.view.x += dx;
-    app.myAvatar.view.y += dy;
+    // everybody knows what you're looking at!
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        view: {
+            x: app.myAvatar.view.x + dx,
+            y: app.myAvatar.view.y + dy
+        }
+    });
     set_lastMousePos(e)
-    set_transform();
 }
 
 var currentShape = null;
@@ -154,16 +167,14 @@ function is_right_button(e) {
 function mousedown_place_shape_here(e) {
     if (!is_left_button(e)) return;
     mouseDownPos = event_to_world_coords(e);
-    avatar_jump_to(app.myAvatar, mouseDownPos);
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        pos: mouseDownPos,
+        animate: 'jump'
+    });
     enter_state("adjust_shape");
     set_lastMousePos(e);
-}
-
-// without jump animation
-function place_avatar(p) {
-    app.myAvatar.g.style.removeProperty("offset-path");
-    app.myAvatar.g.style.transform = `translate(${p.x}px, ${p.y}px)`;
-    app.myAvatar.pos = p;
 }
 
 function handleRadius() {
@@ -171,6 +182,7 @@ function handleRadius() {
 }
 
 function mousemove_adjust_shape(e) {
+    throw "TODO udpate this function";
     const p = event_to_world_coords(e);
     if (selectedElement) {
         I("EditableElements").removeChild(selectedElement);
@@ -196,25 +208,32 @@ function mousedown_begin_point_at(e) {
     if (!is_left_button(e)) return;
     mouseDownPos = event_to_world_coords(e);
     mouseDownPosWithinAvatar = mouseDownPos.sub(app.myAvatar.pos);
-    // coordinates are relative to app.myAvatar.pos because it will be put inside app.myAvatar.g
-    const t = isosceles_triangle(Point.zero(), Avatar.radius * 1.6,
-                                 mouseDownPosWithinAvatar.angle(), Avatar.radius * 1.9);
-    t.setAttribute("fill", app.myAvatar.color);
-    t.setAttribute("id", "avatar-pointer");
-    I("avatar-clickable").parentNode.insertBefore(t, I("avatar-clickable"));
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        pointer: mouseDownPosWithinAvatar.angle()
+    });
     enter_state("point_at");
     e.stopImmediatePropagation(); // don't let mapport start a map_move
 }
 
 function mousemove_point_at(e) {
     const p = event_to_world_coords(e);
-    place_avatar(p.sub(mouseDownPosWithinAvatar));
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        pos: p.sub(mouseDownPosWithinAvatar)
+    });
     set_lastMousePos(e);
 }
 
 function mouseup_point_at(e) {
     if (!is_left_button(e)) return;
-    I("avatar-pointer").remove();
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        pointer: "none"
+    });
     back_to_default_state(e);
     // TODO jump_to is too distracting, but maybe go back linearly?
     // Also note that jump_to replaces app.myAvatar.g by a clone, which removes its event listeners

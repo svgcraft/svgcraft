@@ -65,6 +65,13 @@ function avatar_jump_to(a, p) {
     a.pos = p;
 }
 
+// without jump animation
+function avatar_place_at(a, p) {
+    a.g.style.removeProperty("offset-path");
+    a.g.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    a.pos = p;
+}
+
 function new_avatar(j) {
     check_field(j, "id");
     if (app.avatars[j.id]) throw `${j.id} already exists`;
@@ -94,7 +101,22 @@ function upd_avatar(a, j) {
         }
     }
     if (j.pos) {
-        avatar_jump_to(a, new Point(j.pos.x, j.pos.y));
+        if (j.animate === 'jump') {
+            avatar_jump_to(a, new Point(j.pos.x, j.pos.y));
+        } else {
+            avatar_place_at(a, new Point(j.pos.x, j.pos.y));
+        }
+    }
+    if (j.pointer === 'none') {
+        for (const p of a.g.getElementsByClassName("avatar-pointer")) p.remove();
+    } else if (j.pointer !== null && j.pointer !== undefined) {
+        const angle = parseFloat(j.pointer);
+        if (isNaN(angle)) throw `${angle} is not a number`;
+        // coordinates are relative to a.pos because it will be put inside a.g
+        const t = isosceles_triangle(Point.zero(), Avatar.radius * 1.6, angle, Avatar.radius * 1.9);
+        t.setAttribute("fill", a.color);
+        t.setAttribute("class", "avatar-pointer");
+        a.g.prepend(t);
     }
 }
 
