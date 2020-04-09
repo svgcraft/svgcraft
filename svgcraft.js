@@ -1,44 +1,5 @@
 "use strict";
 
-class Point {
-    constructor(x, y) {
-        this.x = x || 0;
-        this.y = y || 0;
-    }
-
-    static zero() {
-        return new Point(0, 0);
-    }
-
-    static polar(r, alpha){
-        return new Point(r * Math.cos(alpha), r * Math.sin(alpha));
-    }
-
-    add(that) {
-        return new Point(this.x + that.x, this.y + that.y);
-    }
-
-    sub(that) {
-        return new Point(this.x - that.x, this.y - that.y);
-    }
-
-    norm() {
-        return Math.sqrt(this.x * this.x + this.y * this.y);
-    }
-
-    angle() {
-        return Math.atan2(this.y, this.x);
-    }
-
-    distanceTo(that) {
-        return this.sub(that).norm();
-    }
-
-    rotate(alpha) {
-        return Point.polar(this.norm(), this.angle() + alpha);
-    }
-}
-
 var lastMousePos = null;
 
 function I(id) {
@@ -87,33 +48,13 @@ function event_to_world_coords(e) {
                      (yInPort - app.myAvatar.view.y) / app.myAvatar.view.scale);
 }
 
-function jump_path_d(from, to, jumpHeight) {
-    return `M${from.x},${from.y} C${from.x},${from.y-jumpHeight} ${to.x},${to.y-jumpHeight} ${to.x},${to.y}`;
-}
-
-function avatar_jump_to(a, p) {
-    const d = jump_path_d(a.pos, p, 400);
-
-    const showJumpTrace = false;
-    if (showJumpTrace) {
-        const path = svg("path", {d: d, fill: "transparent", stroke: a.color});
-        I("mainsvg").appendChild(path);
-    }
-
-    a.g.style.removeProperty("transform");
-    a.g.style.offsetPath = `path('${d}')`;
-    console.log(a.g.style.cssText);
-
-    // The right way would be something like this:
-    // app.myAvatar.g.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
-    // But since that doesn't work, we re-trigger the animation by removing and adding the node:
-    replace_with_clone(a.g);
-    a.pos = p;
-}
-
 function mousedown_begin_map_move(e) {
     if (!is_left_button(e)) return;
-    avatar_jump_to(app.myAvatar, event_to_world_coords(e));
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        pos: event_to_world_coords(e)
+    });
     enter_state("map_move");
     set_lastMousePos(e);
 }

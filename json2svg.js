@@ -41,6 +41,30 @@ function add_emoji_to_avatar(a) {
     a.g.appendChild(img);
 }
 
+function jump_path_d(from, to, jumpHeight) {
+    return `M${from.x},${from.y} C${from.x},${from.y-jumpHeight} ${to.x},${to.y-jumpHeight} ${to.x},${to.y}`;
+}
+
+function avatar_jump_to(a, p) {
+    const d = jump_path_d(a.pos, p, 400);
+
+    const showJumpTrace = false;
+    if (showJumpTrace) {
+        const path = svg("path", {d: d, fill: "transparent", stroke: a.color});
+        I("mainsvg").appendChild(path);
+    }
+
+    a.g.style.removeProperty("transform");
+    a.g.style.offsetPath = `path('${d}')`;
+    console.log(a.g.style.cssText);
+
+    // The right way would be something like this:
+    // app.myAvatar.g.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
+    // But since that doesn't work, we re-trigger the animation by removing and adding the node:
+    replace_with_clone(a.g);
+    a.pos = p;
+}
+
 function new_avatar(j) {
     check_field(j, "id");
     if (app.avatars[j.id]) throw `${j.id} already exists`;

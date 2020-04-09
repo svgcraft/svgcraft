@@ -42,8 +42,9 @@ class App {
         return this.avatars[this.avatarId];
     }
 
-    // actions is a list of JSON actions
+    // actions is a list of JSON actions, or one single action
     post(actions) {
+        if (!Array.isArray(actions)) actions = [actions];
         process_json_actions(actions);
         this.history.push(...actions);
         this.publish(actions);
