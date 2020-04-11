@@ -386,7 +386,7 @@ function init() {
     init_color_picker();
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
-    I("pick-fill-color").style.backgroundColor = 'white';
+    I("pick-fill-color").style.backgroundColor = `hsl(${(Date.now() + 180) % 360}, 100%, 50%)`;
 
     const urlParams = new URLSearchParams(window.location.search);
 
