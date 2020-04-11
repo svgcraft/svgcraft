@@ -380,6 +380,9 @@ function fatal(msg) {
 var app = null;
 
 function init() {
+    if (peerjs.util.browser !== 'chrome') {
+        fatal(`Only Chrome is supported!`);
+    }
     init_color_picker();
     I("color_picker").style.display = 'none';
     I("pick-stroke-color").style.backgroundColor = 'black';
