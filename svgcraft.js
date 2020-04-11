@@ -154,10 +154,19 @@ function rectangle(origin, corner) {
     return {x: x, y: y, width: w, height: h};
 }
 
+function square(corner1, corner3) {
+    const r = corner1.sub(corner3).scale(0.5);
+    const center = corner3.add(r);
+    const corner0 = center.add(r.rotate(Math.PI/2));
+    const corner2 = center.add(r.rotate(-Math.PI/2));
+    return {d: 'M ' + [corner0, corner1, corner2, corner3, corner0].map((p) => `${p.x} ${p.y}`).join(' L ')};
+}
+
 function create_shape(name, originPoint, secondPoint) {
     return {
         triangle: equilateral_triangle,
-        rectangle: rectangle
+        rectangle: rectangle,
+        square: square
     }[name](originPoint, secondPoint);
 }
 

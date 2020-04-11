@@ -38,6 +38,10 @@ class Point {
         return Point.polar(this.norm(), this.angle() + alpha);
     }
 
+    scale(factor) {
+        return new Point(this.x * factor, this.y * factor);
+    }
+
     json() {
         return {x: this.x, y: this.y};
     }
