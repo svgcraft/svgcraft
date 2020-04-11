@@ -292,13 +292,6 @@ function contextmenu_select_shape(e) {
         what: [selectedElemId]
     });
     app.post(m);
-    /*
-    if (elem) {
-        I("SvgEdit").value = elem.outerHTML;
-    } else {
-        I("SvgEdit").value = "";
-    }
-    */
 }
 
 function enter_state(name) {
