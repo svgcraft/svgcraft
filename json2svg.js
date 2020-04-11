@@ -140,8 +140,21 @@ function new_elem(j) {
     parent.appendChild(elem);
 }
 
+function handles_g_id(elem, avatarId) {
+    return elem.getAttribute('id') + '__select__' + avatarId;
+}
+
+function handle_radius() {
+    return 20.0 / app.myAvatar.view.scale;
+}
+
+function corner_handle(x, y, color) {
+    return svg("circle", {cx: x, cy: y, r: handle_radius(),
+                          stroke: color, "stroke-width": 1, fill: "none"});
+}
+
 function select_elem(who, elem) {
-    const g = svg("g", {id: elem.getAttribute('id') + '__select__' + who});
+    const g = svg("g", {id: handles_g_id(elem, who)});
     switch (elem.tagName) {
     case "rect":
         const x = parseFloat(elem.getAttribute("x"));
@@ -150,8 +163,15 @@ function select_elem(who, elem) {
         const h = parseFloat(elem.getAttribute("height"));
         const corners = [{x: x, y: y}, {x: x+w, y: y}, {x: x+w, y: y+h}, {x: x, y: y+h}];
         for (const c of corners) {
-            g.appendChild(svg("circle", {cx: c.x, cy: c.y, r: 10,
-                                         stroke: app.avatars[who].color, "stroke-width": 1, fill: "none"}));
+            g.appendChild(corner_handle(c.x, c.y, app.avatars[who].color));
+        }
+        break;
+    case "path":
+        const ps = elem.getAttribute("d").split(' ');
+        for (var i = 1; i < ps.length; i += 3) { // TODO this only works for M and L
+            const x = ps[i];
+            const y = ps[i+1];
+            g.appendChild(corner_handle(x, y, app.avatars[who].color));
         }
         break;
     default:
@@ -162,7 +182,16 @@ function select_elem(who, elem) {
 }
 
 function deselect_elem(who, elem) {
-    I(elem.getAttribute('id') + '__select__' + who).remove();
+    I(handles_g_id(elem, who)).remove();
+}
+
+function update_select_handles(elem) {
+    for (const aId in app.avatars) {
+        if (I(handles_g_id(elem, aId))) {
+            deselect_elem(aId, elem);
+            select_elem(aId, elem);
+        }
+    }
 }
 
 function process_json_action(j) {
@@ -189,6 +218,7 @@ function process_json_action(j) {
                 const elem = I(j.id);
                 if (!elem) throw `No element with id ${j.id}`;
                 transfer_attrs_to_dom(j, updatable_attrs, elem);
+                update_select_handles(elem);
             }
             break;
         }

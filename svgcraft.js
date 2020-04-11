@@ -107,6 +107,14 @@ function click_start_shape(e) {
     if (!is_left_button(e)) return;
     e.currentTarget.classList.add("ActiveTool");
     currentShape = tool_id_to_shape_name(e.currentTarget.id);
+    if (selectedElemId) {
+        app.post({
+            action: "deselect",
+            who: app.avatarId,
+            what: [selectedElemId]
+        });
+        selectedElemId = null;
+    }
     enter_state("place_shape");
 }
 
@@ -158,7 +166,7 @@ function square(corner1, corner3) {
     const center = corner3.add(r);
     const corner0 = center.add(r.rotate(Math.PI/2));
     const corner2 = center.add(r.rotate(-Math.PI/2));
-    return {d: 'M ' + [corner0, corner1, corner2, corner3, corner0].map((p) => `${p.x} ${p.y}`).join(' L ')};
+    return {d: 'M ' + [corner0, corner1, corner2, corner3].map((p) => `${p.x} ${p.y}`).join(' L ') + ' z'};
 }
 
 function create_shape(name, originPoint, secondPoint) {
