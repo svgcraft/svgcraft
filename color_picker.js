@@ -47,7 +47,7 @@ function init_color_picker() {
         }
     }
 
-    I("pick-stroke-color").onclick = open_color_dialog;
+    // I("pick-stroke-color").onclick = open_color_dialog;
     I("pick-fill-color").onclick = open_color_dialog;
     canvas.onclick = (e) => {
         const rect = canvas.getBoundingClientRect();

@@ -227,7 +227,7 @@ function mousemove_adjust_shape(e) {
             s.tag = 'path';
         }
         s.id = gen_elem_id(s.tag);
-        s.stroke = I("pick-stroke-color").style.backgroundColor;
+        // s.stroke = I("pick-stroke-color").style.backgroundColor;
         s.fill = I("pick-fill-color").style.backgroundColor;
         selectedElemId = s.id;
         m.push({
@@ -385,7 +385,7 @@ function init() {
     }
     init_color_picker();
     I("color_picker").style.display = 'none';
-    I("pick-stroke-color").style.backgroundColor = 'black';
+    // I("pick-stroke-color").style.backgroundColor = 'black';
     I("pick-fill-color").style.backgroundColor = 'white';
 
     const urlParams = new URLSearchParams(window.location.search);
