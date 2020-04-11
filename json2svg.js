@@ -74,9 +74,9 @@ function avatar_place_at(a, p) {
 
 function new_avatar(j) {
     check_field(j, "id");
-    if (app.avatars[j.id]) throw `${j.id} already exists`;
+    if (app.elems.has(j.id)) throw `${j.id} already exists`;
     const a = new Avatar(j.id);
-    app.avatars[j.id] = a;
+    app.elems.set(j.id, a);
     const c = svg("circle", {cx: a.pos.x, cy: a.pos.y, r: Avatar.radius, fill: a.color});
     const g = svg("g", {"id": j.id, "class": "avatar"}, [c]);
     I("mainsvg").appendChild(g);
@@ -137,6 +137,9 @@ function new_elem(j) {
     } else {
         elem.oncontextmenu = onshapecontextmenu_handler;
     }
+    if (j.id) {
+        elems.set(j.id, j);
+    }
     parent.appendChild(elem);
 }
 
@@ -156,6 +159,7 @@ function process_json_action(j) {
             I("BackgroundRect").setAttribute("fill", j.fill);
             break;
         default:
+            throw "TODO OOP update";
             if (app.avatars[j.id]) {
                 upd_avatar(app.avatars[j.id], j);
             } else {

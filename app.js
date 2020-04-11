@@ -8,7 +8,8 @@ class App {
         // must be set by subclasses
         this.avatarId = null;
 
-        this.avatars = {};
+        // maps element id (same as used in DOM) to corresponding Elem
+        this.elems = new Map();
     }
 
     new_avatar0_command() {
@@ -39,7 +40,7 @@ class App {
     }
 
     get myAvatar() {
-        return this.avatars[this.avatarId];
+        return this.elems.get(this.avatarId);
     }
 
     // actions is a list of JSON actions, or one single action

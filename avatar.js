@@ -15,10 +15,11 @@ function get_emoji_url(s) {
 // Use https://emojipedia.org/twitter/ as the emoji picker
 console.log(get_emoji_url("🧙🏼‍♂️"));
 
-class Avatar {
+class Avatar extends Elem {
 
     // Note: avatar id (string) is implied by key in avatar map, but we also want it as a field
     constructor(id) {
+        super();
         this.emojiUtf = "🙂";
         this.pos = new Point();
         this.hue = Date.now() % 360;

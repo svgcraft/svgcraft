@@ -6,6 +6,10 @@ function I(id) {
     return document.getElementById(id);
 }
 
+function E(id) {
+    return app.elems.get(id);
+}
+
 const debug = false;
 
 function set_cursor(name) {
