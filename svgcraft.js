@@ -327,6 +327,8 @@ function contextmenu_select_shape(e) {
         });
     }
     selectedElemId = elem.getAttribute("id");
+    const c = I(selectedElemId).getAttribute("fill");
+    if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
     m.push({
         action: "select",
         who: app.avatarId,
