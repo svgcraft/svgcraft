@@ -134,11 +134,14 @@ function new_elem(j) {
     const elem = svg(j.tag, j, [], tag_types[j.tag]);
     if (j.tag === "pattern") {
         elem.setAttribute("patternUnits", "userSpaceOnUse");
+    } else {
+        elem.oncontextmenu = onshapecontextmenu_handler;
     }
     parent.appendChild(elem);
 }
 
 function process_json_action(j) {
+    // console.log("processing", j);
     check_field(j, "action");
     switch (j.action) {
     case "upd":

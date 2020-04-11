@@ -246,6 +246,24 @@ function mousemove_point_at(e) {
     set_lastMousePos(e);
 }
 
+var onshapecontextmenu = undefined;
+
+function onshapecontextmenu_handler(e) {
+    if (onshapecontextmenu) onshapecontextmenu(e);
+}
+
+function contextmenu_select_shape(e) {
+    const elem = e.target;
+    console.log("right click on", elem);
+    e.preventDefault();
+    selectedElemId = elem.getAttribute("id");
+    if (elem) {
+        I("SvgEdit").value = elem.outerHTML;
+    } else {
+        I("SvgEdit").value = "";
+    }
+}
+
 function enter_state(name) {
     switch (name) {
     case "default":
@@ -254,6 +272,7 @@ function enter_state(name) {
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = mousedown_begin_point_at;
+        onshapecontextmenu = contextmenu_select_shape;
         set_tool_onclick(click_start_shape);
         set_cursor("default");
         break;
@@ -263,6 +282,7 @@ function enter_state(name) {
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
+        onshapecontextmenu = undefined;
         set_tool_onclick(undefined);
         set_cursor("none");
         break;
@@ -272,6 +292,7 @@ function enter_state(name) {
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = undefined;
+        onshapecontextmenu = undefined;
         set_tool_onclick(back_to_default_state);
         set_cursor("crosshair");
         break;
@@ -281,6 +302,7 @@ function enter_state(name) {
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
+        onshapecontextmenu = undefined;
         set_tool_onclick(undefined);
         set_cursor("none");
         break;
@@ -290,6 +312,7 @@ function enter_state(name) {
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
+        onshapecontextmenu = undefined;
         set_tool_onclick(undefined);
         set_cursor("none");
         break;
