@@ -140,6 +140,31 @@ function new_elem(j) {
     parent.appendChild(elem);
 }
 
+function select_elem(who, elem) {
+    const g = svg("g", {id: elem.getAttribute('id') + '__select__' + who});
+    switch (elem.tagName) {
+    case "rect":
+        const x = parseFloat(elem.getAttribute("x"));
+        const y = parseFloat(elem.getAttribute("y"));
+        const w = parseFloat(elem.getAttribute("width"));
+        const h = parseFloat(elem.getAttribute("height"));
+        const corners = [{x: x, y: y}, {x: x+w, y: y}, {x: x+w, y: y+h}, {x: x, y: y+h}];
+        for (const c of corners) {
+            g.appendChild(svg("circle", {cx: c.x, cy: c.y, r: 10,
+                                         stroke: app.avatars[who].color, "stroke-width": 1, fill: "none"}));
+        }
+        break;
+    default:
+        console.log("don't know how to select", elem.tagName);
+        break;
+    }
+    I(app.avatarId === who ? "OwnHandles" : "OtherHandles").appendChild(g);
+}
+
+function deselect_elem(who, elem) {
+    I(elem.getAttribute('id') + '__select__' + who).remove();
+}
+
 function process_json_action(j) {
     // console.log("processing", j);
     check_field(j, "action");
@@ -182,6 +207,24 @@ function process_json_action(j) {
         app.avatarId = j.id;
         app.finish_init(); // only needed in client
         break;
+    case "select":
+        check_field(j, "who");
+        check_field(j, "what");
+        for (const eId of j.what) {
+            const elem = I(eId);
+            if (!elem) throw `No element with id ${eId}`;
+            select_elem(j.who, elem);
+        }
+        break;
+    case "deselect":
+        check_field(j, "who");
+        check_field(j, "what");
+        for (const eId of j.what) {
+            const elem = I(eId);
+            if (!elem) throw `No element with id ${eId}`;
+            deselect_elem(j.who, elem);
+        }
+        break;
     default:
         throw `unknown action ${j.action}`;
     }
@@ -199,6 +242,9 @@ function initial_svg() {
     res.appendChild(svg("defs", {id: "Defs"}));
     res.appendChild(svg("rect", {id: "BackgroundRect"}));
     res.appendChild(svg("g", {id: "EditableElements"}));
+    // markers on selected elements: First draw everyone else's, then draw our own on top
+    res.appendChild(svg("g", {id: "OtherHandles"}));
+    res.appendChild(svg("g", {id: "OwnHandles"}));
     return res;
 }
 

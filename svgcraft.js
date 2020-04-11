@@ -119,7 +119,6 @@ function back_to_default_state() {
         id: app.avatarId,
         pointer: "none"
     });
-    selectedElemId = null;
     enter_state("default");
 }
 
@@ -202,13 +201,13 @@ function mousemove_adjust_shape(e) {
     const p = event_to_world_coords(e);
     const d = p.distanceTo(mouseDownPos) + Avatar.pointerRadius;
     const alpha = p.sub(mouseDownPos).angle();
-    const m = {
+    const s = create_shape(currentShape, mouseDownPos, p);
+    const m = [{
         action: "upd",
         id: app.avatarId,
         pos: mouseDownPos.add(Point.polar(d, alpha)),
         pointer: alpha + Math.PI
-    };
-    const s = create_shape(currentShape, mouseDownPos, p);
+    }, s];
     if (selectedElemId) {
         s.action = 'upd';
         s.id = selectedElemId;
@@ -221,8 +220,13 @@ function mousemove_adjust_shape(e) {
         }
         s.id = gen_elem_id(s.tag);
         selectedElemId = s.id;
+        m.push({
+            action: "select",
+            who: app.avatarId,
+            what: [selectedElemId]
+        });
     }
-    app.post([m, s]);
+    app.post(m);
     set_lastMousePos(e);
 }
 
@@ -265,12 +269,28 @@ function contextmenu_select_shape(e) {
     const elem = e.target;
     console.log("right click on", elem);
     e.preventDefault();
+    var m = [];
+    if (selectedElemId) {
+        m.push({
+            action: "deselect",
+            who: app.avatarId,
+            what: [selectedElemId]
+        });
+    }
     selectedElemId = elem.getAttribute("id");
+    m.push({
+        action: "select",
+        who: app.avatarId,
+        what: [selectedElemId]
+    });
+    app.post(m);
+    /*
     if (elem) {
         I("SvgEdit").value = elem.outerHTML;
     } else {
         I("SvgEdit").value = "";
     }
+    */
 }
 
 function enter_state(name) {
@@ -345,25 +365,6 @@ function expand_background() {
 }
 
 var selectedElemId = null;
-
-function set_selected_INACTIVE(elem) {
-    selectedElemId = elem.getAttribute("id");
-    if (elem) {
-        I("SvgEdit").value = elem.outerHTML;
-    } else {
-        I("SvgEdit").value = "";
-    }
-}
-
-function setup_edit_handlers() {
-    /* TODO reactivate
-    for (const elem of I("EditableElements").children) {
-        elem.onclick = (e) => {
-            set_selected(e.target);
-        }
-    }
-    */
-}
 
 function fatal(msg) {
     const d = document.createElement("div");
