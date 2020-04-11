@@ -118,7 +118,46 @@ function click_start_shape(e) {
     enter_state("place_shape");
 }
 
+function toolbutton_click(e) {
+    if (!is_left_button(e)) return;
+    const newShape = tool_id_to_shape_name(e.currentTarget.id);
+    for (const toolBtn of I("Tools").children) {
+        toolBtn.classList.remove("ActiveTool");
+    }
+    if (newShape === currentShape) {
+        currentShape = null;
+        enter_state("default");
+    } else {
+        e.currentTarget.classList.add("ActiveTool");
+        currentShape = newShape;
+        if (selectedElemId) {
+            app.post({
+                action: "deselect",
+                who: app.avatarId,
+                what: [selectedElemId]
+            });
+            selectedElemId = null;
+        }
+        enter_state("place_shape");
+    }
+}
+
+function mouseup_start_next_shape(e) {
+    app.post([{
+        action: "deselect",
+        who: app.avatarId,
+        what: [selectedElemId]
+    }, {
+        action: "upd",
+        id: app.avatarId,
+        pointer: "none"
+    }]);
+    selectedElemId = null;
+    enter_state("place_shape");
+}
+
 function back_to_default_state() {
+    currentShape = null;
     for (const toolBtn of I("Tools").children) {
         toolBtn.classList.remove("ActiveTool");
     }
@@ -305,7 +344,6 @@ function enter_state(name) {
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = mousedown_begin_point_at;
         onshapecontextmenu = contextmenu_select_shape;
-        set_tool_onclick(click_start_shape);
         set_cursor("default");
         break;
     case "map_move":
@@ -315,7 +353,6 @@ function enter_state(name) {
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         onshapecontextmenu = undefined;
-        set_tool_onclick(undefined);
         set_cursor("none");
         break;
     case "place_shape":
@@ -325,17 +362,15 @@ function enter_state(name) {
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = undefined;
         onshapecontextmenu = undefined;
-        set_tool_onclick(back_to_default_state);
         set_cursor("crosshair");
         break;
     case "adjust_shape":
         I("mapport").onmousedown = undefined;
         I("mapport").onmousemove = mousemove_adjust_shape;
-        I("mapport").onmouseup = back_to_default_state;
+        I("mapport").onmouseup = mouseup_start_next_shape;
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         onshapecontextmenu = undefined;
-        set_tool_onclick(undefined);
         set_cursor("none");
         break;
     case "point_at":
@@ -345,7 +380,6 @@ function enter_state(name) {
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         onshapecontextmenu = undefined;
-        set_tool_onclick(undefined);
         set_cursor("none");
         break;
     default:
@@ -387,6 +421,7 @@ function init() {
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
     I("pick-fill-color").style.backgroundColor = `hsl(${(Date.now() + 180) % 360}, 100%, 50%)`;
+    set_tool_onclick(toolbutton_click);
 
     const urlParams = new URLSearchParams(window.location.search);
 
