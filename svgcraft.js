@@ -378,6 +378,9 @@ function fatal(msg) {
 var app = null;
 
 function init() {
+    init_color_picker();
+    I("color_picker").style.display = 'none';
+
     const urlParams = new URLSearchParams(window.location.search);
 
     const mode = urlParams.get("mode");
