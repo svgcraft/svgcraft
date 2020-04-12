@@ -107,14 +107,6 @@ function click_start_shape(e) {
     if (!is_left_button(e)) return;
     e.currentTarget.classList.add("ActiveTool");
     currentShape = tool_id_to_shape_name(e.currentTarget.id);
-    if (selectedElemId) {
-        app.post({
-            action: "deselect",
-            who: app.avatarId,
-            what: [selectedElemId]
-        });
-        selectedElemId = null;
-    }
     enter_state("place_shape");
 }
 
@@ -130,29 +122,16 @@ function toolbutton_click(e) {
     } else {
         e.currentTarget.classList.add("ActiveTool");
         currentShape = newShape;
-        if (selectedElemId) {
-            app.post({
-                action: "deselect",
-                who: app.avatarId,
-                what: [selectedElemId]
-            });
-            selectedElemId = null;
-        }
         enter_state("place_shape");
     }
 }
 
 function mouseup_start_next_shape(e) {
-    app.post([{
-        action: "deselect",
-        who: app.avatarId,
-        what: [selectedElemId]
-    }, {
+    app.post({
         action: "upd",
         id: app.avatarId,
         pointer: "none"
-    }]);
-    selectedElemId = null;
+    });
     enter_state("place_shape");
 }
 
@@ -226,6 +205,14 @@ function is_right_button(e) {
 
 function mousedown_place_shape_here(e) {
     if (!is_left_button(e)) return;
+    if (selectedElemId) {
+        app.post({
+            action: "deselect",
+            who: app.avatarId,
+            what: [selectedElemId]
+        });
+        selectedElemId = null;
+    }
     mouseDownPos = event_to_world_coords(e);
     app.post({
         action: "upd",
@@ -308,32 +295,37 @@ function mousemove_point_at(e) {
     set_lastMousePos(e);
 }
 
-var onshapecontextmenu = undefined;
-
-function onshapecontextmenu_handler(e) {
-    if (onshapecontextmenu) onshapecontextmenu(e);
-}
-
-function contextmenu_select_shape(e) {
+function shape_contextmenu(e) {
     const elem = e.target;
     console.log("right click on", elem);
     e.preventDefault();
+    const clickedElemId = elem.getAttribute("id");
+    const previouslySelected = selectedElemId;
     var m = [];
-    if (selectedElemId) {
+
+    // in any case, deselect whatever's currently selected
+    if (previouslySelected) {
         m.push({
             action: "deselect",
+            who: app.avatarId,
+            what: [previouslySelected]
+        });
+        selectedElemId = null;
+    }
+
+    // if a different element than the previously selected one was clicked, select it,
+    // else only the above deselect is needed
+    if (previouslySelected !== clickedElemId) {
+        selectedElemId = clickedElemId;
+        const c = I(selectedElemId).getAttribute("fill");
+        if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
+        m.push({
+            action: "select",
             who: app.avatarId,
             what: [selectedElemId]
         });
     }
-    selectedElemId = elem.getAttribute("id");
-    const c = I(selectedElemId).getAttribute("fill");
-    if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
-    m.push({
-        action: "select",
-        who: app.avatarId,
-        what: [selectedElemId]
-    });
+
     app.post(m);
 }
 
@@ -345,7 +337,6 @@ function enter_state(name) {
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = mousedown_begin_point_at;
-        onshapecontextmenu = contextmenu_select_shape;
         set_cursor("default");
         break;
     case "map_move":
@@ -354,7 +345,6 @@ function enter_state(name) {
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
-        onshapecontextmenu = undefined;
         set_cursor("none");
         break;
     case "place_shape":
@@ -363,7 +353,6 @@ function enter_state(name) {
         I("mapport").onmouseup = undefined;
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = undefined;
-        onshapecontextmenu = undefined;
         set_cursor("crosshair");
         break;
     case "adjust_shape":
@@ -372,7 +361,6 @@ function enter_state(name) {
         I("mapport").onmouseup = mouseup_start_next_shape;
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
-        onshapecontextmenu = undefined;
         set_cursor("none");
         break;
     case "point_at":
@@ -381,7 +369,6 @@ function enter_state(name) {
         I("mapport").onmouseup = back_to_default_state;
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
-        onshapecontextmenu = undefined;
         set_cursor("none");
         break;
     default:

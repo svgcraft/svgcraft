@@ -135,7 +135,7 @@ function new_elem(j) {
     if (j.tag === "pattern") {
         elem.setAttribute("patternUnits", "userSpaceOnUse");
     } else {
-        elem.oncontextmenu = onshapecontextmenu_handler;
+        elem.oncontextmenu = shape_contextmenu;
     }
     parent.appendChild(elem);
 }
