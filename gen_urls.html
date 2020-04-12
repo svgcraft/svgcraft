@@ -30,6 +30,9 @@
               './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json',
               './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json&avatarEmoji=🐸&avatarHue=0',
               './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60',
+              './svgcraft.html?mode=solo&worldJsonUrl=paper.json',
+              './svgcraft.html?mode=solo&worldJsonUrl=paper.json&avatarEmoji=🐸&avatarHue=0',
+              './svgcraft.html?mode=solo&worldJsonUrl=paper.json&avatarEmoji=🦀&avatarHue=60'
           ];
           const needs_id = [
               './svgcraft.html?mode=client&worldJsonUrl=archipelago.json&serverId=',
@@ -37,7 +40,13 @@
               './svgcraft.html?mode=client&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60&serverId=',
               './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&peerId=',
               './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&avatarEmoji=🐸&avatarHue=0&peerId=',
-              './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60&peerId='
+              './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60&peerId=',
+              './svgcraft.html?mode=client&worldJsonUrl=paper.json&serverId=',
+              './svgcraft.html?mode=client&worldJsonUrl=paper.json&avatarEmoji=🐸&avatarHue=0&serverId=',
+              './svgcraft.html?mode=client&worldJsonUrl=paper.json&avatarEmoji=🦀&avatarHue=60&serverId=',
+              './svgcraft.html?mode=server&worldJsonUrl=paper.json&peerId=',
+              './svgcraft.html?mode=server&worldJsonUrl=paper.json&avatarEmoji=🐸&avatarHue=0&peerId=',
+              './svgcraft.html?mode=server&worldJsonUrl=paper.json&avatarEmoji=🦀&avatarHue=60&peerId='
           ];
           for (const u of no_id) add_url(u);
           for (const u of needs_id) add_url(u + encodeURIComponent(serverId));
