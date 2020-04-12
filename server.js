@@ -62,6 +62,7 @@ class Server extends App {
             conn.on('close', () => {
                 delete this.clientConns[clientId];
                 console.log(`Connection to client ${clientId} closed`);
+                this.post({action: "del", id: clientId});
             });
         });
 

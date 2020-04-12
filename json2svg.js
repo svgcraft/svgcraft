@@ -236,6 +236,15 @@ function process_json_action(j) {
             new_elem(j);
         }
         break;
+    case "del":
+        check_field(j, "id");
+        if (app.avatars[j.id]) {
+            I(j.id).remove();
+            delete app.avatars[j.id];
+        } else {
+            throw `Deleting ${j.id} not supported (yet)`;
+        }
+        break;
     case "your_id":
         // indicates that all initial history has been sent, and avatars have been set up
         check_field(j, "id");
