@@ -1,6 +1,6 @@
 ## svgcraft
 
-Develop SVG graphics in your browser in a playful way.
+Real-time collaborative SVG graphics development in the browser, in a playful way.
 
 ### Usage
 
@@ -12,4 +12,4 @@ Due to CORS, some resources cannot be loaded using the `file://` protocol, so yo
 python3 -m http.server
 ```
 
-in this directory, and then go to one of the example worlds, eg http://0.0.0.0:8000/svgcraft.html?world=archipelago.
+in this directory, and then go to http://0.0.0.0:8000/gen_urls.html
