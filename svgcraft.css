@@ -87,6 +87,29 @@ body {
     margin:auto;
 }
 
+.modal_title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50px;
+    top: 0;
+    text-align: center;
+    color: white;
+    font-family: monospace;
+    font-size: 20px;
+    padding: 10px;
+}
+
+.modal_content {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50px;
+    bottom: 0;
+    overflow-y: auto;
+    margin: 5px;
+}
+
 #color_wheel {
     width: auto;
     height: auto;
@@ -95,6 +118,24 @@ body {
     display: block;
     margin-left: auto;
     margin-right: auto;
+}
+
+#avatar_picker {
+    background-color: #555;
+}
+
+.avatar_preview {
+    width: 60px;
+    height: 60px;
+    float: left;
+    border-radius: 30px;
+    background-size: 71.4%;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin-left: 9px;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 9px;
 }
 
 .avatar {

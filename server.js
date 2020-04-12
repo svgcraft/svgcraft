@@ -7,9 +7,9 @@
 
 class Server extends App {
 
-    constructor(peerId, worldJsonUrl) {
+    constructor(serverId, worldJsonUrl) {
         super();
-        this.peerId = peerId;
+        this.serverId = serverId;
         this.worldJsonUrl = worldJsonUrl;
         this.avatarId = "avatar0";
         this.clientConns = {}; // maps clientId to PeerJS connection
@@ -25,7 +25,7 @@ class Server extends App {
         this.history = j;
         process_json_actions(j);
 
-        const peer = new Peer(this.peerId, {debug: 2});
+        const peer = new Peer(this.serverId, {debug: 2});
 
         peer.on('open', (id) => {
             console.log("PeerJS server gave us ID " + id);

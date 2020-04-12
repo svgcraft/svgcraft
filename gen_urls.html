@@ -5,6 +5,9 @@
     <title>svgcraft start page</title>
     <style type="text/css">
       a:link, a:visited, a:hover, a:active {color: black;}
+      body {
+          font-family: monospace;
+      }
     </style>
     <script>
       const charset62 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -23,33 +26,26 @@
           document.getElementById("url-list").appendChild(n);
       }
 
+      function link(mode, world, serverId) {
+          var url = `${window.location.protocol}//${window.location.host}/svgcraft.html?mode=${mode}`;
+          if (world != null) url += `&worldJsonUrl=${world}.json`;
+          if (serverId != null) url += `&serverId=${serverId}`;
+          return `<a href=${url}>${url}</a>`;
+      }
+
       function init() {
           const serverId = gen_uid();
-
-          const no_id = [
-              './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json',
-              './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json&avatarEmoji=🐸&avatarHue=0',
-              './svgcraft.html?mode=solo&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60',
-              './svgcraft.html?mode=solo&worldJsonUrl=paper.json',
-              './svgcraft.html?mode=solo&worldJsonUrl=paper.json&avatarEmoji=🐸&avatarHue=0',
-              './svgcraft.html?mode=solo&worldJsonUrl=paper.json&avatarEmoji=🦀&avatarHue=60'
-          ];
-          const needs_id = [
-              './svgcraft.html?mode=client&worldJsonUrl=archipelago.json&serverId=',
-              './svgcraft.html?mode=client&worldJsonUrl=archipelago.json&avatarEmoji=🐸&avatarHue=0&serverId=',
-              './svgcraft.html?mode=client&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60&serverId=',
-              './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&peerId=',
-              './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&avatarEmoji=🐸&avatarHue=0&peerId=',
-              './svgcraft.html?mode=server&worldJsonUrl=archipelago.json&avatarEmoji=🦀&avatarHue=60&peerId=',
-              './svgcraft.html?mode=client&worldJsonUrl=paper.json&serverId=',
-              './svgcraft.html?mode=client&worldJsonUrl=paper.json&avatarEmoji=🐸&avatarHue=0&serverId=',
-              './svgcraft.html?mode=client&worldJsonUrl=paper.json&avatarEmoji=🦀&avatarHue=60&serverId=',
-              './svgcraft.html?mode=server&worldJsonUrl=paper.json&peerId=',
-              './svgcraft.html?mode=server&worldJsonUrl=paper.json&avatarEmoji=🐸&avatarHue=0&peerId=',
-              './svgcraft.html?mode=server&worldJsonUrl=paper.json&avatarEmoji=🦀&avatarHue=60&peerId='
-          ];
-          for (const u of no_id) add_url(u);
-          for (const u of needs_id) add_url(u + encodeURIComponent(serverId));
+          const worlds = ['paper', 'archipelago'];
+          const urldiv = document.getElementById('urldiv');
+          for (const world of worlds) {
+              urldiv.innerHTML += `
+                <h3>World "${world}"</h3>
+                <p><ul>
+                  <li>Solo: ${link('solo', world)}</li>
+                  <li>Start a server: ${link('server', world, serverId)}</li>
+                  <li>Link to share to join server: ${link('client', null, serverId)}</li>
+                </ul></p>`;
+          }
       }
       window.onload = init;
     </script>
@@ -57,9 +53,11 @@
   </head>
 
   <body>
-    <p>Some sample URLs:
-      <ul id="url-list"></ul>
-    </p>
-    <p>Customize using this <a href="https://emojipedia.org/twitter/">emoji list</a>.</p>
+    <h1>svgcraft URL generation</h1>
+    <div id="urldiv"></div>
+    <br/>
+    <p>Customize your URLs with an avatarHue (color hue between 0 and 360) and an emojiUtf string picked from this <a href="https://emojipedia.org/twitter/">emoji list</a> (for more details, read <a href="./svgcraft.js">svgcraft.js</a>).</p>
+    <br/>
+    <p>Emoji Credits: <a href="https://twemoji.twitter.com/">twemoji</a></p>
   </body>
 </html>

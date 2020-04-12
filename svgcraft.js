@@ -401,12 +401,14 @@ function fatal(msg) {
 }
 
 var app = null;
+var pending_avatar_update = null;
 
 function init() {
     if (peerjs.util.browser !== 'chrome') {
         fatal(`Only Chrome is supported!`);
     }
     init_color_picker();
+    init_avatar_picker();
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
     I("pick-fill-color").style.backgroundColor = `hsl(${(Date.now() + 180) % 360}, 100%, 50%)`;
@@ -414,29 +416,41 @@ function init() {
 
     const urlParams = new URLSearchParams(window.location.search);
 
+    if (urlParams.has("avatarHue") && urlParams.has("avatarEmoji")) {
+        pending_avatar_update = {
+            action: "upd",
+            hue: urlParams.get("avatarHue"),
+            emojiUtf: urlParams.get("avatarEmoji")
+        };
+        I("avatar_picker").style.display = 'none';
+    }
+
     const mode = urlParams.get("mode");
     const worldJsonUrl = urlParams.get("worldJsonUrl");
 
     replace_node(initial_svg(), I("mainsvg"));
 
     switch (mode) {
-    case "server":
-        const peerId = urlParams.get("peerId");
-        if (!peerId) fatal("No peerId");
+    case "server": {
+        const serverId = urlParams.get("serverId");
+        if (!serverId) fatal("No serverId");
         if (!worldJsonUrl) fatal("No worldJsonUrl");
-        app = new Server(peerId, worldJsonUrl);
+        app = new Server(serverId, worldJsonUrl);
         break;
-    case "client":
+    }
+    case "client": {
         const serverId = urlParams.get("serverId");
         if (!serverId) fatal("No serverId");
         app = new Client(serverId);
         break;
-    case "solo":
+    }
+    case "solo": {
         if (!worldJsonUrl) fatal("No worldJsonUrl");
         app = new Solo(worldJsonUrl);
         break;
-    default:
-        fatal(`unknown mode ${mode}`);
     }
+    default: {
+        fatal(`unknown mode ${mode}`);
+    }}
     app.init();
 }

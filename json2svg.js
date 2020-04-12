@@ -145,7 +145,11 @@ function handles_g_id(elem, avatarId) {
 }
 
 function handle_radius() {
-    return 20.0 / app.myAvatar.view.scale;
+    if (app.myAvatar) {
+        return 20.0 / app.myAvatar.view.scale;
+    } else {
+        return 20.0;
+    }
 }
 
 function corner_handle(x, y, color) {

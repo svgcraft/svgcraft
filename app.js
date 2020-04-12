@@ -25,14 +25,11 @@ class App {
 
     // called by subclasses once all the async operations have set up everything
     finish_init() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const avatar_update = {
-            action: "upd",
-            id: this.avatarId,
-            hue: urlParams.get("avatarHue"),
-            emojiUtf: urlParams.get("avatarEmoji")
-        };
-        this.post([avatar_update]);
+        if (pending_avatar_update) {
+            pending_avatar_update.id = this.avatarId;
+            this.post(pending_avatar_update);
+        }
+        pending_avatar_update = null;
         app.myAvatar.g.children[0].setAttribute("id", "avatar-clickable"); // for pointer
         set_transform();
         enter_state("default");
