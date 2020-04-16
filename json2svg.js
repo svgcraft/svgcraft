@@ -153,9 +153,9 @@ function handle_radius() {
 }
 
 function corner_handle(x, y, color) {
-    color = 'none'; // <-- TODO remove this line once modifying corners is supported
     return svg("circle", {cx: x, cy: y, r: handle_radius(),
-                          stroke: color, "stroke-width": 1, fill: "none"});
+                          stroke: color, "stroke-width": 1,
+                          fill: "transparent", "class": "corner-handle"});
 }
 
 function select_elem(who, elem) {
