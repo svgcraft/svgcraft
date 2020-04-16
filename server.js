@@ -62,7 +62,20 @@ class Server extends App {
             conn.on('close', () => {
                 delete this.clientConns[clientId];
                 console.log(`Connection to client ${clientId} closed`);
-                this.post({action: "del", id: clientId});
+                const m = [];
+                for (const g of I("OtherHandles").children) {
+                    const idparts = g.getAttribute("id").split("__");
+                    if (idparts[1] !== "select") throw "unexpected id format";
+                    if (idparts[2] === clientId) {
+                        m.push({
+                            action: "deselect",
+                            who: clientId,
+                            what: [idparts[0]]
+                        });
+                    }
+                }
+                m.push({action: "del", id: clientId});
+                app.post(m);
             });
         });
 
