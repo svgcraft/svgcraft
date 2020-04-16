@@ -153,7 +153,7 @@ function equilateral_triangle_from_center(center, corner) {
     const p1 = corner;
     const p2 = center.add(r.rotate(Math.PI*2/3));
     const p3 = center.add(r.rotate(-Math.PI*2/3));
-    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${p3.x} ${p3.y} ${p1.x} ${p1.y}`});
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} L ${p1.x} ${p1.y}`});
 }
 
 function equilateral_triangle(mid, tip) {
@@ -161,14 +161,14 @@ function equilateral_triangle(mid, tip) {
     const l = h.norm() / Math.sqrt(3.0);
     const p1 = mid.add(Point.polar(l, h.angle() + Math.PI/2));
     const p2 = mid.add(Point.polar(l, h.angle() - Math.PI/2));
-    return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`};
+    return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} L ${p1.x} ${p1.y}`};
 }
 
 function isosceles_triangle(baseMid, baseLength, rotation, height) {
     const tip = baseMid.add(Point.polar(height, rotation));
     const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
     const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
-    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`});
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} L ${p1.x} ${p1.y}`});
 }
 
 function rectangle(origin, corner) {
