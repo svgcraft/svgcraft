@@ -1,0 +1,4 @@
+[{"action": "upd", "id": "document", "title": "painting in svgcraft"},
+ {"action": "new", "tag": "avatar", "id": "avatar0", "pos": {"x": 300, "y": 300}, "view": {"x": -100, "y": -100, "scale": 1.2}},
+ {"action": "upd", "id": "BackgroundRect", "fill": "rgb(1, 171, 230)"}
+]
