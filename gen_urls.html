@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>svgcraft start page</title>
+    <style type="text/css">
+      a:link, a:visited, a:hover, a:active {color: black;}
+      body {
+          font-family: monospace;
+      }
+    </style>
+    <script>
+      const charset62 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+      function gen_uid() {
+          const l = [];
+          for (var i = 0; i < 16; i++) {
+              l.push(charset62.charAt(Math.floor(Math.random() * 62)));
+          }
+          return l.join('');
+      }
+
+      function add_url(u) {
+          const n = document.createElement("li");
+          n.innerHTML = `<a href='${u}'>${u}</a>`;
+          document.getElementById("url-list").appendChild(n);
+      }
+
+      function link(mode, world, serverId) {
+          var url = `${window.location.protocol}//${window.location.host}/svgcraft.html?mode=${mode}`;
+          if (world != null) url += `&worldJsonUrl=${world}.json`;
+          if (serverId != null) url += `&serverId=${serverId}`;
+          return `<a href=${url}>${url}</a>`;
+      }
+
+      function init() {
+          const serverId = gen_uid();
+          const worlds = ['blank', 'sky', 'paper', 'archipelago'];
+          const urldiv = document.getElementById('urldiv');
+          for (const world of worlds) {
+              urldiv.innerHTML += `
+                <h3>World "${world}"</h3>
+                <p><ul>
+                  <li>Solo: ${link('solo', world)}</li>
+                  <li>Start a server: ${link('server', world, serverId)}</li>
+                  <li>Link to share to join server: ${link('client', null, serverId)}</li>
+                </ul></p>`;
+          }
+      }
+      window.onload = init;
+    </script>
+    <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
+  </head>
+
+  <body>
+    <h1>svgcraft URL generation</h1>
+    <div id="urldiv"></div>
+    <br/>
+    <p>Customize your URLs with an avatarHue (color hue between 0 and 360) and an emojiUtf string picked from this <a href="https://emojipedia.org/twitter/">emoji list</a> (for more details, read <a href="./svgcraft.js">svgcraft.js</a>).</p>
+    <br/>
+    <p>Emoji Credits: <a href="https://twemoji.twitter.com/">twemoji</a></p>
+  </body>
+</html>
