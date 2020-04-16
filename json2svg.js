@@ -173,10 +173,22 @@ function select_elem(who, elem) {
         break;
     case "path":
         const ps = elem.getAttribute("d").split(' ');
-        for (var i = 1; i < ps.length; i += 3) { // TODO this only works for M and L
-            const x = ps[i];
-            const y = ps[i+1];
-            g.appendChild(corner_handle(x, y, app.avatars[who].color));
+        for (var vari = 0; vari < ps.length - 1; vari += 3) { // TODO this only works for M and L ended by z
+            const i = vari; // to make sure it's captured as expected by closure below
+            const x = ps[i+1];
+            const y = ps[i+2];
+            const ch = corner_handle(x, y, app.avatars[who].color);
+            ch.onmousedown = mousedown_corner_handle(elem, new Point(x, y), (p) => {
+                const new_ps = elem.getAttribute("d").split(' ');
+                new_ps[i+1] = p.x.toFixed(1);
+                new_ps[i+2] = p.y.toFixed(1);
+                return {
+                    action: "upd",
+                    id: elem.getAttribute("id"),
+                    d: new_ps.join(' ')
+                };
+            });
+            g.appendChild(ch);
         }
         break;
     default:

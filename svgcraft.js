@@ -153,7 +153,7 @@ function equilateral_triangle_from_center(center, corner) {
     const p1 = corner;
     const p2 = center.add(r.rotate(Math.PI*2/3));
     const p3 = center.add(r.rotate(-Math.PI*2/3));
-    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} L ${p1.x} ${p1.y}`});
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} z`});
 }
 
 function equilateral_triangle(mid, tip) {
@@ -161,14 +161,14 @@ function equilateral_triangle(mid, tip) {
     const l = h.norm() / Math.sqrt(3.0);
     const p1 = mid.add(Point.polar(l, h.angle() + Math.PI/2));
     const p2 = mid.add(Point.polar(l, h.angle() - Math.PI/2));
-    return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} L ${p1.x} ${p1.y}`};
+    return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`};
 }
 
 function isosceles_triangle(baseMid, baseLength, rotation, height) {
     const tip = baseMid.add(Point.polar(height, rotation));
     const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
     const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
-    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} L ${p1.x} ${p1.y}`});
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`});
 }
 
 function rectangle(origin, corner) {
@@ -329,7 +329,69 @@ function shape_contextmenu(e) {
     app.post(m);
 }
 
+function set_corner_handle_cursor(name) {
+    const l = I("mainsvg").classList;
+    for (const c of l) {
+        if (c.startsWith("set_corner_handle_cursors_to_")) {
+            l.remove(c);
+        }
+    }
+    l.add("set_corner_handle_cursors_to_" + name);
+}
+
+var onadjustcorner = null;
+
+var mouseDownPosWithinHandle = null;
+
+var previousState = "default";
+var currentState = "default";
+
+// elem: DOM SVG element being edited
+// cornerPos: original world coordinates of the corner being edited
+// geomUpdater: function which takes a Point with the new corner coordinates
+//              and returns a JSON action to update elem
+function mousedown_corner_handle(elem, cornerPos, geomUpdater) {
+    return (e) => {
+        mouseDownPos = event_to_world_coords(e);
+        mouseDownPosWithinHandle = mouseDownPos.sub(cornerPos);
+        const alpha = mouseDownPosWithinHandle.angle();
+        const avatarOffset = Point.polar(Avatar.pointerRadius, alpha);
+        app.post({
+            action: "upd",
+            id: app.avatarId,
+            pos: mouseDownPos.add(avatarOffset),
+            animate: 'jump'
+        });
+        onadjustcorner = (e) => {
+            const p = event_to_world_coords(e);
+            app.post([{
+                action: "upd",
+                id: app.avatarId,
+                pos: p.add(avatarOffset),
+                pointer: alpha + Math.PI
+            }, geomUpdater(p.sub(mouseDownPosWithinHandle))]);
+        };
+        enter_state("adjust_corner");
+    };
+}
+
+function mousemove_adjust_corner(e) {
+    onadjustcorner(e);
+}
+
+function mouseup_adjust_corner_done(e) {
+    onadjustcorner = null;
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        pointer: "none"
+    });
+    enter_state(previousState);
+}
+
 function enter_state(name) {
+    previousState = currentState;
+    currentState = name;
     switch (name) {
     case "default":
         I("mapport").onmousedown = mousedown_begin_map_move;
@@ -338,6 +400,7 @@ function enter_state(name) {
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = mousedown_begin_point_at;
         set_cursor("default");
+        set_corner_handle_cursor("move");
         break;
     case "map_move":
         I("mapport").onmousedown = undefined;
@@ -346,6 +409,7 @@ function enter_state(name) {
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         set_cursor("none");
+        set_corner_handle_cursor("none");
         break;
     case "place_shape":
         I("mapport").onmousedown = mousedown_place_shape_here;
@@ -354,6 +418,7 @@ function enter_state(name) {
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = undefined;
         set_cursor("crosshair");
+        set_corner_handle_cursor("move");
         break;
     case "adjust_shape":
         I("mapport").onmousedown = undefined;
@@ -362,6 +427,7 @@ function enter_state(name) {
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         set_cursor("none");
+        set_corner_handle_cursor("none");
         break;
     case "point_at":
         I("mapport").onmousedown = undefined;
@@ -370,6 +436,16 @@ function enter_state(name) {
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         set_cursor("none");
+        set_corner_handle_cursor("none");
+        break;
+    case "adjust_corner":
+        I("mapport").onmousedown = undefined;
+        I("mapport").onmousemove = mousemove_adjust_corner;
+        I("mapport").onmouseup = mouseup_adjust_corner_done;
+        I("mapport").onwheel = undefined;
+        I("avatar-clickable").onmousedown = undefined;
+        set_cursor("none");
+        set_corner_handle_cursor("none");
         break;
     default:
         throw name + " is not a state";

@@ -174,8 +174,15 @@ body {
     cursor: pointer;
 }
 
-.corner-handle {
+/* for all elements of class corner-handle with an ancestor of class
+   set_corner_handle_cursors_to_move (this ancestor will be mainsvg),
+   set cursor to "move" */
+.set_corner_handle_cursors_to_move .corner-handle {
     cursor: move;
+}
+
+.set_corner_handle_cursors_to_none .corner-handle {
+    cursor: none;
 }
 
 .avatar {
