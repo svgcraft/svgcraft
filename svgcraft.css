@@ -54,7 +54,13 @@ body {
     float: left;
 }
 
+#BottomRightLinks {
+    float: right;
+    margin-right: 6.5px;
+}
+
 .ToolButton {
+    overflow: hidden;
     width: 35px;
     height: 35px;
     background: no-repeat scroll 0 0 transparent;
@@ -86,6 +92,10 @@ body {
     background: no-repeat scroll 0 0 transparent;
     border-radius: 5px;
     margin: 15px;
+}
+
+#github-link {
+    border: none;
 }
 
 .modal {
