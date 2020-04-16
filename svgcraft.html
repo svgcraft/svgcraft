@@ -6,6 +6,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/12.0.4/2/twemoji.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.2.0/dist/peerjs.min.js"></script>
     <script src="./point.js"></script>
+    <script src="./color_conversions.js"></script>
     <script src="./color_picker.js"></script>
     <script src="./avatar_picker.js"></script>
     <script src="./json2svg.js"></script>
@@ -28,8 +29,13 @@
         <svg id="mainsvg"></svg>
       </div>
       <div id="color_picker" class="modal">
-        <canvas id="color_wheel" width="1000" height="1000">
-        </canvas>
+        <div id="color_picker_inner" class="modal_content">
+        </div>
+        <div class="topright-button" id="close-color-picker">
+          <svg class="tool-svg" viewBox="0 0 30 30">
+            <path d="M 6 6 L 24 24 M 24 6 L 6 24" stroke="#E75A70" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
       </div>
       <div id="avatar_picker" class="modal">
         <div class="modal_title">

@@ -403,6 +403,37 @@ function fatal(msg) {
 var app = null;
 var pending_avatar_update = null;
 
+var clickedColorButtonId = null;
+
+function close_color_dialog(e) {
+    I("color_picker").style.display = 'none';
+}
+
+function rgbStr_to_rgbArr(s, fallback) {
+    if (s.startsWith("rgb(")) {
+        const a = s.split(/rgb\(|, |\)/);
+        return [a[1], a[2], a[3]];
+    } else {
+        return fallback;
+    }
+}
+
+function init_color_picker() {
+    const p = color_picker.create();
+    p.oncolorchange = (colorstr) => {
+        I("pick-fill-color").style.backgroundColor = colorstr;
+    }
+    I("color_picker_inner").appendChild(p);
+    I("close-color-picker").onclick = close_color_dialog;
+    // I("pick-stroke-color").onclick = open_color_dialog;
+    I("pick-fill-color").onclick = (e) => {
+        clickedColorButtonId = e.target.getAttribute("id");
+        I("color_picker").style.display = 'block';
+        const a = rgbStr_to_rgbArr(I("pick-fill-color").style.backgroundColor, [255, 255, 0]);
+        p.set_hsl(...rgbToHsl(...a));
+    }
+}
+
 function init() {
     if (peerjs.util.browser !== 'chrome') {
         fatal(`Only Chrome is supported!`);
