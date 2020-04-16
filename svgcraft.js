@@ -329,6 +329,20 @@ function shape_contextmenu(e) {
     app.post(m);
 }
 
+function background_contextmenu(e) {
+    e.preventDefault();
+    if (selectedElemId) {
+        app.post({
+            action: "deselect",
+            who: app.avatarId,
+            what: [selectedElemId]
+        });
+        selectedElemId = null;
+    }
+    const c = I("BackgroundRect").getAttribute("fill");
+    if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
+}
+
 function set_corner_handle_cursor(name) {
     const l = I("mainsvg").classList;
     for (const c of l) {
@@ -518,7 +532,7 @@ function init() {
     init_avatar_picker();
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
-    I("pick-fill-color").style.backgroundColor = `rgb(0, 182, 111)`;
+    I("pick-fill-color").style.backgroundColor = "rgb(104, 212, 19)"; //`rgb(0, 182, 111)`;
     set_tool_onclick(toolbutton_click);
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -536,6 +550,7 @@ function init() {
     const worldJsonUrl = urlParams.get("worldJsonUrl");
 
     replace_node(initial_svg(), I("mainsvg"));
+    I("BackgroundRect").oncontextmenu = background_contextmenu;
 
     switch (mode) {
     case "server": {
