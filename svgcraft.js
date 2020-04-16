@@ -442,7 +442,7 @@ function init() {
     init_avatar_picker();
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
-    I("pick-fill-color").style.backgroundColor = `hsl(${(Date.now() + 180) % 360}, 100%, 50%)`;
+    I("pick-fill-color").style.backgroundColor = `rgb(0, 182, 111)`;
     set_tool_onclick(toolbutton_click);
 
     const urlParams = new URLSearchParams(window.location.search);
