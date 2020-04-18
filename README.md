@@ -12,9 +12,9 @@ In particular, we believe that the following kinds of interactions are impossibl
 
 At the moment, the only implemented feature is real-time collaborative editing of triangles and quadrilaterals, but that already makes it possible to host a virtual painting party and to paint pictures like these:
 
-<p style="text-align: center;">
-  <img src="./img/Mountains.png" height="300" style="margin-right: 30px;"/>
-  <img src="./img/MapleVillaGlades.png" height="300" />
+<p align="center">
+  <img src="./img/Mountains.png" height="300"/>
+  <img src="./img/MapleVillaGlades.png" height="300"/>
 </p>
 
 In times of social distancing, or when we want to reduce our traveling to save the climate, svgcraft can hopefully provide some real-time social interaction to help with this.
