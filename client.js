@@ -12,7 +12,7 @@ class Client extends App {
         const peer = new Peer(null, {debug: 2});
 
         peer.on('open', (id) => {
-            console.log("PeerJS server gave us ID " + id);
+            log.connection("PeerJS server gave us ID " + id);
 
             this.conn = peer.connect(this.serverId, {
                 reliable: true,
@@ -20,31 +20,31 @@ class Client extends App {
             });
 
             this.conn.on('open', () => {
-                console.log("Connected to " + this.conn.peer);
+                log.connection("Connected to " + this.conn.peer);
             });
 
             this.conn.on('data', (data) => {
-                console.log(`Data received from svgcraft server`);
-                console.log(data);
+                log.data(`Data received from svgcraft server`);
+                log.data(data);
                 process_json_actions(data);
                 this.history.push(...data);
             });
 
             this.conn.on('close', () => {
-                console.log("Connection to svgcraft server closed");
+                log.connection("Connection to svgcraft server closed");
             });
         });
 
         peer.on('disconnected', () => {
-            console.log("disconnected!");
+            log.connection("disconnected!");
         });
 
         peer.on('close', () => {
-            console.log('Connection to PeerJS server closed');
+            log.connection('Connection to PeerJS server closed');
         });
 
         peer.on('error', (err) => {
-            console.log(err);
+            log.connection(err);
         });
     }
 

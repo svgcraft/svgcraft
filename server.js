@@ -28,8 +28,8 @@ class Server extends App {
         const peer = new Peer(this.serverId, {debug: 2});
 
         peer.on('open', (id) => {
-            console.log("PeerJS server gave us ID " + id);
-            console.log("Waiting for peers to connect");
+            log.connection("PeerJS server gave us ID " + id);
+            log.connection("Waiting for peers to connect");
             this.finish_init();
         });
 
@@ -40,10 +40,10 @@ class Server extends App {
             const clientId = `avatar${clientIdNumber}`;
             nextFreeClientId++;
 
-            console.log("Connected to " + conn.peer + ", clientId: " + clientId);
+            log.connection("Connected to " + conn.peer + ", clientId: " + clientId);
 
             conn.on('open', () => {
-                console.log("Connection to " + conn.peer + " open");
+                log.connection("Connection to " + conn.peer + " open");
                 this.clientConns[clientId] = conn;
                 conn.send(this.history);
                 this.post([this.new_client_avatar_command(clientIdNumber)]);
@@ -51,8 +51,8 @@ class Server extends App {
             });
 
             conn.on('data', (actions) => {
-                console.log(`actions received from client ${clientId}:`);
-                console.log(actions);
+                log.data(`actions received from client ${clientId}:`);
+                log.data(actions);
                 // to make sure we know whether we have to avoid sending this update back to client
                 for (const a of actions) {
                     a.creatorId = clientId;
@@ -61,7 +61,7 @@ class Server extends App {
             });
             conn.on('close', () => {
                 delete this.clientConns[clientId];
-                console.log(`Connection to client ${clientId} closed`);
+                log.connection(`Connection to client ${clientId} closed`);
                 const m = [];
                 for (const g of I("OtherHandles").children) {
                     const idparts = g.getAttribute("id").split("__");
@@ -80,15 +80,15 @@ class Server extends App {
         });
 
         peer.on('disconnected', () => {
-            console.log("disconnected!");
+            log.connection("disconnected!");
         });
 
         peer.on('close', () => {
-            console.log('Connection to PeerJS server closed');
+            log.connection('Connection to PeerJS server closed');
         });
 
         peer.on('error', (err) => {
-            console.log(err);
+            log.connection(err);
         });
     }
 

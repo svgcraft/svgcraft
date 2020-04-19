@@ -159,7 +159,6 @@ const color_picker = (() => {
             lFrac = l;
             repaint();
         };
-        console.log(s);
         hHandle.onmousedown = onhandlemousedown(0);
         sHandle.onmousedown = onhandlemousedown(1);
         lHandle.onmousedown = onhandlemousedown(2);

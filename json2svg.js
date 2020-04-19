@@ -56,7 +56,6 @@ function avatar_jump_to(a, p) {
 
     a.g.style.removeProperty("transform");
     a.g.style.offsetPath = `path('${d}')`;
-    console.log(a.g.style.cssText);
 
     // The right way would be something like this:
     // app.myAvatar.g.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
@@ -192,7 +191,7 @@ function select_elem(who, elem) {
         }
         break;
     default:
-        console.log("don't know how to select", elem.tagName);
+        log.debug("don't know how to select", elem.tagName);
         break;
     }
     I(app.avatarId === who ? "OwnHandles" : "OtherHandles").appendChild(g);
@@ -212,7 +211,7 @@ function update_select_handles(elem) {
 }
 
 function process_json_action(j) {
-    // console.log("processing", j);
+    log.debug("processing", j);
     check_field(j, "action");
     switch (j.action) {
     case "upd":

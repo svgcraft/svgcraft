@@ -275,7 +275,7 @@ function mousemove_point_at(e) {
 
 function shape_contextmenu(e) {
     const elem = e.target;
-    console.log("right click on", elem);
+    log.event("right click on", elem);
     e.preventDefault();
     const clickedElemId = elem.getAttribute("id");
     const previouslySelected = selectedElemId;
@@ -442,7 +442,6 @@ function enter_state(name) {
     default:
         throw name + " is not a state";
     }
-    console.log("Entered state", name);
 }
 
 function expand_background() {

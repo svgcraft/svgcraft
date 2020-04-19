@@ -1,8 +1,8 @@
 "use strict";
 
-console.log(twemoji.convert.toCodePoint("🐸"));
+log.debug(twemoji.convert.toCodePoint("🐸"));
 
-console.log(twemoji.parse("🐸", {
+log.debug(twemoji.parse("🐸", {
   folder: 'svg',
   ext: '.svg'
 }));
@@ -13,7 +13,7 @@ function get_emoji_url(s) {
 
 // Note: needs v2 to obtain https://twemoji.maxcdn.com/2/svg/1f9d9-1f3fc-200d-2642-fe0f.svg
 // Use https://emojipedia.org/twitter/ as the emoji picker
-console.log(get_emoji_url("🧙🏼‍♂️"));
+log.debug(get_emoji_url("🧙🏼‍♂️"));
 
 class Avatar {
 
