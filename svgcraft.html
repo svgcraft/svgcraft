@@ -47,17 +47,31 @@
     </div>
     <div id="LowerPart">
       <div id="Tools" class="ToolGroup">
-        <!--div id="new-rectangle" class="ToolButton">
+        <div id="navigation-tool" class="ToolButton ActiveTool">
+          <svg class="tool-svg" viewBox="0 0 30 30">
+            <defs>
+              <marker id="arrowhead" viewBox="0 0 3 3" refX="1.5" refY="1.5"
+                      markerWidth="2.2" markerHeight="2.2" orient="auto-start-reverse" fill="#E75A70">
+                <path d="M 0 0 L 3 1.5 L 0 3 z" />
+              </marker>
+            </defs>
+            <path id="arrow" d="M 6 15 L 24 15" stroke="#E75A70" stroke-width="3"
+                  marker-start="url(#arrowhead)" marker-end="url(#arrowhead)" />
+            <path id="arrow" d="M 15 6 L 15 24" stroke="#E75A70" stroke-width="3"
+                  marker-start="url(#arrowhead)" marker-end="url(#arrowhead)" />
+          </svg>
+        </div>
+        <!--div id="rectangle-tool" class="ToolButton">
           <svg class="tool-svg" viewBox="0 0 30 30">
             <rect x="5" y="8" width="20" height="14" fill="#E75A70"/>
           </svg>
         </div-->
-        <div id="new-triangle" class="ToolButton">
+        <div id="triangle-tool" class="ToolButton">
           <svg class="tool-svg" viewBox="0 0 30 30">
             <path d="M 5 23.65 L 15 6.35 L 25 23.65 z" fill="#E75A70"/>
           </svg>
         </div>
-        <div id="new-square" class="ToolButton">
+        <div id="square-tool" class="ToolButton">
           <svg class="tool-svg" viewBox="0 0 30 30">
             <path d="M 5 15 L 15 5 L 25 15 L 15 25 z" fill="#E75A70"/>
           </svg>

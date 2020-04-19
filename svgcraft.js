@@ -94,34 +94,22 @@ function mousemove_map_move(e) {
     set_lastMousePos(e)
 }
 
-var currentShape = null;
+var activeTool = "navigation";
 var mouseDownPos = null;
 var mouseDownPosWithinAvatar = null;
 
-function tool_id_to_shape_name(id) {
-    if (!id.startsWith("new-")) throw id + "does not start with 'new-'";
-    return id.substring(4, id.length)
-}
-
-function click_start_shape(e) {
-    if (!is_left_button(e)) return;
-    e.currentTarget.classList.add("ActiveTool");
-    currentShape = tool_id_to_shape_name(e.currentTarget.id);
-    enter_state("place_shape");
-}
-
 function toolbutton_click(e) {
     if (!is_left_button(e)) return;
-    const newShape = tool_id_to_shape_name(e.currentTarget.id);
     for (const toolBtn of I("Tools").children) {
         toolBtn.classList.remove("ActiveTool");
     }
-    if (newShape === currentShape) {
-        currentShape = null;
+    const id = e.currentTarget.id;
+    if (!id.endsWith("-tool")) throw 'unexpected tool id';
+    activeTool = id.substr(0, id.length-5);
+    e.currentTarget.classList.add("ActiveTool");
+    if (activeTool === "navigation") {
         enter_state("default");
     } else {
-        e.currentTarget.classList.add("ActiveTool");
-        currentShape = newShape;
         enter_state("place_shape");
     }
 }
@@ -136,10 +124,6 @@ function mouseup_start_next_shape(e) {
 }
 
 function back_to_default_state() {
-    currentShape = null;
-    for (const toolBtn of I("Tools").children) {
-        toolBtn.classList.remove("ActiveTool");
-    }
     app.post({
         action: "upd",
         id: app.avatarId,
@@ -235,7 +219,7 @@ function mousemove_adjust_shape(e) {
     const p = event_to_world_coords(e);
     const d = p.distanceTo(mouseDownPos) + Avatar.pointerRadius;
     const alpha = p.sub(mouseDownPos).angle();
-    const s = create_shape(currentShape, mouseDownPos, p);
+    const s = create_shape(activeTool, mouseDownPos, p);
     const m = [{
         action: "upd",
         id: app.avatarId,
@@ -247,7 +231,7 @@ function mousemove_adjust_shape(e) {
         s.id = selectedElemId;
     } else {
         s.action = 'new';
-        if (currentShape === 'rectangle') {
+        if (activeTool === 'rectangle') {
             s.tag = 'rect';
         } else {
             s.tag = 'path';
@@ -264,12 +248,6 @@ function mousemove_adjust_shape(e) {
     }
     app.post(m);
     set_lastMousePos(e);
-}
-
-function set_tool_onclick(f) {
-    for (const toolBtn of I("Tools").children) {
-        toolBtn.onclick = f;
-    }
 }
 
 function mousedown_begin_point_at(e) {
@@ -533,7 +511,7 @@ function init() {
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
     I("pick-fill-color").style.backgroundColor = "rgb(104, 212, 19)"; //`rgb(0, 182, 111)`;
-    set_tool_onclick(toolbutton_click);
+    for (const toolBtn of I("Tools").children) toolBtn.onclick = toolbutton_click;
 
     const urlParams = new URLSearchParams(window.location.search);
 
