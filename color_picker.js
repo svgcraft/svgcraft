@@ -128,18 +128,22 @@ const color_picker = (() => {
         }
         function oncomponentmousemove(e) {
             if (e.buttons !== 1) return;
+            if (handleBeingMoved === null) return;
             const currentMouseY = e.screenY;
             const dy = currentMouseY - lastMouseY;
             const dFrac = dy / s.getBoundingClientRect().height * H / (H - S - 2 * G);
-            const newFrac = get_frac(handleBeingMoved) + dFrac;
-            if (0 <= newFrac && newFrac <= 1) {
-                set_frac(handleBeingMoved, newFrac);
-                if (s.oncolorchange) {
-                    s.oncolorchange(`hsl(${hStr()}, ${sStr()}, ${lStr()})`);
-                }
-                repaint();
-                lastMouseY = currentMouseY;
+            var newFrac = get_frac(handleBeingMoved) + dFrac;
+            newFrac = Math.min(newFrac, 1);
+            newFrac = Math.max(newFrac, 0);
+            set_frac(handleBeingMoved, newFrac);
+            if (s.oncolorchange) {
+                s.oncolorchange(`hsl(${hStr()}, ${sStr()}, ${lStr()})`);
             }
+            repaint();
+            lastMouseY = currentMouseY;
+        }
+        function onmouseup(e) {
+            handleBeingMoved = null;
         }
         function onbarclick(i) {
             return (e) => {
@@ -152,7 +156,11 @@ const color_picker = (() => {
             }
         }
         repaint();
-        s.onmousemove = oncomponentmousemove;
+        // don't register it on s, but on window, so that when the user moves outside of s very fast,
+        // the slider still goes all the way to the end of the bar
+        // s.onmousemove = oncomponentmousemove;
+        window.addEventListener('mousemove', oncomponentmousemove);
+        window.addEventListener('mouseup', onmouseup);
         s.set_hsl = (h, s, l) => {
             hFrac = h;
             sFrac = s;
