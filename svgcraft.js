@@ -1,7 +1,5 @@
 "use strict";
 
-var lastMousePos = null;
-
 function I(id) {
     return document.getElementById(id);
 }
@@ -15,10 +13,6 @@ function set_cursor(name) {
 
 function port_coord_to_world(p) {
     return p.add(new Point(app.myAvatar.view.x, app.myAvatar.view.y)).scale(app.myAvatar.view.scale);
-}
-
-function set_lastMousePos(e) {
-    lastMousePos = new Point(e.clientX, e.clientY);
 }
 
 function encode_transform() {
@@ -46,90 +40,6 @@ function event_to_world_coords(e) {
     const yInPort = e.clientY - rect.top;
     return new Point((xInPort - app.myAvatar.view.x) / app.myAvatar.view.scale,
                      (yInPort - app.myAvatar.view.y) / app.myAvatar.view.scale);
-}
-
-function mousedown_begin_map_move(e) {
-    if (!is_left_button(e)) return;
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        pos: event_to_world_coords(e),
-        animate: 'jump'
-    });
-    enter_state("map_move");
-    set_lastMousePos(e);
-}
-
-function wheel_zoom(e) {
-    e.preventDefault();
-    const zoomChange = Math.exp(e.deltaY * -0.001);
-    const rect = I("mapport").getBoundingClientRect();
-    const xInPort = e.clientX - rect.left;
-    const yInPort = e.clientY - rect.top;
-    // everybody knows what you're looking at!
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        view: {
-            x: xInPort - (xInPort - app.myAvatar.view.x) * zoomChange,
-            y: yInPort - (yInPort - app.myAvatar.view.y) * zoomChange,
-            scale: app.myAvatar.view.scale * zoomChange
-        }
-    });
-}
-
-function mousemove_map_move(e) {
-    e.preventDefault();
-    const dx = e.clientX - lastMousePos.x;
-    const dy = e.clientY - lastMousePos.y;
-    // everybody knows what you're looking at!
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        view: {
-            x: app.myAvatar.view.x + dx,
-            y: app.myAvatar.view.y + dy
-        }
-    });
-    set_lastMousePos(e)
-}
-
-var activeTool = "navigation";
-var mouseDownPos = null;
-var mouseDownPosWithinAvatar = null;
-
-function toolbutton_click(e) {
-    if (!is_left_button(e)) return;
-    for (const toolBtn of I("Tools").children) {
-        toolBtn.classList.remove("ActiveTool");
-    }
-    const id = e.currentTarget.id;
-    if (!id.endsWith("-tool")) throw 'unexpected tool id';
-    activeTool = id.substr(0, id.length-5);
-    e.currentTarget.classList.add("ActiveTool");
-    if (activeTool === "navigation") {
-        enter_state("default");
-    } else {
-        enter_state("place_shape");
-    }
-}
-
-function mouseup_start_next_shape(e) {
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        pointer: "none"
-    });
-    enter_state("place_shape");
-}
-
-function back_to_default_state() {
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        pointer: "none"
-    });
-    enter_state("default");
 }
 
 function equilateral_triangle_from_center(center, corner) {
@@ -179,271 +89,6 @@ function create_shape(name, originPoint, secondPoint) {
     }[name](originPoint, secondPoint);
 }
 
-function is_left_button(e) {
-    return e.button === 0;
-}
-
-function is_right_button(e) {
-    return e.button === 2;
-}
-
-function mousedown_place_shape_here(e) {
-    if (!is_left_button(e)) return;
-    if (selectedElemId) {
-        app.post({
-            action: "deselect",
-            who: app.avatarId,
-            what: [selectedElemId]
-        });
-        selectedElemId = null;
-    }
-    mouseDownPos = event_to_world_coords(e);
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        pos: mouseDownPos,
-        animate: 'jump'
-    });
-    enter_state("adjust_shape");
-    set_lastMousePos(e);
-}
-
-var nextFreshElemId = 0;
-
-function gen_elem_id(tag) {
-    return `${app.avatarId}_${tag}${nextFreshElemId++}`;
-}
-
-// the first time this function is called, it's not actually "adjust", but "create"
-function mousemove_adjust_shape(e) {
-    const p = event_to_world_coords(e);
-    const d = p.distanceTo(mouseDownPos) + Avatar.pointerRadius;
-    const alpha = p.sub(mouseDownPos).angle();
-    const s = create_shape(activeTool, mouseDownPos, p);
-    const m = [{
-        action: "upd",
-        id: app.avatarId,
-        pos: mouseDownPos.add(Point.polar(d, alpha)),
-        pointer: alpha + Math.PI
-    }, s];
-    if (selectedElemId) {
-        s.action = 'upd';
-        s.id = selectedElemId;
-    } else {
-        s.action = 'new';
-        if (activeTool === 'rectangle') {
-            s.tag = 'rect';
-        } else {
-            s.tag = 'path';
-        }
-        s.id = gen_elem_id(s.tag);
-        // s.stroke = I("pick-stroke-color").style.backgroundColor;
-        s.fill = I("pick-fill-color").style.backgroundColor;
-        selectedElemId = s.id;
-        m.push({
-            action: "select",
-            who: app.avatarId,
-            what: [selectedElemId]
-        });
-    }
-    app.post(m);
-    set_lastMousePos(e);
-}
-
-function mousedown_begin_point_at(e) {
-    if (!is_left_button(e)) return;
-    mouseDownPos = event_to_world_coords(e);
-    mouseDownPosWithinAvatar = mouseDownPos.sub(app.myAvatar.pos);
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        pointer: mouseDownPosWithinAvatar.angle()
-    });
-    enter_state("point_at");
-    e.stopImmediatePropagation(); // don't let mapport start a map_move
-}
-
-function mousemove_point_at(e) {
-    const p = event_to_world_coords(e);
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        pos: p.sub(mouseDownPosWithinAvatar)
-    });
-    set_lastMousePos(e);
-}
-
-function shape_contextmenu(e) {
-    const elem = e.target;
-    log.event("right click on", elem);
-    e.preventDefault();
-    const clickedElemId = elem.getAttribute("id");
-    const previouslySelected = selectedElemId;
-    var m = [];
-
-    // in any case, deselect whatever's currently selected
-    if (previouslySelected) {
-        m.push({
-            action: "deselect",
-            who: app.avatarId,
-            what: [previouslySelected]
-        });
-        selectedElemId = null;
-    }
-
-    // if a different element than the previously selected one was clicked, select it,
-    // else only the above deselect is needed
-    if (previouslySelected !== clickedElemId) {
-        selectedElemId = clickedElemId;
-        const c = I(selectedElemId).getAttribute("fill");
-        if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
-        m.push({
-            action: "select",
-            who: app.avatarId,
-            what: [selectedElemId]
-        });
-    }
-
-    app.post(m);
-}
-
-function background_contextmenu(e) {
-    e.preventDefault();
-    if (selectedElemId) {
-        app.post({
-            action: "deselect",
-            who: app.avatarId,
-            what: [selectedElemId]
-        });
-        selectedElemId = null;
-    }
-    const c = I("BackgroundRect").getAttribute("fill");
-    if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
-}
-
-function set_corner_handle_cursor(name) {
-    const l = I("mainsvg").classList;
-    for (const c of l) {
-        if (c.startsWith("set_corner_handle_cursors_to_")) {
-            l.remove(c);
-        }
-    }
-    l.add("set_corner_handle_cursors_to_" + name);
-}
-
-var onadjustcorner = null;
-
-var mouseDownPosWithinHandle = null;
-
-var previousState = "default";
-var currentState = "default";
-
-// elem: DOM SVG element being edited
-// cornerPos: original world coordinates of the corner being edited
-// geomUpdater: function which takes a Point with the new corner coordinates
-//              and returns a JSON action to update elem
-function mousedown_corner_handle(elem, cornerPos, geomUpdater) {
-    return (e) => {
-        mouseDownPos = event_to_world_coords(e);
-        mouseDownPosWithinHandle = mouseDownPos.sub(cornerPos);
-        const alpha = mouseDownPosWithinHandle.angle();
-        const avatarOffset = Point.polar(Avatar.pointerRadius, alpha);
-        app.post({
-            action: "upd",
-            id: app.avatarId,
-            pos: mouseDownPos.add(avatarOffset),
-            animate: 'jump'
-        });
-        onadjustcorner = (e) => {
-            const p = event_to_world_coords(e);
-            app.post([{
-                action: "upd",
-                id: app.avatarId,
-                pos: p.add(avatarOffset),
-                pointer: alpha + Math.PI
-            }, geomUpdater(p.sub(mouseDownPosWithinHandle))]);
-        };
-        enter_state("adjust_corner");
-    };
-}
-
-function mousemove_adjust_corner(e) {
-    onadjustcorner(e);
-}
-
-function mouseup_adjust_corner_done(e) {
-    onadjustcorner = null;
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        pointer: "none"
-    });
-    enter_state(previousState);
-}
-
-function enter_state(name) {
-    previousState = currentState;
-    currentState = name;
-    switch (name) {
-    case "default":
-        I("mapport").onmousedown = mousedown_begin_map_move;
-        I("mapport").onmousemove = undefined;
-        I("mapport").onmouseup = undefined;
-        I("mapport").onwheel = wheel_zoom;
-        I("avatar-clickable").onmousedown = mousedown_begin_point_at;
-        set_cursor("default");
-        set_corner_handle_cursor("move");
-        break;
-    case "map_move":
-        I("mapport").onmousedown = undefined;
-        I("mapport").onmousemove = mousemove_map_move;
-        I("mapport").onmouseup = back_to_default_state;
-        I("mapport").onwheel = undefined;
-        I("avatar-clickable").onmousedown = undefined;
-        set_cursor("none");
-        set_corner_handle_cursor("none");
-        break;
-    case "place_shape":
-        I("mapport").onmousedown = mousedown_place_shape_here;
-        I("mapport").onmousemove = undefined;
-        I("mapport").onmouseup = undefined;
-        I("mapport").onwheel = wheel_zoom;
-        I("avatar-clickable").onmousedown = undefined;
-        set_cursor("crosshair");
-        set_corner_handle_cursor("move");
-        break;
-    case "adjust_shape":
-        I("mapport").onmousedown = undefined;
-        I("mapport").onmousemove = mousemove_adjust_shape;
-        I("mapport").onmouseup = mouseup_start_next_shape;
-        I("mapport").onwheel = undefined;
-        I("avatar-clickable").onmousedown = undefined;
-        set_cursor("none");
-        set_corner_handle_cursor("none");
-        break;
-    case "point_at":
-        I("mapport").onmousedown = undefined;
-        I("mapport").onmousemove = mousemove_point_at;
-        I("mapport").onmouseup = back_to_default_state;
-        I("mapport").onwheel = undefined;
-        I("avatar-clickable").onmousedown = undefined;
-        set_cursor("none");
-        set_corner_handle_cursor("none");
-        break;
-    case "adjust_corner":
-        I("mapport").onmousedown = undefined;
-        I("mapport").onmousemove = mousemove_adjust_corner;
-        I("mapport").onmouseup = mouseup_adjust_corner_done;
-        I("mapport").onwheel = undefined;
-        I("avatar-clickable").onmousedown = undefined;
-        set_cursor("none");
-        set_corner_handle_cursor("none");
-        break;
-    default:
-        throw name + " is not a state";
-    }
-}
-
 function expand_background() {
     const slack = 10;
     const x = -app.myAvatar.view.x / app.myAvatar.view.scale - slack;
@@ -456,8 +101,6 @@ function expand_background() {
     I("BackgroundRect").setAttribute("width", w);
     I("BackgroundRect").setAttribute("height", h);
 }
-
-var selectedElemId = null;
 
 function fatal(msg) {
     const d = document.createElement("div");
@@ -501,10 +144,24 @@ function init_color_picker() {
     }
 }
 
+function init_pointing_tool_icon() {
+    const s = I("pointing-tool-svg");
+    const c = s.children[0];
+    const x = parseFloat(c.getAttribute("cx"));
+    const y = parseFloat(c.getAttribute("cy"));
+    const r = parseFloat(c.getAttribute("r"));
+    const f = r / Avatar.radius;
+    const angle = - Math.PI / 4;
+    const t = isosceles_triangle(new Point(x, y), Avatar.pointerBaseWidth * f, angle, Avatar.pointerRadius * f);
+    t.setAttribute("fill", c.getAttribute("fill"));
+    s.appendChild(t);
+}
+
 function init() {
     if (peerjs.util.browser !== 'chrome') {
         fatal(`Only Chrome is supported!`);
     }
+    init_pointing_tool_icon();
     init_color_picker();
     init_avatar_picker();
     I("color_picker").style.display = 'none';
@@ -527,7 +184,6 @@ function init() {
     const worldJsonUrl = urlParams.get("worldJsonUrl");
 
     replace_node(initial_svg(), I("mainsvg"));
-    I("BackgroundRect").oncontextmenu = background_contextmenu;
 
     switch (mode) {
     case "server": {

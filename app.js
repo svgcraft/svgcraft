@@ -9,6 +9,12 @@ class App {
         this.avatarId = null;
 
         this.avatars = {};
+
+        this.nextFreshElemId = 0;
+    }
+
+    gen_elem_id(tag) {
+        return `${this.avatarId}_${tag}${this.nextFreshElemId++}`;
     }
 
     new_avatar0_command() {
@@ -32,7 +38,7 @@ class App {
         pending_avatar_update = null;
         app.myAvatar.g.children[0].setAttribute("id", "avatar-clickable"); // for pointer
         set_transform();
-        enter_state("default");
+        init_uievents();
     }
 
     get myAvatar() {
@@ -40,11 +46,13 @@ class App {
     }
 
     // actions is a list of JSON actions, or one single action
-    post(actions) {
+    post(actions, keepPrivate) {
         if (!Array.isArray(actions)) actions = [actions];
         process_json_actions(actions);
-        this.history.push(...actions);
-        this.publish(actions);
+        if (!keepPrivate) {
+            this.history.push(...actions);
+            this.publish(actions);
+        }
     }
 
     // actions is a list of JSON actions
