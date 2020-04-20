@@ -1,5 +1,6 @@
 body {
     background-color: #555;
+    touch-action: none;
 }
 
 #UpperPart {

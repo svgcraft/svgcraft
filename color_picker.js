@@ -159,17 +159,17 @@ const color_picker = (() => {
         // don't register it on s, but on window, so that when the user moves outside of s very fast,
         // the slider still goes all the way to the end of the bar
         // s.onmousemove = oncomponentmousemove;
-        window.addEventListener('mousemove', oncomponentmousemove);
-        window.addEventListener('mouseup', onmouseup);
+        window.addEventListener('pointermove', oncomponentmousemove);
+        window.addEventListener('pointerup', onmouseup);
         s.set_hsl = (h, s, l) => {
             hFrac = h;
             sFrac = s;
             lFrac = l;
             repaint();
         };
-        hHandle.onmousedown = onhandlemousedown(0);
-        sHandle.onmousedown = onhandlemousedown(1);
-        lHandle.onmousedown = onhandlemousedown(2);
+        hHandle.onpointerdown = onhandlemousedown(0);
+        sHandle.onpointerdown = onhandlemousedown(1);
+        lHandle.onpointerdown = onhandlemousedown(2);
         hBar.onclick = onbarclick(0);
         sBar.onclick = onbarclick(1);
         lBar.onclick = onbarclick(2);

@@ -2,7 +2,7 @@
 
 class Tool {
     constructor() {}
-    cursordown(e) {
+    pointerdown(e) {
         app.post({
             action: "upd",
             id: app.avatarId,
@@ -28,8 +28,8 @@ class NavigationTool extends Tool {
         this.last_clientX = null;
         this.last_clientY = null;
     }
-    cursordown(e) {
-        super.cursordown(e);
+    pointerdown(e) {
+        super.pointerdown(e);
         this.last_clientX = e.clientX;
         this.last_clientY = e.clientY;
     }
@@ -58,7 +58,7 @@ class PointingTool extends Tool {
         super();
         this.avatarPosBeforeLastJump = null;
     }
-    cursordown(e) {
+    pointerdown(e) {
         this.avatarPosBeforeLastJump = app.myAvatar.pos;
         app.post({
             action: "upd",
@@ -94,12 +94,12 @@ class PointingTool extends Tool {
 class ShapeTool extends Tool {
     constructor() {
         super();
-        // world coordinates of the last cursordown event
-        this.cursorDownPos = null;
+        // world coordinates of the last pointerdown event
+        this.pointerDownPos = null;
     }
-    cursordown(e) {
-        this.cursorDownPos = event_to_world_coords(e);
-        super.cursordown(e);
+    pointerdown(e) {
+        this.pointerDownPos = event_to_world_coords(e);
+        super.pointerdown(e);
     }
     first_drag(e) {
         const p = event_to_world_coords(e);
@@ -112,7 +112,7 @@ class ShapeTool extends Tool {
             selectedElemId = null;
         }
         this.move_avatar_to_shape_corner(p);
-        const s = create_shape(activeTool, this.cursorDownPos, p);
+        const s = create_shape(activeTool, this.pointerDownPos, p);
         s.action = 'new';
         if (activeTool === 'rectangle') {
             s.tag = 'rect';
@@ -133,7 +133,7 @@ class ShapeTool extends Tool {
     continue_drag(e) {
         const p = event_to_world_coords(e);
         this.move_avatar_to_shape_corner(p);
-        const s = create_shape(activeTool, this.cursorDownPos, p);
+        const s = create_shape(activeTool, this.pointerDownPos, p);
         s.action = 'upd';
         s.id = selectedElemId;
         app.post(s);
@@ -147,12 +147,12 @@ class ShapeTool extends Tool {
     }
     // "private"
     move_avatar_to_shape_corner(p) {
-        const d = p.distanceTo(this.cursorDownPos) + Avatar.pointerRadius;
-        const alpha = p.sub(this.cursorDownPos).angle();
+        const d = p.distanceTo(this.pointerDownPos) + Avatar.pointerRadius;
+        const alpha = p.sub(this.pointerDownPos).angle();
         app.post({
             action: "upd",
             id: app.avatarId,
-            pos: this.cursorDownPos.add(Point.polar(d, alpha)),
+            pos: this.pointerDownPos.add(Point.polar(d, alpha)),
             pointer: alpha + Math.PI
         });
     }
@@ -163,24 +163,24 @@ var activeTool = "navigation";
 
 var selectedElemId = null;
 
-// We use the term "cursor" to refer to the mouse pointer on desktop, and the finger on mobile/tablets
-class CursorEvents {
+// We use the term "pointer" to refer to the mouse pointer on desktop, and the finger on mobile/tablets
+class PointerEvents {
     constructor() {
         // This variable behaves like the following state machine:
         //
         //           v
-        //       +-> UP ----cursordown-----+
+        //       +-> UP ----pointerdown----+
         //       |    ^                    |
         //       |    |                    v
-        //       |    +-----cursorup----- DOWN
+        //       |    +-----pointerup---- DOWN
         //       |                         |
         //       |                         |
-        //     DRAGGING <----cursormove----+
+        //     DRAGGING <---pointermove----+
         //    ^        \
         //   /          \
-        //  +-cursormove-+
+        //  +-pointermove+
         //
-        this.cursorState = "UP";
+        this.pointerState = "UP";
         this.tools = {
             navigation: new NavigationTool(),
             pointing: new PointingTool(),
@@ -198,16 +198,16 @@ class CursorEvents {
         log.debug("draggee:", v);
         this._draggee = v;
     }
-    cursordown_on_map(e) {
-        this.tools[activeTool].cursordown(e);
+    pointerdown_on_map(e) {
+        this.tools[activeTool].pointerdown(e);
         this.draggee = "tool";
-        this.cursordown_common(e);
+        this.pointerdown_common(e);
     }
     // elem: DOM SVG element being edited
     // cornerPos: original world coordinates of the corner being edited
     // geomUpdater: function which takes a Point with the new corner coordinates
     //              and returns a JSON action to update elem
-    cursordown_on_corner_handle(elem, cornerPos, geomUpdater) {
+    pointerdown_on_corner_handle(elem, cornerPos, geomUpdater) {
         return (e) => {
             const p = event_to_world_coords(e);
             const mouseDownPosWithinHandle = p.sub(cornerPos);
@@ -229,23 +229,23 @@ class CursorEvents {
                 }, geomUpdater(p.sub(mouseDownPosWithinHandle))]);
             };
             this.draggee = "handle";
-            this.cursordown_common(e);
+            this.pointerdown_common(e);
             e.stopPropagation();
         };
     }
-    cursordown_common(e) {
-        this.cursorState = "DOWN";
+    pointerdown_common(e) {
+        this.pointerState = "DOWN";
         set_corner_handle_cursor("none");
         set_cursor("none");
     }
-    cursormove(e) {
-        if (this.cursorState === "UP") return; // mousedown happened somewhere else
+    pointermove(e) {
+        if (this.pointerState === "UP") return; // mousedown happened somewhere else
         switch (this.draggee) {
         case "tool":
-            switch (this.cursorState) {
+            switch (this.pointerState) {
             case "DOWN":
                 this.tools[activeTool].first_drag(e);
-                this.cursorState = "DRAGGING";
+                this.pointerState = "DRAGGING";
                 break;
             case "DRAGGING":
                 this.tools[activeTool].continue_drag(e);
@@ -257,8 +257,8 @@ class CursorEvents {
             break;
         }
     }
-    cursorup(e) {
-        if (this.cursorState === "UP") return; // mousedown happened somewhere else
+    pointerup(e) {
+        if (this.pointerState === "UP") return; // mousedown happened somewhere else
         switch (this.draggee) {
         case "tool":
             this.tools[activeTool].end_drag(e);
@@ -272,7 +272,7 @@ class CursorEvents {
             this.onadjustcorner = null;
             break;
         }
-        this.cursorState = "UP";
+        this.pointerState = "UP";
         set_cursor_for_active_tool();
         set_corner_handle_cursor("move");
     }
@@ -337,7 +337,6 @@ function toolbutton_click(e) {
 function shape_contextmenu(e) {
     const elem = e.target;
     log.event("right click on", elem);
-    e.preventDefault();
     const clickedElemId = elem.getAttribute("id");
     const previouslySelected = selectedElemId;
     var m = [];
@@ -369,7 +368,6 @@ function shape_contextmenu(e) {
 }
 
 function background_contextmenu(e) {
-    e.preventDefault();
     if (selectedElemId) {
         app.post({
             action: "deselect",
@@ -387,23 +385,27 @@ const MOUSEBUTTONS_LEFT = 1;
 var mousedown_corner_handle;
 
 function init_uievents() {
-    const eh = new CursorEvents();
-    I("mapport").onmousedown = (e) => {
+    const eh = new PointerEvents();
+    I("mapport").onpointerdown = (e) => {
         if (e.buttons !== MOUSEBUTTONS_LEFT) return;
-        eh.cursordown_on_map(e);
+        eh.pointerdown_on_map(e);
     };
-    window.addEventListener('mousemove', (e) => {
+    window.addEventListener('pointermove', (e) => {
         if (e.buttons !== MOUSEBUTTONS_LEFT) return;
-        eh.cursormove(e);
+        eh.pointermove(e);
     });
     // TODO what if multiple mouse buttons are pressed?
-    window.addEventListener('mouseup', (e) => {
-        eh.cursorup(e);
+    window.addEventListener('pointerup', (e) => {
+        eh.pointerup(e);
+    });
+    // never show the browser's context menu (also prevents the browser context menu on long taps)
+    window.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
     });
     I("mapport").onwheel = wheel_zoom;
     I("BackgroundRect").oncontextmenu = background_contextmenu;
     set_cursor_for_active_tool();
     set_corner_handle_cursor("move");
     mousedown_corner_handle =
-        (elem, cornerPos, geomUpdater) => eh.cursordown_on_corner_handle(elem, cornerPos, geomUpdater);
+        (elem, cornerPos, geomUpdater) => eh.pointerdown_on_corner_handle(elem, cornerPos, geomUpdater);
 }

@@ -183,7 +183,7 @@ function select_elem(who, elem) {
             const x = ps[i+1];
             const y = ps[i+2];
             const ch = corner_handle(x, y, app.avatars[who].color);
-            ch.onmousedown = mousedown_corner_handle(elem, new Point(x, y), (p) => {
+            ch.onpointerdown = mousedown_corner_handle(elem, new Point(x, y), (p) => {
                 const new_ps = elem.getAttribute("d").split(' ');
                 new_ps[i+1] = p.x.toFixed(1);
                 new_ps[i+2] = p.y.toFixed(1);
