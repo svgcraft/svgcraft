@@ -161,13 +161,15 @@ function init() {
     if (peerjs.util.browser !== 'chrome') {
         fatal(`Only Chrome is supported!`);
     }
+
+    for (const toolBtn of I("Tools").children) toolBtn.onclick = toolbutton_click;
     init_pointing_tool_icon();
     init_color_picker();
     init_avatar_picker();
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
     I("pick-fill-color").style.backgroundColor = "rgb(104, 212, 19)"; //`rgb(0, 182, 111)`;
-    for (const toolBtn of I("Tools").children) toolBtn.onclick = toolbutton_click;
+    I("save-button").onclick = savesvg;
 
     const urlParams = new URLSearchParams(window.location.search);
 

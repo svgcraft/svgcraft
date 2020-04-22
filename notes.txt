@@ -1,0 +1,3 @@
+Importing a newly added or modified js file in the developer console of an existing page without refreshing:
+
+var script = document.createElement('script'); script.src = './savesvg.js'; document.head.appendChild(script);
