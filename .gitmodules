@@ -1,0 +1,3 @@
+[submodule "gallery"]
+	path = gallery
+	url = git@github.com:svgcraft/gallery.git

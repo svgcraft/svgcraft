@@ -1,6 +1,13 @@
 body {
-    background-color: #555;
     touch-action: none;
+    font-family: monospace;
+}
+
+a:link, a:visited, a:hover, a:active {color: black;}
+
+.gallery-tile {
+    float: left;
+    margin: 15px;
 }
 
 #UpperPart {
@@ -17,6 +24,7 @@ body {
     left: 0;
     bottom: 0;
     right: 0;
+    background-color: #555;
 }
 
 .bsod {
