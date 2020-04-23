@@ -45,7 +45,7 @@ class Server extends App {
             conn.on('open', () => {
                 log.connection("Connection to " + conn.peer + " open");
                 this.clientConns[clientId] = conn;
-                conn.send(this.history);
+                for (const a of this.history) conn.send([a]);
                 this.post([this.new_client_avatar_command(clientIdNumber)]);
                 conn.send([{action: "your_id", id: clientId}]);
             });
