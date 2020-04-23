@@ -219,8 +219,10 @@ class PointerEvents {
                 pos: p.add(avatarOffset),
                 animate: 'jump'
             });
+            log.event('pointerdown_on_corner_handle setting onadjustcorner of', this);
             this.onadjustcorner = (e) => {
                 const p = event_to_world_coords(e);
+                log.event(this, 'onadjustcorner');
                 app.post([{
                     action: "upd",
                     id: app.avatarId,
@@ -382,21 +384,24 @@ function background_contextmenu(e) {
 
 const MOUSEBUTTONS_LEFT = 1;
 
-var mousedown_corner_handle;
+var pointerEventsHandler = new PointerEvents();
+
+function mousedown_corner_handle(elem, cornerPos, geomUpdater) {
+    return pointerEventsHandler.pointerdown_on_corner_handle(elem, cornerPos, geomUpdater);
+}
 
 function init_uievents() {
-    const eh = new PointerEvents();
     I("mapport").onpointerdown = (e) => {
         if (e.buttons !== MOUSEBUTTONS_LEFT) return;
-        eh.pointerdown_on_map(e);
+        pointerEventsHandler.pointerdown_on_map(e);
     };
     window.addEventListener('pointermove', (e) => {
         if (e.buttons !== MOUSEBUTTONS_LEFT) return;
-        eh.pointermove(e);
+        pointerEventsHandler.pointermove(e);
     });
     // TODO what if multiple mouse buttons are pressed?
     window.addEventListener('pointerup', (e) => {
-        eh.pointerup(e);
+        pointerEventsHandler.pointerup(e);
     });
     // never show the browser's context menu (also prevents the browser context menu on long taps)
     window.addEventListener('contextmenu', (e) => {
@@ -406,6 +411,4 @@ function init_uievents() {
     I("BackgroundRect").oncontextmenu = background_contextmenu;
     set_cursor_for_active_tool();
     set_corner_handle_cursor("move");
-    mousedown_corner_handle =
-        (elem, cornerPos, geomUpdater) => eh.pointerdown_on_corner_handle(elem, cornerPos, geomUpdater);
 }
