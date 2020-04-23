@@ -219,10 +219,8 @@ class PointerEvents {
                 pos: p.add(avatarOffset),
                 animate: 'jump'
             });
-            log.event('pointerdown_on_corner_handle setting onadjustcorner of', this);
             this.onadjustcorner = (e) => {
                 const p = event_to_world_coords(e);
-                log.event(this, 'onadjustcorner');
                 app.post([{
                     action: "upd",
                     id: app.avatarId,
@@ -338,7 +336,6 @@ function toolbutton_click(e) {
 
 function shape_contextmenu(e) {
     const elem = e.target;
-    log.event("right click on", elem);
     const clickedElemId = elem.getAttribute("id");
     const previouslySelected = selectedElemId;
     var m = [];
