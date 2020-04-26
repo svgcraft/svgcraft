@@ -406,6 +406,7 @@ function init_uievents() {
     });
     I("mapport").onwheel = wheel_zoom;
     I("BackgroundRect").oncontextmenu = background_contextmenu;
+    window.addEventListener('resize', expand_background);
     set_cursor_for_active_tool();
     set_corner_handle_cursor("move");
 }
