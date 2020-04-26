@@ -28,7 +28,7 @@
 
       function link(mode, world, serverId) {
           var url = `${window.location.protocol}//${window.location.host}/svgcraft.html?mode=${mode}`;
-          if (world != null) url += `&worldJsonUrl=${world}.json`;
+          if (world != null) url += `&worldUrl=${world}.json`;
           if (serverId != null) url += `&serverId=${serverId}`;
           return `<a href=${url}>${url}</a>`;
       }

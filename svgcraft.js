@@ -210,7 +210,7 @@ function init() {
     }
 
     const mode = urlParams.get("mode");
-    const worldJsonUrl = urlParams.get("worldJsonUrl");
+    const worldUrl = urlParams.get("worldUrl");
 
     replace_node(initial_svg(), I("mainsvg"));
 
@@ -218,8 +218,8 @@ function init() {
     case "server": {
         const serverId = urlParams.get("serverId");
         if (!serverId) fatal("No serverId");
-        if (!worldJsonUrl) fatal("No worldJsonUrl");
-        app = new Server(serverId, worldJsonUrl);
+        if (!worldUrl) fatal("No worldUrl");
+        app = new Server(serverId, worldUrl);
         break;
     }
     case "client": {
@@ -229,8 +229,8 @@ function init() {
         break;
     }
     case "solo": {
-        if (!worldJsonUrl) fatal("No worldJsonUrl");
-        app = new Solo(worldJsonUrl);
+        if (!worldUrl) fatal("No worldUrl");
+        app = new Solo(worldUrl);
         break;
     }
     default: {

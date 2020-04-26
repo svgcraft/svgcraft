@@ -2,16 +2,14 @@
 
 class Solo extends App {
 
-    constructor(worldJsonUrl) {
+    constructor(worldUrl) {
         super();
-        this.worldJsonUrl = worldJsonUrl;
+        this.worldUrl = worldUrl;
         this.avatarId = "avatar0";
     }
 
     init() {
-        fetch(this.worldJsonUrl)
-            .then(res => res.json())
-            .then((j) => this.init_with_json(j));
+        this.init_from_worldUrl();
     }
 
     init_with_json(j) {

@@ -86,11 +86,17 @@ function new_avatar(j) {
     if (app.avatars[j.id]) throw `${j.id} already exists`;
     const a = new Avatar(j.id);
     app.avatars[j.id] = a;
-    const c = svg("circle", {cx: a.pos.x, cy: a.pos.y, r: Avatar.radius, fill: a.color});
+    const c = svg("circle", {cx: 0, cy: 0, r: Avatar.radius, fill: a.color});
     const g = svg("g", {"id": j.id, "class": "avatar"}, [c]);
     I("mainsvg").appendChild(g);
     add_emoji_to_avatar(a);
     upd_avatar(a, j);
+}
+
+function floatify_attrs(o, attrs) {
+    for (const attr of attrs) {
+        o[attr] = parseFloat(o[attr]);
+    }
 }
 
 function upd_avatar(a, j) {
@@ -107,6 +113,20 @@ function upd_avatar(a, j) {
         transfer_attrs_to_obj(j.view, ["x", "y", "scale"], a.view);
         if (app.myAvatar && a.id === app.myAvatar.id) {
             set_transform();
+        }
+    }
+    if (j.viewBox) {
+        floatify_attrs(j.viewBox, ['x', 'y', 'width', 'height']);
+        if (app.myAvatar && a.id === app.myAvatar.id) {
+            const rect = I("mapport").getBoundingClientRect();
+            a.view.scale = Math.min(rect.width / j.viewBox.width, rect.height / j.viewBox.height);
+            a.view.x = (- j.viewBox.x + (rect.width / a.view.scale - j.viewBox.width) / 2) * a.view.scale;
+            a.view.y = (- j.viewBox.y + (rect.height / a.view.scale - j.viewBox.height) / 2) * a.view.scale;
+            set_transform();
+        } else {
+            a.view.x = j.viewBox.x;
+            a.view.y = j.viewBox.y;
+            // can't set a.view.scale because we don't know other user's screen dimensions
         }
     }
     if (j.pos) {

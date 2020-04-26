@@ -7,18 +7,16 @@
 
 class Server extends App {
 
-    constructor(serverId, worldJsonUrl) {
+    constructor(serverId, worldUrl) {
         super();
         this.serverId = serverId;
-        this.worldJsonUrl = worldJsonUrl;
+        this.worldUrl = worldUrl;
         this.avatarId = "avatar0";
         this.clientConns = {}; // maps clientId to PeerJS connection
     }
 
     init() {
-        fetch(this.worldJsonUrl)
-            .then(res => res.json())
-            .then((j) => this.init_with_json(j));
+        this.init_from_worldUrl();
     }
 
     init_with_json(j) {

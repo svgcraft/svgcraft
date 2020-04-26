@@ -1,5 +1,10 @@
 "use strict";
 
+// drops folder path and file extension
+function path2filename(p) {
+    return p.substring(p.lastIndexOf('/')+1, p.lastIndexOf('.'));
+}
+
 class App {
     constructor() {
         // ever growing list of JSON actions
@@ -11,6 +16,28 @@ class App {
         this.avatars = {};
 
         this.nextFreshElemId = 0;
+    }
+
+    init_from_worldUrl() {
+        if (this.worldUrl.endsWith('.json')) {
+            fetch(this.worldUrl)
+                .then(res => res.json())
+                .then((j) => this.init_with_json(j));
+        } else if (this.worldUrl.endsWith('.svg')) {
+            const title = path2filename(this.worldUrl);
+            fetch(this.worldUrl)
+                .then(res => res.text())
+                .then(s => this.init_with_xml_str(s, title));
+        } else {
+            throw 'unknown file extension';
+        }
+    }
+
+    init_with_xml_str(s, title) {
+        const dom = (new DOMParser()).parseFromString(s, "text/xml");
+        const j = svg2json(dom);
+        j.push({action: "upd", "id": "document", "title": title});
+        this.init_with_json(j);
     }
 
     gen_elem_id(tag) {
