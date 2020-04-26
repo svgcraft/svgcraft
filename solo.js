@@ -15,6 +15,7 @@ class Solo extends App {
     }
 
     init_with_json(j) {
+        j.unshift({action: "new", tag: "avatar", id: "avatar0"});
         this.history = j;
         process_json_actions(j);
         this.finish_init();

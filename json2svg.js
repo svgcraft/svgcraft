@@ -90,6 +90,7 @@ function new_avatar(j) {
     const g = svg("g", {"id": j.id, "class": "avatar"}, [c]);
     I("mainsvg").appendChild(g);
     add_emoji_to_avatar(a);
+    j.pos = j.pos || {x: 3 * Avatar.radius, y: 3 * Avatar.radius};
     upd_avatar(a, j);
 }
 
