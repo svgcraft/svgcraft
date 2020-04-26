@@ -172,14 +172,22 @@ function select_elem(who, elem) {
         const w = parseFloat(elem.getAttribute("width"));
         const h = parseFloat(elem.getAttribute("height"));
         const corners = [{x: x, y: y}, {x: x+w, y: y}, {x: x+w, y: y+h}, {x: x, y: y+h}];
-        for (const c of corners) {
-            g.appendChild(corner_handle(c.x, c.y, app.avatars[who].color));
+        for (let i = 0; i < 4; i++) {
+            const c = corners[i];
+            const o = corners[(i+2)%4];
+            const ch = corner_handle(c.x, c.y, app.avatars[who].color);
+            ch.onpointerdown = mousedown_corner_handle(elem, new Point(c.x, c.y), (p) => {
+                const j = rectangle(o, p);
+                j.action = "upd";
+                j.id = elem.getAttribute("id");
+                return j;
+            });
+            g.appendChild(ch);
         }
         break;
     case "path":
         const ps = elem.getAttribute("d").split(' ');
-        for (var vari = 0; vari < ps.length - 1; vari += 3) { // TODO this only works for M and L ended by z
-            const i = vari; // to make sure it's captured as expected by closure below
+        for (let i = 0; i < ps.length - 1; i += 3) { // TODO this only works for M and L ended by z
             const x = ps[i+1];
             const y = ps[i+2];
             const ch = corner_handle(x, y, app.avatars[who].color);
