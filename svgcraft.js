@@ -128,6 +128,32 @@ function rgbStr_to_rgbArr(s, fallback) {
     }
 }
 
+function is_selected_by_others(eId) {
+    for (const g of I("OtherHandles").children) {
+        const idparts = g.getAttribute("id").split("__");
+        if (idparts[1] !== "select") throw "unexpected id format";
+        if (idparts[0] === eId) return true;
+    }
+    return false;
+}
+
+function delete_selectedElem() {
+    if (selectedElemId) {
+        if (is_selected_by_others(selectedElemId)) {
+            // This is simpler and friendlier than having to force other users do deselect
+            alert("Someone else might be editing this element, please ask everyone to deselect it before deleting it");
+        } else {
+            app.post([
+                {action: "deselect", who: app.avatarId, what: [selectedElemId]},
+                {action: "del", id: selectedElemId}
+            ]);
+            selectedElemId = null;
+        }
+    } else {
+        alert("To delete an element, please first right-click it to select it!");
+    }
+}
+
 function init_color_picker() {
     const p = color_picker.create();
     p.oncolorchange = (colorstr) => {
@@ -169,6 +195,7 @@ function init() {
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
     I("pick-fill-color").style.backgroundColor = "rgb(104, 212, 19)"; //`rgb(0, 182, 111)`;
+    I("delete-button").onclick = delete_selectedElem;
     I("save-button").onclick = savesvg;
 
     const urlParams = new URLSearchParams(window.location.search);

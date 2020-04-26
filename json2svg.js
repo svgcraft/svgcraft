@@ -259,7 +259,12 @@ function process_json_action(j) {
             I(j.id).remove();
             delete app.avatars[j.id];
         } else {
-            throw `Deleting ${j.id} not supported (yet)`;
+            const e = I(j.id);
+            if (e && e !== I("EditableElements") && I("EditableElements").contains(e)) {
+                e.remove();
+            } else {
+                throw `${j.id} is not an editable element`;
+            }
         }
         break;
     case "your_id":

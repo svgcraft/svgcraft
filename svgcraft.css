@@ -82,6 +82,11 @@ a:link, a:visited, a:hover, a:active {color: black;}
     float: left;
 }
 
+.ToolGroup {
+    margin-right: 20px;
+    display: inline-block; /* to make div adapt to size of its floating children */
+}
+
 .ToolButton.ActiveTool {
     background-color: #ddd;
 }
