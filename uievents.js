@@ -72,7 +72,7 @@ class PointingTool extends Tool {
             action: "upd",
             id: app.avatarId,
             pos: event_to_world_coords(e),
-            pointer:  event_to_world_coords(e).sub(this.avatarPosBeforeLastJump).angle()
+            pointer: event_to_world_coords(e).sub(this.avatarPosBeforeLastJump).angle() / Math.PI * 180
         });
     }
     continue_drag(e) {
@@ -153,7 +153,7 @@ class ShapeTool extends Tool {
             action: "upd",
             id: app.avatarId,
             pos: this.pointerDownPos.add(Point.polar(d, alpha)),
-            pointer: alpha + Math.PI
+            pointer: alpha / Math.PI * 180 + 180
         });
     }
 }
@@ -225,7 +225,7 @@ class PointerEvents {
                     action: "upd",
                     id: app.avatarId,
                     pos: p.add(avatarOffset),
-                    pointer: alpha + Math.PI
+                    pointer: alpha / Math.PI * 180 + 180
                 }, geomUpdater(p.sub(mouseDownPosWithinHandle))]);
             };
             this.draggee = "handle";

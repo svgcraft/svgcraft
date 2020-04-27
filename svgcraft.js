@@ -203,7 +203,7 @@ function init() {
     if (urlParams.has("avatarHue") && urlParams.has("avatarEmoji")) {
         pending_avatar_update = {
             action: "upd",
-            hue: urlParams.get("avatarHue"),
+            hue: parseInt(urlParams.get("avatarHue")),
             emojiUtf: urlParams.get("avatarEmoji")
         };
         I("avatar_picker").style.display = 'none';

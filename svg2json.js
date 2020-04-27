@@ -1,12 +1,14 @@
 "use strict";
 
+const numeric_attrs = ["cx", "cy", "r", "rx", "ry", "x", "y", "width", "height"];
+
 function shallow_dom2json(dom) {
     const j = {
         action: "new",
         tag: dom.tagName
     };
     for (const attr of dom.attributes) {
-        j[attr.name] = attr.value;
+        j[attr.name] = numeric_attrs.includes(attr.name) ? parseFloat(attr.value) : attr.value;
     }
     return j;
 }

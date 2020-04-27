@@ -138,7 +138,8 @@ function upd_avatar(a, j) {
             const angle = parseFloat(j.pointer);
             if (isNaN(angle)) throw `${angle} is not a number`;
             // coordinates are relative to a.pos because it will be put inside a.g
-            const t = isosceles_triangle(Point.zero(), Avatar.pointerBaseWidth, angle, Avatar.pointerRadius);
+            const t = isosceles_triangle(Point.zero(), Avatar.pointerBaseWidth,
+                                         angle/180*Math.PI, Avatar.pointerRadius);
             t.setAttribute("fill", a.color);
             t.setAttribute("class", "avatar-pointer");
             a.g.prepend(t);
@@ -244,8 +245,31 @@ function update_select_handles(elem) {
     }
 }
 
+const rounding_blacklist = ['scale'];
+
+function round_path(s) {
+    return s.split(' ').map(e => (isNaN(e) ? e : Math.round(e))).join(' ');
+}
+
+function round_numbers(j) {
+    // works for both lists and objects
+    for (let [key, value] of Object.entries(j)) {
+        if (rounding_blacklist.includes(key)) continue;
+        if (typeof(value) === 'number') {
+            j[key] = Math.round(value);
+        } else if (typeof(value) === 'object') {
+            round_numbers(value);
+        } else if (key === 'd') {
+            j[key] = round_path(value);
+        } else if (typeof(value) === 'string' && !isNaN(value)) {
+            log.numbers(`${value} is suspicious: looks like a number, but is a string`);
+        }
+    }
+}
+
 function process_json_action(j) {
     log.debug("processing", j);
+    round_numbers(j);
     check_field(j, "action");
     switch (j.action) {
     case "upd":
