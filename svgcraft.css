@@ -8,6 +8,19 @@ a:link, a:visited, a:hover, a:active {color: black;}
 .gallery-tile {
     float: left;
     margin: 15px;
+    border: 1px solid #ddd;
+    padding: 6px;
+}
+
+.gallery:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.gallery img{
+    /* avoid extra whitespace under image */
+    display: block;
 }
 
 #UpperPart {
