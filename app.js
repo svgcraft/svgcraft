@@ -45,7 +45,12 @@ class App {
     }
 
     gen_elem_id(tag) {
-        return `${this.avatarId}_${tag}${this.nextFreshElemId++}`;
+        // note: in previous editing sessions, some ids might already have been taken!
+        var cand;
+        do {
+            cand = `${this.avatarId}_${tag}${this.nextFreshElemId++}`;
+        } while (I(cand));
+        return cand;
     }
 
     // init should not be called by constructor.
