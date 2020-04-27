@@ -91,14 +91,13 @@ class Server extends App {
     }
 
     new_client_avatar_command(clientIdNumber) {
-        const c = this.new_avatar0_command();
         const shiftX = Avatar.radius * 4 * clientIdNumber;
         return {
             action: "new",
             tag: "avatar",
             id: `avatar${clientIdNumber}`,
-            pos: {x: c.pos.x - shiftX, y: c.pos.y},
-            view: {x: c.view.x + shiftX, y: c.view.y, scale: c.view.scale}
+            pos: {x: this.initialPos.x - shiftX, y: this.initialPos.y},
+            view: {x: this.initialView.x + shiftX, y: this.initialView.y, scale: this.initialView.scale}
         };
     }
 

@@ -16,6 +16,10 @@ class App {
         this.avatars = {};
 
         this.nextFreshElemId = 0;
+
+        // initialized when the first json action containing this data is processed
+        this.initialView = null; // x, y, scale
+        this.initialPos = null; // x, y
     }
 
     init_from_worldUrl() {
@@ -42,12 +46,6 @@ class App {
 
     gen_elem_id(tag) {
         return `${this.avatarId}_${tag}${this.nextFreshElemId++}`;
-    }
-
-    new_avatar0_command() {
-        for (const c of this.history) {
-            if (c.action === "new" && c.id === "avatar0") return c;
-        }
     }
 
     // init should not be called by constructor.

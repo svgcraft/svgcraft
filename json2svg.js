@@ -12,8 +12,6 @@ const tag_types = {
     pattern: ["id", "x", "y", "width", "height"].concat(style_attrs)
 }
 
-const initialView = {x: 0, y: 0, scale: 1.0}
-
 function check_field(j, fieldName) {
     if (!j[fieldName]) throw `Field "${fieldName}" is missing`;
 }
@@ -112,6 +110,7 @@ function upd_avatar(a, j) {
     if (j.view) {
         transfer_attrs_to_obj(j.view, ["x", "y", "scale"], a.view);
         if (app.myAvatar && a.id === app.myAvatar.id) {
+            app.initialView = app.initialView || a.view;
             set_transform();
         }
     }
@@ -122,6 +121,7 @@ function upd_avatar(a, j) {
             a.view.scale = Math.min(rect.width / j.viewBox.width, rect.height / j.viewBox.height);
             a.view.x = (- j.viewBox.x + (rect.width / a.view.scale - j.viewBox.width) / 2) * a.view.scale;
             a.view.y = (- j.viewBox.y + (rect.height / a.view.scale - j.viewBox.height) / 2) * a.view.scale;
+            app.initialView = app.initialView || a.view;
             set_transform();
         } else {
             a.view.x = j.viewBox.x;
@@ -130,6 +130,7 @@ function upd_avatar(a, j) {
         }
     }
     if (j.pos) {
+        app.initialPos = app.initialPos || j.pos;
         avatar_go_to(a, new Point(j.pos.x, j.pos.y), j.animate);
     }
     if (j.pointer !== null && j.pointer !== undefined) {
