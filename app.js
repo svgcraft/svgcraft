@@ -66,7 +66,6 @@ class App {
             this.post(pending_avatar_update);
         }
         pending_avatar_update = null;
-        app.myAvatar.g.children[0].setAttribute("id", "avatar-clickable"); // for pointer
         set_transform();
         init_uievents();
     }
