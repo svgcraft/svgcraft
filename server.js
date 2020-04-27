@@ -97,7 +97,9 @@ class Server extends App {
             tag: "avatar",
             id: `avatar${clientIdNumber}`,
             pos: {x: this.initialPos.x - shiftX, y: this.initialPos.y},
-            view: {x: this.initialView.x + shiftX, y: this.initialView.y, scale: this.initialView.scale}
+            view: {x: this.initialView.x + shiftX * this.initialView.scale,
+                   y: this.initialView.y,
+                   scale: this.initialView.scale}
         };
     }
 
