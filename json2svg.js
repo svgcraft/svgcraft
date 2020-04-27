@@ -103,7 +103,7 @@ function upd_avatar(a, j) {
         a.emojiUtf = j.emojiUtf;
         a.g.children[1].setAttributeNS('http://www.w3.org/1999/xlink', 'href', a.emojiUrl);
     }
-    if (j.hue) {
+    if (j.hue !== null & j.hue !== undefined) {
         a.hue = j.hue;
         a.g.children[0].setAttribute("fill", a.color);
     }
