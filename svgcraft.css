@@ -1,6 +1,9 @@
 body {
-    touch-action: none;
     font-family: monospace;
+}
+
+.disable-touch-action {
+    touch-action: none;
 }
 
 a:link, a:visited, a:hover, a:active {color: black;}
