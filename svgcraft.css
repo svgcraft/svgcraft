@@ -21,7 +21,8 @@ a:link, a:visited, a:hover, a:active {color: black;}
   clear: both;
 }
 
-.gallery img{
+.gallery img {
+    height: 300px;
     /* avoid extra whitespace under image */
     display: block;
 }
