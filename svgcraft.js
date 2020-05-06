@@ -91,10 +91,10 @@ function create_shape(name, originPoint, secondPoint) {
 
 function expand_background() {
     const slack = 10;
-    const x = -app.myAvatar.view.x / app.myAvatar.view.scale - slack;
-    const y = -app.myAvatar.view.y / app.myAvatar.view.scale - slack;
-    const w = (I("mapport").clientWidth - app.myAvatar.view.x) / app.myAvatar.view.scale + 2 * slack - x;
-    const h = (I("mapport").clientHeight - app.myAvatar.view.y) / app.myAvatar.view.scale + 2 * slack - y;
+    const x = Math.round(-app.myAvatar.view.x / app.myAvatar.view.scale - slack);
+    const y = Math.round(-app.myAvatar.view.y / app.myAvatar.view.scale - slack);
+    const w = Math.round((I("mapport").clientWidth - app.myAvatar.view.x) / app.myAvatar.view.scale + 2 * slack - x);
+    const h = Math.round((I("mapport").clientHeight - app.myAvatar.view.y) / app.myAvatar.view.scale + 2 * slack - y);
     // TODO only do this if rect needs to grow, test if faster
     I("BackgroundRect").setAttribute("x", x);
     I("BackgroundRect").setAttribute("y", y);
