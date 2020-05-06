@@ -15,6 +15,30 @@ a:link, a:visited, a:hover, a:active {color: black;}
     padding: 6px;
 }
 
+.open-file-tile {
+    float: left;
+    margin: 15px;
+    border: 1px solid #ddd;
+    padding: 6px;
+    cursor: pointer;
+    height: 300px;
+    width: 300px;
+    text-align: center;
+    display: table;
+}
+
+.open-file-link {
+    display: table-cell;
+    vertical-align: middle;
+    width: 250px;
+    height: 250px;
+    text-decoration: none;
+}
+
+#file-picker {
+    display: none;
+}
+
 .gallery:after {
   content: "";
   display: table;

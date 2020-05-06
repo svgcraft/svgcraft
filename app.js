@@ -23,7 +23,19 @@ class App {
     }
 
     init_from_worldUrl() {
-        if (this.worldUrl.endsWith('.json')) {
+        if (this.worldUrl === 'localfile') {
+            I("file-picker").onchange = () => {
+                const file = I("file-picker").files[0];
+                const title = path2filename(file.name);
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const s = e.target.result;
+                    this.init_with_xml_str(s, title);
+                };
+                reader.readAsText(file);
+            };
+            I("file-picker").click();
+        } else if (this.worldUrl.endsWith('.json')) {
             fetch(this.worldUrl)
                 .then(res => res.json())
                 .then((j) => this.init_with_json(j));
