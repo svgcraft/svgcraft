@@ -217,7 +217,6 @@ function init() {
     switch (mode) {
     case "server": {
         const serverId = urlParams.get("serverId");
-        if (!serverId) fatal("No serverId");
         if (!worldUrl) fatal("No worldUrl");
         app = new Server(serverId, worldUrl);
         break;

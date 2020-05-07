@@ -5,6 +5,10 @@
 // - svgcraft server (this file)
 // - peerjs server used to establish p2p connections
 
+function make_client_link(serverId) {
+    return `${window.location.protocol}//${window.location.host}/svgcraft.html?mode=client&serverId=${serverId}`;
+}
+
 class Server extends App {
 
     constructor(serverId, worldUrl) {
@@ -27,6 +31,8 @@ class Server extends App {
 
         peer.on('open', (id) => {
             log.connection("PeerJS server gave us ID " + id);
+            this.serverId = id;
+            log.connection("Client link to share:", make_client_link(this.serverId));
             log.connection("Waiting for peers to connect");
             this.finish_init();
         });

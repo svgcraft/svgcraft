@@ -6,13 +6,15 @@
     <link rel="stylesheet" href="./svgcraft.css"/>
     <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
     <script>
+      var mode;
+
       function add_links() {
           for (const tile of document.getElementsByClassName('gallery-tile')) {
               const a = document.createElement('a');
               const img = tile.children[0];
               a.appendChild(img);
               tile.appendChild(a);
-              a.setAttribute('href', './svgcraft.html?mode=solo&worldUrl=' + img.getAttribute('src'));
+              a.setAttribute('href', `./svgcraft.html?mode=${mode}&worldUrl=${img.getAttribute('src')}`);
           }
       }
 
@@ -24,13 +26,14 @@
               reader.onload = (e) => {
                   const data = encodeURIComponent(e.target.result);
                   const worldUrl = encodeURIComponent('LOCAL/' + file.name);
-                  window.location = `./svgcraft.html?mode=solo&worldUrl=${worldUrl}&data=${data}`;
+                  window.location = `./svgcraft.html?mode=${mode}&worldUrl=${worldUrl}&data=${data}`;
               };
               reader.readAsDataURL(file);
           };
       }
 
       window.onload = () => {
+          mode = new URLSearchParams(window.location.search).get('mode') || 'solo';
           add_links();
           init_file_picker();
       };
