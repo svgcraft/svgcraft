@@ -33,6 +33,7 @@ a:link, a:visited, a:hover, a:active {color: black;}
     width: 250px;
     height: 250px;
     text-decoration: none;
+    cursor: pointer;
 }
 
 #file-picker {

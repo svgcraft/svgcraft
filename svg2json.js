@@ -1,6 +1,6 @@
 "use strict";
 
-const numeric_attrs = ["cx", "cy", "r", "rx", "ry", "x", "y", "width", "height"];
+const numeric_attrs = ["cx", "cy", "r", "rx", "ry", "x", "y", "width", "height", "stroke-width", "fill-opacity"];
 
 function shallow_dom2json(dom) {
     const j = {

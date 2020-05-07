@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="./svgcraft.css"/>
     <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
     <script>
-      window.onload = () => {
+      function add_links() {
           for (const tile of document.getElementsByClassName('gallery-tile')) {
               const a = document.createElement('a');
               const img = tile.children[0];
@@ -15,6 +15,28 @@
               a.setAttribute('href', './svgcraft.html?mode=solo&worldUrl=' + img.getAttribute('src'));
           }
       }
+
+      function init_file_picker() {
+          document.getElementById("file-picker").onchange = (e) => {
+              const file = e.target.files[0];
+              //file.name
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                  const data = encodeURIComponent(e.target.result);
+                  const worldUrl = encodeURIComponent('LOCAL/' + file.name);
+                  window.location = `./svgcraft.html?mode=solo&worldUrl=${worldUrl}&data=${data}`;
+              };
+              reader.readAsDataURL(file);
+          };
+      }
+
+      window.onload = () => {
+          add_links();
+          init_file_picker();
+      };
+
+      //<a class="open-file-link" href="./svgcraft.html?mode=solo&worldUrl=localfile">Click here to open<br/>a local SVG file</a>
+
     </script>
   </head>
 
@@ -42,7 +64,8 @@
 
     <div class="gallery">
       <div class="open-file-tile">
-        <a class="open-file-link" href="./svgcraft.html?mode=solo&worldUrl=localfile">Click here to open<br/>a local SVG file</a>
+        <label class="open-file-link" for="file-picker">Click here to open<br/>a local SVG file</label>
+        <input type="file" id="file-picker" accept=".svg">
       </div>
     </div>
 
