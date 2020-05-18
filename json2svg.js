@@ -22,13 +22,13 @@ function check_fields(j, fieldNames) {
 
 function transfer_attrs_to_dom(j, attrs, target) {
     for (const attr of attrs) {
-        if (j[attr]) target.setAttribute(attr, j[attr]);
+        if (j[attr] !== undefined) target.setAttribute(attr, j[attr]);
     }
 }
 
 function transfer_attrs_to_obj(j, attrs, target) {
     for (const attr of attrs) {
-        if (j[attr]) target[attr] = j[attr];
+        if (j[attr] !== undefined) target[attr] = j[attr];
     }
 }
 
