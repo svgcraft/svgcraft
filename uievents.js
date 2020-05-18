@@ -198,7 +198,7 @@ class BlobTool extends Tool {
         const p = event_to_world_coords(e);
         this.move_avatar_to_shape_corner(p);
         this.allPoints.push(p);
-        const s = points_to_path(this.allPoints);
+        const s = points_to_path(this.filter_points());
         s.action = 'upd';
         s.id = selectedElemId;
         console.log(this.allPoints);
@@ -213,6 +213,45 @@ class BlobTool extends Tool {
         this.allPoints = null;
     }
     // "private"
+    // removes points which are old && useless from allPoints, and returns an
+    // even more filtered list where all useless points were removed
+    filter_points() {
+        const keep = Array(this.allPoints.length).fill(true);
+        var best = null;
+        do {
+            best = null;
+            var lowestDist = handle_radius(); // don't remove points with a dist larger than this
+            var prev = 0; // point 0 is always kept
+            var cur = 1;
+            while (cur < this.allPoints.length && !keep[cur]) cur++;
+            var next = cur + 1;
+            while (next < this.allPoints.length && !keep[next]) next++;
+            while (next < this.allPoints.length) {
+                // prev,cur,next are three points with keep[..] == true
+                const dist = dist_from_line(this.allPoints[cur], this.allPoints[prev], this.allPoints[next]);
+                if (dist < lowestDist) {
+                    lowestDist = dist;
+                    best = cur;
+                }
+                prev = cur;
+                cur = next;
+                do { next++; } while (next < this.allPoints.length && !keep[next]);
+            }
+            if (best !== null) keep[best] = false;
+        } while (best !== null);
+        const res = [];
+        const upd = [];
+        for (let i = 0; i < this.allPoints.length; i++) {
+            if (keep[i] || this.allPoints.length - i <= 100) { // keep last 100 points no matter what
+                upd.push(this.allPoints[i]);
+            }
+            if (keep[i]) {
+                res.push(this.allPoints[i]);
+            }
+        }
+        this.allPoints = upd;
+        return res;
+    }
     move_avatar_to_shape_corner(p) {
         // last point might be too noisy, go back a bit further:
         let i = this.allPoints.length-1;

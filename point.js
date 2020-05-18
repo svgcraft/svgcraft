@@ -50,3 +50,9 @@ class Point {
         return {x: this.x, y: this.y};
     }
 }
+
+// distance of c from the line defined by a and b
+function dist_from_line(c, a, b) {
+    const lambda = a.sub(c).dot(a.sub(b)) / a.sub(b).dot(a.sub(b));
+    return a.sub(c).add(b.sub(a).scale(lambda)).norm();
+}
