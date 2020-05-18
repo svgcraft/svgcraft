@@ -377,7 +377,7 @@ class PointerEvents {
         if (this.pointerState === "UP") return; // mousedown happened somewhere else
         switch (this.draggee) {
         case "tool":
-            this.tools[activeTool].end_drag(e);
+            if (this.pointerState === "DRAGGING") this.tools[activeTool].end_drag(e);
             break;
         case "handle":
             app.post({
