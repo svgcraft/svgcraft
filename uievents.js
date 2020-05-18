@@ -158,6 +158,77 @@ class ShapeTool extends Tool {
     }
 }
 
+// TODO merge with ShapeTool
+class BlobTool extends Tool {
+    constructor() {
+        super();
+        this.allPoints = null;
+    }
+    pointerdown(e) {
+        this.allPoints = [event_to_world_coords(e)];
+        super.pointerdown(e);
+    }
+    first_drag(e) {
+        const p = event_to_world_coords(e);
+        if (selectedElemId) {
+            app.post({
+                action: "deselect",
+                who: app.avatarId,
+                what: [selectedElemId]
+            });
+            selectedElemId = null;
+        }
+        this.move_avatar_to_shape_corner(p);
+        this.allPoints.push(p);
+        const s = points_to_path(this.allPoints);
+        s.action = 'new';
+        s.tag = 'path';
+        s.id = app.gen_elem_id(s.tag);
+        // s.stroke = I("pick-stroke-color").style.backgroundColor;
+        s.fill = I("pick-fill-color").style.backgroundColor;
+        app.post(s);
+        selectedElemId = s.id;
+        app.post({
+            action: "select",
+            who: app.avatarId,
+            what: [selectedElemId]
+        });
+    }
+    continue_drag(e) {
+        const p = event_to_world_coords(e);
+        this.move_avatar_to_shape_corner(p);
+        this.allPoints.push(p);
+        const s = points_to_path(this.allPoints);
+        s.action = 'upd';
+        s.id = selectedElemId;
+        console.log(this.allPoints);
+        app.post(s);
+    }
+    end_drag(e) {
+        app.post({
+            action: "upd",
+            id: app.avatarId,
+            pointer: "none"
+        });
+        this.allPoints = null;
+    }
+    // "private"
+    move_avatar_to_shape_corner(p) {
+        // last point might be too noisy, go back a bit further:
+        let i = this.allPoints.length-1;
+        while (i > 0 && p.distanceTo(this.allPoints[i]) < 2 * Avatar.radius) i--; // TODO respect scale
+        const prev = this.allPoints[i];
+        const d = p.distanceTo(prev) + Avatar.pointerRadius;
+        const alpha = p.sub(prev).angle();
+        app.post({
+            action: "upd",
+            id: app.avatarId,
+            pos: prev.add(Point.polar(d, alpha)),
+            pointer: alpha / Math.PI * 180 + 180
+        });
+    }
+}
+
 // possible values: any member name of the tools object above
 var activeTool = "navigation";
 
@@ -186,7 +257,8 @@ class PointerEvents {
             pointing: new PointingTool(),
             rectangle: new ShapeTool(),
             triangle: new ShapeTool(),
-            square: new ShapeTool()
+            square: new ShapeTool(),
+            blob: new BlobTool()
         };
         this._draggee = null; // can be null, "handle" or "tool"
         this.onadjustcorner = null;
@@ -317,6 +389,9 @@ function set_cursor_for_active_tool() {
     case "rectangle":
     case "triangle":
         set_cursor("crosshair");
+        break;
+    case "blob":
+        set_cursor("default");
         break;
     default:
         throw 'unknown tool'

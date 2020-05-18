@@ -42,6 +42,10 @@ class Point {
         return new Point(this.x * factor, this.y * factor);
     }
 
+    dot(that) {
+        return this.x * that.x + this.y * that.y;
+    }
+
     json() {
         return {x: this.x, y: this.y};
     }

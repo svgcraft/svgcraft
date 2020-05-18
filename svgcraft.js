@@ -89,6 +89,63 @@ function create_shape(name, originPoint, secondPoint) {
     }[name](originPoint, secondPoint);
 }
 
+function create_path_start(p1, p2) {
+    //return {d: `M ${p1.x} ${p1.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`};
+    return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`};
+}
+
+function points_to_path(ps) {
+    return {d: 'M ' + filter_noisy_points(ps).map(p => p.x + ' ' + p.y).join(' L ')};
+}
+
+// distance of c from the line defined by a and b
+function dist_from_line(c, a, b) {
+    const lambda = a.sub(c).dot(a.sub(b)) / a.sub(b).dot(a.sub(b));
+    return a.sub(c).add(b.sub(a).scale(lambda)).norm();
+}
+
+function filter_noisy_points(ps) {
+    // TODO shouldn't be quadratic
+    const l = ps.slice(); // shallow copy
+    var best = null;
+    do {
+        best = null;
+        var lowestDist = handle_radius(); // don't remove points with a dist larger than this
+        for (var i = 1; i < l.length - 1; i++) { // first and last points are not candidates for removal
+            const dist = dist_from_line(l[i], l[i-1], l[i+1]);
+            if (dist < lowestDist) {
+                lowestDist = dist;
+                best = i;
+            }
+        }
+        if (best !== null) l.splice(best, 1); // delete 1 at index "best"
+    } while (best !== null);
+    return l;
+}
+
+var angleThreshold = 5 / 2 / Math.PI;
+
+function filter_lowangle_points(ps) {
+    // TODO shouldn't be quadratic
+    const l = ps.slice(); // shallow copy
+    var best = null;
+    do {
+        best = null;
+        var bestAngle = angleThreshold; // don't remove points with an angle larger than angleThreshold
+        for (var i = 1; i < l.length - 1; i++) { // first and last points are not candidates for removal
+            const a1 = l[i].sub(l[i-1]).angle();
+            const a2 = l[i+1].sub(l[i]).angle();
+            const angle = Math.abs(a1 - a2);
+            if (angle < bestAngle) {
+                bestAngle = angle;
+                best = i;
+            }
+        }
+        if (best !== null) l.splice(best, 1); // delete 1 at index "best"
+    } while (best !== null);
+    return l;
+}
+
 function expand_background() {
     const slack = 10;
     const x = Math.round(-app.myAvatar.view.x / app.myAvatar.view.scale - slack);
