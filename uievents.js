@@ -184,8 +184,9 @@ class BlobTool extends Tool {
         s.action = 'new';
         s.tag = 'path';
         s.id = app.gen_elem_id(s.tag);
-        // s.stroke = I("pick-stroke-color").style.backgroundColor;
-        s.fill = I("pick-fill-color").style.backgroundColor;
+        s.fill = 'transparent';
+        s.stroke = app.myAvatar.color;
+        s["stroke-width"] = 2;
         app.post(s);
         selectedElemId = s.id;
         app.post({
@@ -201,15 +202,19 @@ class BlobTool extends Tool {
         const s = points_to_path(this.filter_points());
         s.action = 'upd';
         s.id = selectedElemId;
-        console.log(this.allPoints);
         app.post(s);
     }
     end_drag(e) {
-        app.post({
+        app.post([{
             action: "upd",
             id: app.avatarId,
             pointer: "none"
-        });
+        }, {
+            action: 'upd',
+            id: selectedElemId,
+            "stroke-width": 0,
+            "fill": I("pick-fill-color").style.backgroundColor
+        }]);
         this.allPoints = null;
     }
     // "private"
