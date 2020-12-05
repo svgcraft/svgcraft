@@ -9,8 +9,15 @@
     top: 50%;
     -webkit-transform: translate(-50%, -50%);
     transform: translate(-50%, -50%);
-  }
-  
+}
+
+#myvideo {
+    /* mirror video */
+    transform: translate(-50%, -50%) rotateY(180deg);
+    -webkit-transform: translate(-50%, -50%) rotateY(180deg);
+    -moz-transform: translate(-50%, -50%) rotateY(180deg);
+}
+
 .clip-circle {
-    clip-path: circle(20% at center);
+    clip-path: circle(88px at center); /* 450/640*125 */
 }

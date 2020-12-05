@@ -39,26 +39,45 @@ function toggleVideo() {
     }
 }
 
+let showArms = false;
 let showHandboxes = false;
+let showHands = true;
 
 function placeArms(predictions) {
     I("arm0").style.display = "none";
     I("arm1").style.display = "none";
     I("handbox0").style.display = "none";
     I("handbox1").style.display = "none";
+    I("hand0").style.display = "none";
+    I("hand1").style.display = "none";
     for (var i = 0; i < predictions.length; i++) {
-        const arm = I("arm" + i);
-        arm.style.display = "";
-        arm.setAttribute("x2", predictions[i].bbox[0] + predictions[i].bbox[2] / 2);
-        arm.setAttribute("y2", predictions[i].bbox[1] + predictions[i].bbox[3] / 2);
-        
+        const minx = predictions[i].bbox[0];
+        const miny = predictions[i].bbox[1];
+        const w = predictions[i].bbox[2];
+        const h = predictions[i].bbox[3];
+        const cx = minx + w / 2;
+        const cy = miny + h / 2;
+        if (showHands) {
+            const hand = I("hand" + i);
+            hand.style.display = "";
+            hand.setAttribute("cx", cx);
+            hand.setAttribute("cy", cy);
+            hand.setAttribute("rx", w/2);
+            hand.setAttribute("ry", h/2);
+        }
+        if (showArms) {
+            const arm = I("arm" + i);
+            arm.style.display = "";
+            arm.setAttribute("x2", cx);
+            arm.setAttribute("y2", cy);
+        }        
         if (showHandboxes) {
             const handbox = I("handbox" + i);
             handbox.style.display = "";
-            handbox.setAttribute("x", predictions[i].bbox[0]);
-            handbox.setAttribute("y", predictions[i].bbox[1]);
-            handbox.setAttribute("width", predictions[i].bbox[2]);
-            handbox.setAttribute("height", predictions[i].bbox[3]);
+            handbox.setAttribute("x", minx);
+            handbox.setAttribute("y", miny);
+            handbox.setAttribute("width", w);
+            handbox.setAttribute("height", h);
         }
     }
 }
@@ -66,8 +85,8 @@ function placeArms(predictions) {
 function runDetection() {
     model.detect(I("myvideo")).then(predictions => {
         console.log("predictions: ", predictions);
-        const context = I("canvas").getContext("2d");
-        model.renderPredictions(predictions, I("canvas"), context, I("myvideo"));
+        //const context = I("canvas").getContext("2d");
+        //model.renderPredictions(predictions, I("canvas"), context, I("myvideo"));
         placeArms(predictions);
         if (isVideo) {
             requestAnimationFrame(runDetection);
