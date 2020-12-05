@@ -1,60 +1,82 @@
-const video = document.getElementById("myvideo");
-const canvas = document.getElementById("canvas");
-const context = canvas.getContext("2d");
-let trackButton = document.getElementById("trackbutton");
-let updateNote = document.getElementById("updatenote");
+"use strict";
+
+function I(id) {
+    return document.getElementById(id);
+}
 
 let isVideo = false;
 let model = null;
 
 const modelParams = {
-    flipHorizontal: true,   // flip e.g for video  
-    maxNumBoxes: 20,        // maximum number of boxes to detect
-    iouThreshold: 0.5,      // ioU threshold for non-max suppression
-    scoreThreshold: 0.6,    // confidence threshold for predictions.
+    flipHorizontal: true,
+    maxNumBoxes: 2,
+    iouThreshold: 0.5,
+    scoreThreshold: 0.6
 }
 
 function startVideo() {
-    handTrack.startVideo(video).then(function (status) {
+    handTrack.startVideo(I("myvideo")).then(function (status) {
         console.log("video started", status);
         if (status) {
-            updateNote.innerText = "Video started. Now tracking"
+            I("updatenote").innerText = "Video started. Now tracking"
             isVideo = true
             runDetection()
         } else {
-            updateNote.innerText = "Please enable video"
+            I("updatenote").innerText = "Please enable video"
         }
     });
 }
 
 function toggleVideo() {
     if (!isVideo) {
-        updateNote.innerText = "Starting video"
+        I("updatenote").innerText = "Starting video"
         startVideo();
     } else {
-        updateNote.innerText = "Stopping video"
-        handTrack.stopVideo(video)
+        I("updatenote").innerText = "Stopping video"
+        handTrack.stopVideo(I("myvideo"))
         isVideo = false;
-        updateNote.innerText = "Video stopped"
+        I("updatenote").innerText = "Video stopped"
     }
 }
 
+let showHandboxes = false;
 
+function placeArms(predictions) {
+    I("arm0").style.display = "none";
+    I("arm1").style.display = "none";
+    I("handbox0").style.display = "none";
+    I("handbox1").style.display = "none";
+    for (var i = 0; i < predictions.length; i++) {
+        const arm = I("arm" + i);
+        arm.style.display = "";
+        arm.setAttribute("x2", predictions[i].bbox[0] + predictions[i].bbox[2] / 2);
+        arm.setAttribute("y2", predictions[i].bbox[1] + predictions[i].bbox[3] / 2);
+        
+        if (showHandboxes) {
+            const handbox = I("handbox" + i);
+            handbox.style.display = "";
+            handbox.setAttribute("x", predictions[i].bbox[0]);
+            handbox.setAttribute("y", predictions[i].bbox[1]);
+            handbox.setAttribute("width", predictions[i].bbox[2]);
+            handbox.setAttribute("height", predictions[i].bbox[3]);
+        }
+    }
+}
 
 function runDetection() {
-    model.detect(video).then(predictions => {
-        console.log("Predictions: ", predictions);
-        model.renderPredictions(predictions, canvas, context, video);
+    model.detect(I("myvideo")).then(predictions => {
+        console.log("predictions: ", predictions);
+        const context = I("canvas").getContext("2d");
+        model.renderPredictions(predictions, I("canvas"), context, I("myvideo"));
+        placeArms(predictions);
         if (isVideo) {
             requestAnimationFrame(runDetection);
         }
     });
 }
 
-// Load the model.
 handTrack.load(modelParams).then(lmodel => {
-    // detect objects in the image.
     model = lmodel
-    updateNote.innerText = "Loaded Model!"
-    trackButton.disabled = false
+    I("updatenote").innerText = "Loaded Model!"
+    I("trackbutton").disabled = false
 });

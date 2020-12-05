@@ -2,30 +2,30 @@
 <html lang="en">
 
 <head>
-
   <meta charset="UTF-8">
-  <title>Handtrack.js : A library for prototyping realtime handtracking in the browser. </title>
-  <link rel="stylesheet" href="https://unpkg.com/carbon-components@latest/css/carbon-components.css" />
+  <title>Exploring Handtrack.js</title>
   <link rel="stylesheet" href="track.css">
 </head>
 
-<body class="bx--body p20">
-  <!-- <img id="img" src="hand.jpg"/>  -->
-  <div class="p20">
-    Handtrack.js allows you prototype handtracking interactions in the browser in 10 lines of code.
-  </div>
-  <div class="mb10">
-    <button onclick="toggleVideo()" id="trackbutton" class="bx--btn bx--btn--secondary" type="button">
+<body>
+  <div>
+    <button onclick="toggleVideo()" id="trackbutton">
       Toggle Video
     </button>
-    <div id="updatenote" class="updatenote mt10"> loading model ..</div>
+    <div id="updatenote"> loading model ..</div>
   </div>
-  <video class="videobox canvasbox" autoplay="autoplay" id="myvideo"></video>
+  <video autoplay="autoplay" id="myvideo" style="display:none"></video>
 
-  <canvas id="canvas" class="border canvasbox"></canvas>
+  <svg viewBox="0 0 640 480" class="personbox hvcenter">
+      <circle cx="320" cy="240" r="125" fill="green"/>
+      <line id="arm0" style="display: none;" x1="320" y1="240" x2="-300" y2="0" stroke="green" stroke-width="15" stroke-linecap="round"/>
+      <line id="arm1" style="display: none;" x1="320" y1="240" x2="300" y2="0" stroke="green" stroke-width="15" stroke-linecap="round"/>
+      <rect id="handbox0" style="display: none;" x="-2" y="-2" width="4" height="4" fill="transparent" stroke="green" stroke-width="5"/>
+      <rect id="handbox1" style="display: none;" x="-2" y="-2" width="4" height="4" fill="transparent" stroke="green" stroke-width="5"/>
+  </svg>
+  <canvas id="canvas" class="personbox hvcenter clip-circle"></canvas>
 
-  <script src="https://unpkg.com/carbon-components@latest/scripts/carbon-components.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/handtrackjs/dist/handtrack.min.js"> </script>
+  <script src="https://cdn.jsdelivr.net/npm/handtrackjs@0.0.13/dist/handtrack.min.js"> </script>
   <script src="track.js"></script>
 </body>
 
