@@ -9,7 +9,7 @@ let model = null;
 
 const modelParams = {
     flipHorizontal: true,
-    maxNumBoxes: 2,
+    maxNumBoxes: 1,
     iouThreshold: 0.5,
     scoreThreshold: 0.6
 }
@@ -18,11 +18,11 @@ function startVideo() {
     handTrack.startVideo(I("myvideo")).then(function (status) {
         console.log("video started", status);
         if (status) {
-            I("updatenote").innerText = "Video started. Now tracking"
-            isVideo = true
-            runDetection()
+            I("updatenote").innerText = "Video started. Now tracking";
+            isVideo = true;
+            requestAnimationFrame(runDetection);
         } else {
-            I("updatenote").innerText = "Please enable video"
+            I("updatenote").innerText = "Please enable video";
         }
     });
 }
@@ -44,6 +44,7 @@ const arenaWidth = 16;
 const arenaHeight = 9;
 let playerWidth = 2;
 let playerHeight = 1.5;
+let headRadius = 0.4;
 let playerX = arenaWidth / 2;
 let playerY = arenaHeight / 2;
 
@@ -66,7 +67,32 @@ function setPos(elem, x, y) {
     elem.style.top = pxPerUnit * y + "px";
 }
 
-function positionArenaAndPlayer() {
+// speed in svg units per ms
+let vx = 0;
+let vy = 0;
+
+
+let lastTimestamp = null;
+
+// polar coordinates of hand wrt center of head, in svg units
+let lastHandR = null;
+let lastHandAlpha = null;
+// center coordinates in svg units relative to top left corner of player video
+let lastHandCx = null;
+let lastHandCy = null;
+
+// translation of hand movement into speed increase
+let accelerationFactor = 0.001;
+
+const angleThresh = Math.PI / 5;
+
+function angleCloseToZero(a) {
+    while (a > Math.PI) a -= 2 * Math.PI;
+    while (a < - Math.PI) a += 2 * Math.PI;
+    return Math.abs(a) < angleThresh;
+}
+
+function positionArenaAndPlayer(timestamp, predictions) {
     const availableWidth = window.innerWidth - 2 * arenaBorder;
     const availableHeight = window.innerHeight - 2 * arenaBorder;
     pxPerUnit = Math.min(availableWidth / arenaWidth, availableHeight / arenaHeight);
@@ -75,18 +101,60 @@ function positionArenaAndPlayer() {
     setDim(I("arenaBG"),      arenaWidth, arenaHeight);
     setDim(I("arenaFG"),      arenaWidth, arenaHeight);
 
+    if (lastTimestamp === null) {
+        // in first call, we just claim that there was 0 time difference to the previous,
+        // so zero movement will be made
+        lastTimestamp = timestamp;
+    }
+    const dt = timestamp - lastTimestamp;
+
+    let curHandR = null;
+    let curHandAlpha = null;
+    let curHandCx = null;
+    let curHandCy = null;
+    if (predictions.length === 1) {
+        const minx = predictions[0].bbox[0] / videoWidth * playerWidth;
+        const miny = predictions[0].bbox[1] / videoHeight * playerHeight;
+        const w = predictions[0].bbox[2] / videoWidth * playerWidth;
+        const h = predictions[0].bbox[3] / videoHeight * playerHeight;
+        curHandCx = minx + w / 2;
+        curHandCy = miny + h / 2;
+        const relx = curHandCx - playerWidth / 2;
+        const rely = curHandCy - playerHeight / 2;
+        curHandR = Math.sqrt(relx * relx + rely * rely);
+        curHandAlpha = Math.atan2(rely, relx);
+        if (lastHandAlpha !== null && angleCloseToZero(curHandAlpha - lastHandAlpha) && curHandR > lastHandR) {
+            vx += (lastHandCx - curHandCx) * accelerationFactor;
+            vy += (lastHandCy - curHandCy) * accelerationFactor;
+        }
+    }
+
+    console.log([vx*1000, vy*1000]);
+    playerX += vx * dt;
+    playerY += vy * dt;
+    if (vx < 0 && playerX < headRadius) vx = -vx;
+    if (vx > 0 && playerX + headRadius > arenaWidth) vx = -vx;
+    if (vy < 0 && playerY < headRadius) vy = -vy;
+    if (vy > 0 && playerY + headRadius > arenaHeight) vy = - vy;
+
     const x1 = playerX - playerWidth / 2;
     const y1 = playerY - playerHeight / 2;
     setPos(I("myvideo"), x1, y1);
     setDim(I("myvideo"), playerWidth, playerHeight);
 
     I("overlayG").setAttribute("transform", `translate(${x1}, ${y1})`);
+
+    lastTimestamp = timestamp;
+    lastHandR = curHandR;
+    lastHandAlpha = curHandAlpha;
+    lastHandCx = curHandCx;
+    lastHandCy = curHandCy;
 }
 
-let showHead = true;
-let showArms = true;
-let showHandboxes = true;
-let showHands = true;
+let showHead = false;
+let showArms = false;
+let showHandboxes = false;
+let showHands = false;
 
 let handScaleFactor = 1.6;
 
@@ -146,12 +214,12 @@ function showStickfigure(predictions) {
     }
 }
 
-function runDetection() {
+function runDetection(timestamp) {
     model.detect(I("myvideo")).then(predictions => {
         console.log("predictions: ", predictions);
         //const context = I("canvas").getContext("2d");
         //model.renderPredictions(predictions, I("canvas"), context, I("myvideo"));
-        positionArenaAndPlayer();
+        positionArenaAndPlayer(timestamp, predictions);
         showStickfigure(predictions);
         if (isVideo) {
             requestAnimationFrame(runDetection);
