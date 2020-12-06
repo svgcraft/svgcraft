@@ -21,3 +21,7 @@
 .clip-circle {
     clip-path: circle(88px at center); /* 450/640*125 */
 }
+
+.clip-video {
+    clip-path: url(#myClip);
+}

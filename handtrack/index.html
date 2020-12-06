@@ -2,35 +2,45 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <title>Exploring Handtrack.js</title>
-  <link rel="stylesheet" href="track.css">
+    <meta charset="UTF-8">
+    <title>Exploring Handtrack.js</title>
+    <link rel="stylesheet" href="track.css">
 </head>
 
 <body>
-  <div>
-    <button onclick="toggleVideo()" id="trackbutton">
-      Toggle Video
-    </button>
-    <div id="updatenote"> loading model ..</div>
-  </div>
+    <div>
+        <button onclick="toggleVideo()" id="trackbutton">
+            Toggle Video
+        </button>
+        <div id="updatenote"> loading model ..</div>
+    </div>
 
-  <video autoplay="autoplay" id="myvideo" class="personbox hvcenter clip-circle"></video>
+    <video autoplay="autoplay" id="myvideo" class="personbox hvcenter clip-video"></video>
 
-  <!-- canvas id="canvas" class="personbox hvcenter clip-circle"></canvas -->
+    <!-- canvas id="canvas" class="personbox hvcenter clip-circle"></canvas -->
 
-  <svg viewBox="0 0 640 480" class="personbox hvcenter">
-      <circle cx="320" cy="240" r="125" fill="transparent" stroke="green" stroke-width="7"/>
-      <line id="arm0" style="display: none;" x1="320" y1="240" x2="-300" y2="0" stroke="green" stroke-width="15" stroke-linecap="round"/>
-      <line id="arm1" style="display: none;" x1="320" y1="240" x2="300" y2="0" stroke="green" stroke-width="15" stroke-linecap="round"/>
-      <rect id="handbox0" style="display: none;" x="-2" y="-2" width="4" height="4" fill="transparent" stroke="green" stroke-width="5"/>
-      <rect id="handbox1" style="display: none;" x="-2" y="-2" width="4" height="4" fill="transparent" stroke="green" stroke-width="5"/>
-      <ellipse id="hand0" style="display: none;" cx="-2" cy="-2" rx="4" ry="4" fill="transparent" stroke="green" stroke-width="7"/>
-      <ellipse id="hand1" style="display: none;" cx="-2" cy="-2" rx="4" ry="4" fill="transparent" stroke="green" stroke-width="7"/>
-  </svg>
+    <svg width="0" height="0">
+        <defs>
+            <clipPath id="myClip" clipPathUnits="objectBoundingBox">
+                <ellipse id="headClip" cx="0.5" cy="0.5" rx="0.1953125" ry="0.260416667" />
+                <ellipse id="handClip0" style="display: none;" cx="-2" cy="-2" rx="4" ry="4" />
+                <ellipse id="handClip1" style="display: none;" cx="-2" cy="-2" rx="4" ry="4" />
+            </clipPath>
+        </defs>
+    </svg>
 
-  <script src="https://cdn.jsdelivr.net/npm/handtrackjs@0.0.13/dist/handtrack.min.js"> </script>
-  <script src="track.js"></script>
+    <svg viewBox="0 0 640 480" class="personbox hvcenter" style="display: none;" >
+        <circle cx="320" cy="240" r="125" fill="transparent" stroke="green" stroke-width="7" />
+        <line id="arm0" style="display: none;" x1="320" y1="240" x2="-300" y2="0" stroke="green" stroke-width="15" stroke-linecap="round" />
+        <line id="arm1" style="display: none;" x1="320" y1="240" x2="300" y2="0" stroke="green" stroke-width="15" stroke-linecap="round" />
+        <rect id="handbox0" style="display: none;" x="-2" y="-2" width="4" height="4" fill="transparent" stroke="green" stroke-width="5" />
+        <rect id="handbox1" style="display: none;" x="-2" y="-2" width="4" height="4" fill="transparent" stroke="green" stroke-width="5" />
+        <ellipse id="hand0" style="display: none;" cx="-2" cy="-2" rx="4" ry="4" fill="transparent" stroke="green" stroke-width="7" />
+        <ellipse id="hand1" style="display: none;" cx="-2" cy="-2" rx="4" ry="4" fill="transparent" stroke="green" stroke-width="7" />
+    </svg>
+
+    <script src="https://cdn.jsdelivr.net/npm/handtrackjs@0.0.13/dist/handtrack.min.js"> </script>
+    <script src="track.js"></script>
 </body>
 
 </html>

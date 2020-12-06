@@ -42,14 +42,19 @@ function toggleVideo() {
 let showArms = false;
 let showHandboxes = false;
 let showHands = true;
+let handScaleFactor = 1.6;
+
+function hideArms() {
+    for (var i = 0; i < 2; i++) {
+        I("arm" + i).style.display = "none";
+        I("handbox" + i).style.display = "none";
+        I("hand" + i).style.display = "none";
+        I("handClip" + i).style.display = "none";
+    }
+}
 
 function placeArms(predictions) {
-    I("arm0").style.display = "none";
-    I("arm1").style.display = "none";
-    I("handbox0").style.display = "none";
-    I("handbox1").style.display = "none";
-    I("hand0").style.display = "none";
-    I("hand1").style.display = "none";
+    hideArms();
     for (var i = 0; i < predictions.length; i++) {
         const minx = predictions[i].bbox[0];
         const miny = predictions[i].bbox[1];
@@ -64,6 +69,12 @@ function placeArms(predictions) {
             hand.setAttribute("cy", cy);
             hand.setAttribute("rx", w/2);
             hand.setAttribute("ry", h/2);
+            const handClip = I("handClip" + i);
+            handClip.style.display = "";
+            handClip.setAttribute("cx", 1.0 - cx/640);
+            handClip.setAttribute("cy", cy/480);
+            handClip.setAttribute("rx", w/2/640*handScaleFactor);
+            handClip.setAttribute("ry", h/2/480*handScaleFactor);
         }
         if (showArms) {
             const arm = I("arm" + i);
