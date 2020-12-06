@@ -15,6 +15,8 @@ const modelParams = {
 }
 
 function startVideo() {
+    I("myvideo").width = videoWidth;
+    I("myvideo").height = videoHeight;
     handTrack.startVideo(I("myvideo")).then(function (status) {
         console.log("video started", status);
         if (status) {
@@ -52,8 +54,8 @@ let playerY = arenaHeight / 2;
 const arenaBorder = 20; 
 
 // handtrack.js video processing pixels
-const videoWidth = 640;
-const videoHeight = 480;
+const videoWidth = 320;
+const videoHeight = 240;
 
 let pxPerUnit = 123;
 
@@ -109,6 +111,7 @@ function positionArenaAndPlayer(timestamp, predictions) {
         lastTimestamp = timestamp;
     }
     const dt = timestamp - lastTimestamp;
+    console.log("frame length:", dt);
 
     let curHandR = null;
     let curHandAlpha = null;
@@ -141,7 +144,7 @@ function positionArenaAndPlayer(timestamp, predictions) {
         vy = Math.sin(alpha) * vNew;
     }
 
-    console.log([vx*1000, vy*1000]);
+    //console.log([vx*1000, vy*1000]);
     playerX += vx * dt;
     playerY += vy * dt;
     if (vx < 0 && playerX < headRadius) vx = -vx;
@@ -166,7 +169,7 @@ function positionArenaAndPlayer(timestamp, predictions) {
 let showHead = false;
 let showArms = false;
 let showHandboxes = false;
-let showHands = false;
+let showHands = true;
 
 let handScaleFactor = 1.6;
 
@@ -228,7 +231,7 @@ function showStickfigure(predictions) {
 
 function runDetection(timestamp) {
     model.detect(I("myvideo")).then(predictions => {
-        console.log("predictions: ", predictions);
+        //console.log("predictions: ", predictions);
         //const context = I("canvas").getContext("2d");
         //model.renderPredictions(predictions, I("canvas"), context, I("myvideo"));
         positionArenaAndPlayer(timestamp, predictions);
