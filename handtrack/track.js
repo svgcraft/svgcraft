@@ -71,6 +71,8 @@ function setPos(elem, x, y) {
 let vx = 0;
 let vy = 0;
 
+// caused by "friction", in svg units per ms^2
+let decceleration = 1e-7;
 
 let lastTimestamp = null;
 
@@ -127,6 +129,16 @@ function positionArenaAndPlayer(timestamp, predictions) {
             vx += (lastHandCx - curHandCx) * accelerationFactor;
             vy += (lastHandCy - curHandCy) * accelerationFactor;
         }
+    }
+    const v = Math.sqrt(vx * vx + vy * vy);
+    const vNew = Math.max(0, v - decceleration * dt);
+    if (vNew <= 0) {
+        vx = 0;
+        vy = 0;
+    } else {
+        const alpha = Math.atan2(vy, vx);
+        vx = Math.cos(alpha) * vNew;
+        vy = Math.sin(alpha) * vNew;
     }
 
     console.log([vx*1000, vy*1000]);
