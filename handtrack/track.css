@@ -1,27 +1,45 @@
-.personbox {
+#controls {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    padding: 10px;
+    background-color: white;
+}
+#arenaWrapper {
+    position: absolute;    
+    bottom: 20px;
+    right: 20px;
+    width: 400px; /* default, set by js */
+    height: 300px; /* default, set by js */
+}
+.arena {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+body {
+    background-color: #555;
+    overflow: hidden;
+}
+#arenaBG {
+    z-index: 1;
+}
+#myvideo {
+    position: absolute;
+    top: 200px;
+    left: 200px;
     width: 450px;
     height: 338px;
-}
 
-.hvcenter {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    -webkit-transform: translate(-50%, -50%);
-    transform: translate(-50%, -50%);
-}
-
-#myvideo {
-    /* mirror video */
-    transform: translate(-50%, -50%) rotateY(180deg);
-    -webkit-transform: translate(-50%, -50%) rotateY(180deg);
-    -moz-transform: translate(-50%, -50%) rotateY(180deg);
-}
-
-.clip-circle {
-    clip-path: circle(88px at center); /* 450/640*125 */
-}
-
-.clip-video {
     clip-path: url(#myClip);
+    
+    /* mirror video: */
+    transform: rotateY(180deg);
+    -webkit-transform: rotateY(180deg);
+    -moz-transform: rotateY(180deg);
+    z-index: 2;
+}
+#arenaFG {
+    z-index: 3;
 }
