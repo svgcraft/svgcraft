@@ -1,3 +1,53 @@
+
+
 Importing a newly added or modified js file in the developer console of an existing page without refreshing:
 
 var script = document.createElement('script'); script.src = './savesvg.js'; document.head.appendChild(script);
+
+https://makespace.fun/
+
+Proximity-based chat platforms from: https://docs.google.com/spreadsheets/d/1FgynDnnrrllZZUa42XcKSfD68G5VAMZsLkARXHtgHOM/edit#gid=0
+
+List of platforms in alphabetical order, duplicates removed
+http://mcparks.us
+http://vircadia.com/
+https://altvr.com/
+https://borrel.app/
+https://calla.chat
+https://cozyroom.xyz
+https://cubechat.io/
+https://gather.town/
+https://happyhour.ianwdavis.com/
+https://here.fm
+https://hopin.to
+https://icebreaker.video/
+https://makespace.fun
+https://metaversehq.com/v/room
+https://mixaba.com/
+https://party.vipshek.com
+https://rally.video/
+https://rambly.app/
+https://recroom.com/
+https://remo.co/
+https://sine.space/vr/
+https://slashtalk.com
+https://spatial.chat/
+https://squadapp.io/
+https://tivolicloud.com/
+https://town.siempre.io
+https://virus.cafe
+https://wavexr.com/
+https://welcome.topia.io/
+https://www.airmeet.com/
+https://www.banger.digital
+https://www.brella.io
+https://www.highfidelity.com/
+https://www.huddlehq.io/
+https://www.ivent-uk.com/
+https://www.joinglimpse.com
+https://www.kitely.com
+https://www.muze.nyc/
+https://www.sansar.com/
+https://www.somniumspace.com/
+https://yorb.itp.io
+https://zonko.chat/
