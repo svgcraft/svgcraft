@@ -84,6 +84,7 @@ let lastHandAlpha = null;
 // center coordinates in svg units relative to top left corner of player video
 let lastHandCx = null;
 let lastHandCy = null;
+// let lastHandTimestamp = null; // last time a hand was detected
 
 // translation of hand movement into speed increase
 let accelerationFactor = 0.001;
@@ -113,6 +114,7 @@ function positionArenaAndPlayer(timestamp, predictions) {
     const dt = timestamp - lastTimestamp;
     console.log("frame length:", dt);
 
+    I("handMovement").style.display = "none";
     let curHandR = null;
     let curHandAlpha = null;
     let curHandCx = null;
@@ -128,9 +130,19 @@ function positionArenaAndPlayer(timestamp, predictions) {
         const rely = curHandCy - playerHeight / 2;
         curHandR = Math.sqrt(relx * relx + rely * rely);
         curHandAlpha = Math.atan2(rely, relx);
-        if (lastHandAlpha !== null && angleCloseToZero(curHandAlpha - lastHandAlpha) && curHandR > lastHandR) {
-            vx += (lastHandCx - curHandCx) * accelerationFactor;
-            vy += (lastHandCy - curHandCy) * accelerationFactor;
+        if (lastHandAlpha !== null) {
+            //I("handMovement").style.display = "";
+            I("handMovement").setAttribute("x1", lastHandCx);
+            I("handMovement").setAttribute("y1", lastHandCy);
+            I("handMovement").setAttribute("x2", curHandCx);
+            I("handMovement").setAttribute("y2", curHandCy);
+            if (angleCloseToZero(curHandAlpha - lastHandAlpha) && curHandR > lastHandR) {
+                vx += (lastHandCx - curHandCx) * accelerationFactor;
+                vy += (lastHandCy - curHandCy) * accelerationFactor;
+                I("handMovement").setAttribute("stroke", "red");
+            } else {
+                I("handMovement").setAttribute("stroke", "blue");
+            }
         }
     }
     const v = Math.sqrt(vx * vx + vy * vy);
@@ -160,10 +172,12 @@ function positionArenaAndPlayer(timestamp, predictions) {
     I("overlayG").setAttribute("transform", `translate(${x1}, ${y1})`);
 
     lastTimestamp = timestamp;
-    lastHandR = curHandR;
-    lastHandAlpha = curHandAlpha;
-    lastHandCx = curHandCx;
-    lastHandCy = curHandCy;
+    if (curHandR !== null) {
+        lastHandR = curHandR;
+        lastHandAlpha = curHandAlpha;
+        lastHandCx = curHandCx;
+        lastHandCy = curHandCy;
+    }
 }
 
 let showArms = false;
@@ -203,7 +217,6 @@ function headPath(c, headR, handR, handDist, handAngle, scale) {
              pHand,
         "Z"
     ]);
-    //return pathStr(["M", pHand, "L", pSide1, "L", pOpp, "L", pSide2, "L", pHand, "Z"]);
 }
 
 function hideStickfigure() {
@@ -229,14 +242,6 @@ function showStickfigure(predictions) {
         const h = predictions[i].bbox[3] / videoHeight * playerHeight;
         const c = new Point(topleft.x + w / 2, topleft.y + h / 2);
 
-        /*
-        const handClip = I("handClip" + i);
-        handClip.style.display = "";
-        handClip.setAttribute("cx", 1.0 - c.x / playerWidth); // mirror
-        handClip.setAttribute("cy", c.y / playerHeight);
-        handClip.setAttribute("rx", w / 2 / playerWidth * handScaleFactor);
-        handClip.setAttribute("ry", h / 2 / playerHeight * handScaleFactor);
-        */
         const handR = (w + h) / 4 * handScaleFactor;
         const headCenter = new Point(playerWidth / 2, playerHeight / 2);
         const relHandPos = c.sub(headCenter);
