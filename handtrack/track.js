@@ -166,63 +166,111 @@ function positionArenaAndPlayer(timestamp, predictions) {
     lastHandCy = curHandCy;
 }
 
-let showHead = false;
 let showArms = false;
 let showHandboxes = false;
-let showHands = true;
+let showHands = false;
 
-let handScaleFactor = 1.6;
+let handScaleFactor = 1;
+
+// l: list of string or Point
+function pathStr(l) {
+    return l.map(e => typeof(e) === "string" ? e : e.x + " " + e.y).join(" ");
+}
+
+// Returns d string representing a bubble deformed by a hand.
+// Center of head is at (c.x, c.y).
+// Center of hand is at polar coordinates (handDist, handAngle) relative to (cx, cy).
+// Output coordinates are scaled by scale.x, scale.y wrt c.
+function headPath(c, headR, handR, handDist, handAngle, scale) {
+    function polar(r, alpha) {
+        return Point.polar(r, alpha).scale(scale);
+    }
+    const pHand = c.add(polar(handDist + handR, handAngle));
+    const pSide1 = c.add(polar(headR, handAngle + Math.PI/2));
+    const pOpp = c.add(polar(headR, handAngle + Math.PI));
+    const pSide2 = c.add(polar(headR, handAngle - Math.PI/2));
+    return pathStr([
+        "M", pHand, 
+        "C", pHand.add(polar(handR, handAngle + Math.PI/2)), 
+             pSide1.add(polar(headR, handAngle)),
+             pSide1,
+        "Q", pSide1.add(polar(headR, handAngle + Math.PI)),
+             pOpp,
+        "Q", pSide2.add(polar(headR, handAngle + Math.PI)),
+             pSide2,
+        "C", pSide2.add(polar(headR, handAngle)),
+             pHand.add(polar(handR, handAngle - Math.PI/2)),
+             pHand,
+        "Z"
+    ]);
+    //return pathStr(["M", pHand, "L", pSide1, "L", pOpp, "L", pSide2, "L", pHand, "Z"]);
+}
 
 function hideStickfigure() {
     for (var i = 0; i < 2; i++) {
-        I("head").style.display = "none";
         I("arm" + i).style.display = "none";
         I("handbox" + i).style.display = "none";
         I("hand" + i).style.display = "none";
-        I("handClip" + i).style.display = "none";
+        //I("handClip" + i).style.display = "none";
     }
 }
 
 function showStickfigure(predictions) {
     hideStickfigure();
-    if (showHead) {
-        I("head").style.display = "";
-    }
+    I("deformedHead").style.display = "none";
+    I("deformedHeadClip").style.display = "none";
+    I("roundHead").style.display = "";
+    I("roundHeadClip").style.display = "";
     for (var i = 0; i < predictions.length; i++) {
         // in svg units
-        const minx = predictions[i].bbox[0] / videoWidth * playerWidth;
-        const miny = predictions[i].bbox[1] / videoHeight * playerHeight;
+        const topleft = new Point(predictions[i].bbox[0] / videoWidth * playerWidth, 
+                                  predictions[i].bbox[1] / videoHeight * playerHeight);
         const w = predictions[i].bbox[2] / videoWidth * playerWidth;
         const h = predictions[i].bbox[3] / videoHeight * playerHeight;
-        const cx = minx + w / 2;
-        const cy = miny + h / 2;
+        const c = new Point(topleft.x + w / 2, topleft.y + h / 2);
 
+        /*
         const handClip = I("handClip" + i);
         handClip.style.display = "";
-        handClip.setAttribute("cx", 1.0 - cx / playerWidth); // mirror
-        handClip.setAttribute("cy", cy / playerHeight);
+        handClip.setAttribute("cx", 1.0 - c.x / playerWidth); // mirror
+        handClip.setAttribute("cy", c.y / playerHeight);
         handClip.setAttribute("rx", w / 2 / playerWidth * handScaleFactor);
         handClip.setAttribute("ry", h / 2 / playerHeight * handScaleFactor);
+        */
+        const handR = (w + h) / 4 * handScaleFactor;
+        const headCenter = new Point(playerWidth / 2, playerHeight / 2);
+        const relHandPos = c.sub(headCenter);
+        if (relHandPos.norm() + handR > headRadius) {
+            I("roundHead").style.display = "none";
+            I("roundHeadClip").style.display = "none";
+            I("deformedHead").style.display = "";
+            I("deformedHeadClip").style.display = "";
+            const d = headPath(headCenter, headRadius, handR, relHandPos.norm(), relHandPos.angle(), new Point(1, 1));
+            I("deformedHead").setAttribute("d", d);
+            const scale = new Point(-1.0/playerWidth, 1.0/playerHeight); // minus because camera is mirrored
+            const dClip = headPath(new Point(0.5, 0.5), headRadius, handR, relHandPos.norm(), relHandPos.angle(), scale);
+            I("deformedHeadClip").setAttribute("d", dClip);
+        }
 
         if (showHands) {
             const hand = I("hand" + i);
             hand.style.display = "";
-            hand.setAttribute("cx", cx);
-            hand.setAttribute("cy", cy);
+            hand.setAttribute("cx", c.x);
+            hand.setAttribute("cy", c.y);
             hand.setAttribute("rx", w / 2 * handScaleFactor);
             hand.setAttribute("ry", h / 2 * handScaleFactor);
         }
         if (showArms) {
             const arm = I("arm" + i);
             arm.style.display = "";
-            arm.setAttribute("x2", cx);
-            arm.setAttribute("y2", cy);
+            arm.setAttribute("x2", c.x);
+            arm.setAttribute("y2", c.y);
         }        
         if (showHandboxes) {
             const handbox = I("handbox" + i);
             handbox.style.display = "";
-            handbox.setAttribute("x", minx);
-            handbox.setAttribute("y", miny);
+            handbox.setAttribute("x", topleft.x);
+            handbox.setAttribute("y", topleft.y);
             handbox.setAttribute("width", w);
             handbox.setAttribute("height", h);
         }

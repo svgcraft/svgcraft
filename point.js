@@ -39,7 +39,11 @@ class Point {
     }
 
     scale(factor) {
-        return new Point(this.x * factor, this.y * factor);
+        if (factor instanceof Point) {
+            return new Point(this.x * factor.x, this.y * factor.y);
+        } else {
+            return new Point(this.x * factor, this.y * factor);
+        }
     }
 
     dot(that) {

@@ -19,7 +19,8 @@
 
         <svg id="arenaFG" viewBox="0 0 16 9" class="arena">
             <g id="overlayG" transform="translate(8, 4.5)">
-                <circle id="head" style="display: none;" cx="1" cy="0.75" r="0.4" fill="transparent" stroke="green" stroke-width="0.05" />
+                <path id="deformedHead" style="display: none;" d="M 0.65 0.75 Q 0.65 0.4 1 0.4 Q 1.35 0.4 1.35 0.75 Q 1.35 1.1 1 1.1 Q 0.65 1.1 0.65 0.75 Z" fill="transparent" stroke="green" stroke-width="0.05" />
+                <circle id="roundHead" style="display: none;" cx="1" cy="0.75" r="0.4" fill="transparent" stroke="green" stroke-width="0.05" />
                 <line id="arm0" style="display: none;" x1="1" y1="0.75" x2="300" y2="0" stroke="green" stroke-width="0.05" stroke-linecap="round" />
                 <line id="arm1" style="display: none;" x1="1" y1="0.75" x2="300" y2="0" stroke="green" stroke-width="0.05" stroke-linecap="round" />
                 <rect id="handbox0" style="display: none;" x="-2" y="-2" width="4" height="4" fill="transparent" stroke="green" stroke-width="0.05" />
@@ -30,11 +31,11 @@
         </svg>
     </div>
 
-    <div class="container">
+    <!--div class="container">
       <div class="path">
          <span id="elem" class="shape trail"></span> 
        </div>
-     </div>
+     </div-->
 
     <div id="controls">
         <button onclick="toggleVideo()" id="trackbutton">
@@ -48,9 +49,12 @@
     <svg width="0" height="0">
         <defs>
             <clipPath id="myClip" clipPathUnits="objectBoundingBox">
-                <ellipse id="headClip" cx="0.5" cy="0.5" rx="0.2" ry="0.266666667" />
+                <path id="deformedHeadClip" style="display: none;" d="M 0.25 0.5 L 0.5 0.25 L 0.75 0.5 L 0.5 0.75 Z"/>
+                <ellipse id="roundHeadClip" style="display: none;" cx="0.5" cy="0.5" rx="0.2" ry="0.266666667" />
+                <!--
                 <ellipse id="handClip0" style="display: none;" cx="-2" cy="-2" rx="4" ry="4" />
                 <ellipse id="handClip1" style="display: none;" cx="-2" cy="-2" rx="4" ry="4" />
+                -->
             </clipPath>
         </defs>
     </svg>
@@ -58,6 +62,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/handtrackjs@0.0.13/dist/handtrack.min.js"> </script>
     <script src="track.js"></script>
+    <script src="../point.js"></script>
 </body>
 
 </html>
