@@ -21,3 +21,11 @@ Can we get this onto the GPU and only retrieve the final best scores?
 
 Also, result of https://github.com/tensorflow/tfjs/issues/102 (running tfjs in webworkers) seems to be not yet used in handtrack.js.
 
+
+failed to re-bundle original repo:
+
+npm install rollup
+npm install rollup-plugin-babel-minify
+npm run build
+
+[!] (plugin babel-minify) TypeError: unknown: Banner must be a valid comment.
