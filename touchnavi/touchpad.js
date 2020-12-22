@@ -52,10 +52,7 @@ function sendEvent(e) {
 function onEvent(side) {
     return e => {
         sendEvent({
-            type: e.type,
             side: side,
-            deltaX: e.deltaX,
-            deltaY: e.deltaY,
             speedX: e.speedX,
             speedY: e.speedY
         });
@@ -64,11 +61,7 @@ function onEvent(side) {
 
 function registerHandlers(dom, side) {
     const t = new Touchnavi(dom);
-    const handler = onEvent(side);
-    t.addEventListener("down", handler);
-    t.addEventListener("up", handler);
-    t.addEventListener("move", handler);
-    t.addEventListener("swipe", handler);
+    t.addSpeedListener(onEvent(side));
 }
 
 function init() {

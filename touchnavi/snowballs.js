@@ -13,10 +13,8 @@ const headRadius = 5;
 const arenaWidth = 100;
 const arenaHeight = 100;
 let lastTimestamp = null;
-let breaking = false;
 // in svg position units per sec^2
-const breakDecceleration = 200;
-const frictionDecceleration = 50;
+const decceleration = 50;
 
 function frame(timestamp) {
     if (lastTimestamp === null) lastTimestamp = timestamp;
@@ -26,9 +24,8 @@ function frame(timestamp) {
     if (vx > 0 && posx + headRadius > arenaWidth) vx = -vx;
     if (vy < 0 && posy < headRadius) vy = -vy;
     if (vy > 0 && posy + headRadius > arenaHeight) vy = - vy;
-    const dec = breaking ? breakDecceleration : frictionDecceleration;
     const v = Math.sqrt(vx * vx + vy * vy);
-    const vNew = Math.max(0, v - dec * dt);
+    const vNew = Math.max(0, v - decceleration * dt);
     if (vNew <= 0) {
         vx = 0;
         vy = 0;
@@ -49,24 +46,8 @@ function frame(timestamp) {
 const movementScale = 30;
 
 function processEvent(e) {
-    switch (e.type) {
-        case "down":
-            breaking = true;
-            return;
-        case "up":
-            breaking = false;
-            return;
-        case "move":
-            posx += movementScale * e.deltaX;
-            posy += movementScale * e.deltaY;
-            return;
-        case "swipe":
-            vx = movementScale * e.speedX;
-            vy = movementScale * e.speedY;
-            return;
-        default:
-            console.error(`unkown event type ${e.type}`);        
-    }
+    vx = movementScale * e.speedX;
+    vy = movementScale * e.speedY;
 }
 
 function makeControllerLink(serverId) {
@@ -96,7 +77,7 @@ function initServer(serverId) {
             processEvent(e);
         });
         conn.on('close', () => {
-            log.connection(`Connection to client ${clientId} closed`);
+            log.connection(`Connection to client closed`);
         });
     });
 
