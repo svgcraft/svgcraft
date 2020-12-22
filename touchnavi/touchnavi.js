@@ -41,7 +41,10 @@ class Touchnavi {
         }
         dom.addEventListener("pointerdown", e => {
             addHistory(e);
-            const e2 = { originalEvent: e };
+            const e2 = { 
+                type: "down",
+                originalEvent: e 
+            };
             for (var f of this.listeners.down) f(e2);
         });
         dom.addEventListener("pointerup", e => {
@@ -56,18 +59,21 @@ class Touchnavi {
                 if (dx*dx + dy*dy > this.movementThresh * this.movementThresh) {
                     e2.speedX = dx / dt;
                     e2.speedY = dy / dt;
+                    e2.type = "swipe";
                     for (var f of this.listeners.swipe) f(e2);    
                 }
             }
             historyX = [];
             historyY = [];
             historyT = [];
+            e2.type = "up";
             for (var f of this.listeners.up) f(e2);
         });
         dom.addEventListener("pointermove", e => {
             addHistory(e);
             if (historyX.length >= 2) {
                 const e2 = { 
+                    type: "move",
                     originalEvent: e,
                     deltaX: historyX[0] - historyX[1],
                     deltaY: historyY[0] - historyY[1]
