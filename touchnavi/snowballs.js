@@ -98,13 +98,13 @@ function frame(timestamp) {
 
 const movementScale = 30;
 
-let latestSpeedSeqNo = -1;
+let latestSpeedTimeStamp = -1e10;
 
 function processEvent(e) {
-    if (e.seqno > latestSpeedSeqNo) {
+    if (e.timeStamp > latestSpeedTimeStamp) {
         const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
         player.setSpeed(e.timeStamp, speed);
-        latestSpeedSeqNo = e.seqno;
+        latestSpeedTimeStamp = e.timeStamp;
     }
 }
 
