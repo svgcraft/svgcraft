@@ -14,7 +14,7 @@ function initConnection (serverId) {
         log.connection("PeerJS server gave us ID " + id);
 
         conn = peer.connect(serverId, {
-            reliable: true
+            reliable: true // TODO set to false once we do several time measures and are sure we can deal with packet loss/reordering
         });
 
         let timeRequestSent = null;
@@ -22,7 +22,7 @@ function initConnection (serverId) {
         conn.on('open', () => {
             log.connection("Connected to " + conn.peer);
             timeRequestSent = performance.now() / 1000;
-            sendMessage(conn, "gettime");
+            sendMessage(conn, { type: "gettime" } );
         });
 
         conn.on('data', (data) => {

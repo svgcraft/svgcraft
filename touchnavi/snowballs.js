@@ -98,9 +98,14 @@ function frame(timestamp) {
 
 const movementScale = 30;
 
+let latestSpeedSeqNo = -1;
+
 function processEvent(e) {
-    const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
-    player.setSpeed(e.timeStamp, speed);
+    if (e.seqno > latestSpeedSeqNo) {
+        const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
+        player.setSpeed(e.timeStamp, speed);
+        latestSpeedSeqNo = e.seqno;
+    }
 }
 
 function makeControllerLink(serverId) {
@@ -127,7 +132,7 @@ function initServer(serverId) {
         conn.on('data', e => {
             log.data(`actions received from client:`);
             log.data(e);
-            if (e === "gettime") {
+            if (e.type === "gettime") {
                 sendMessage(conn, { type: "time", timeStamp: toServerTime(performance.now()) });
             } else {
                 processEvent(e);
