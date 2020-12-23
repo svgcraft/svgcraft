@@ -135,7 +135,7 @@ function initServer(serverId) {
             log.data(`actions received from client:`);
             log.data(e);
             if (e === "gettime") {
-                conn.send({ type: "time", timeStamp: Date.now() });
+                sendMessage(conn, { type: "time", timeStamp: Date.now() });
             } else {
                 processEvent(e);
             }

@@ -22,7 +22,7 @@ function initConnection (serverId) {
         conn.on('open', () => {
             log.connection("Connected to " + conn.peer);
             timeRequestSent = Date.now();
-            conn.send("gettime");
+            sendMessage(conn, "gettime");
         });
 
         conn.on('data', (data) => {
@@ -59,7 +59,7 @@ function sendEvent(e) {
     log.data('Sending event to game server');
     log.data(e);
     if (conn) {
-        conn.send(e);
+        sendMessage(conn, e);
     } else {
         log.data('connection not yet established');
     }
