@@ -25,7 +25,8 @@ class Touchnavi {
                     const dy = relY - history[0][1];
                     const e2 = {
                         speedX: dx / dt,
-                        speedY: dy / dt
+                        speedY: dy / dt,
+                        timeStamp: e.timeStamp
                     }
                     for (var f of this.listeners) f(e2);
                 }

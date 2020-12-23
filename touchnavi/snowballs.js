@@ -16,7 +16,7 @@ class Player {
         // a bit off, without causing jumps)
         this.currentPos = initialPos;
         this.zeroSpeedPos = initialPos;
-        this.zeroSpeedTime = Date.now() / 1000;
+        this.zeroSpeedTime = -1e10;
         this.angle = 0.12345;
         this.decceleration = 50; // in svg position units per sec^2
     }
@@ -49,7 +49,7 @@ let player = null;
 let serverTimeDelta = 0;
 
 function toServerTime(t) {
-    return t - serverTimeDelta;
+    return t / 1000 - serverTimeDelta;
 }
 
 function positionCircle(dom, pos) {
@@ -60,13 +60,10 @@ function positionCircle(dom, pos) {
 // we always aim towards the true position of the player aimTime seconds in the future
 const aimTime = 0.3;
 
-let rafEpoch = null; // when was requestAnimationFrame timestamp 0?
-
 function frame(timestamp) {
     if (lastTimestamp === null) lastTimestamp = timestamp;
-    if (rafEpoch === null) rafEpoch = Date.now() - timestamp;
     const dt = (timestamp - lastTimestamp) / 1000;
-    const t = toServerTime((rafEpoch + timestamp) / 1000);
+    const t = toServerTime(timestamp);
     const aimPos = player.posAtTime(t + aimTime);
     player.currentPos = player.currentPos.add(aimPos.sub(player.currentPos).scale(dt / aimTime));
 
@@ -93,11 +90,7 @@ function frame(timestamp) {
     positionCircle(I("circTruePos"), player.posAtTime(t));
     positionCircle(I("circZeroSpeedPos"), player.zeroSpeedPos);
 
-    let att = player.posAtTime(t);
-    if (att.sub(player.currentPos).norm() > 10) {
-        att = player.posAtTime(t);
-        console.log(att);
-    }
+    I("serverTime").innerText = Math.floor(t);
 
     lastTimestamp = timestamp;
     window.requestAnimationFrame(frame);
@@ -135,7 +128,7 @@ function initServer(serverId) {
             log.data(`actions received from client:`);
             log.data(e);
             if (e === "gettime") {
-                sendMessage(conn, { type: "time", timeStamp: Date.now() });
+                sendMessage(conn, { type: "time", timeStamp: toServerTime(performance.now()) });
             } else {
                 processEvent(e);
             }

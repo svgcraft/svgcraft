@@ -1,8 +1,8 @@
 "use strict";
 
 let slowDownNetwork = true;
-let longDelay = 700;
-let shortDelay = 300;
+let longDelay = 300;
+let shortDelay = 100;
 let delayDeviation = 50;
 
 function sendMessage(conn, msg) {

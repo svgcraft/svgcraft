@@ -1,10 +1,10 @@
 "use strict";
 
 let conn = null;
-let serverTimeDelta = null;
+let serverTimeDelta = 0;
 
-function getServerTime() {
-    return (Date.now() - serverTimeDelta) / 1000;
+function toServerTime(t) {
+    return t / 1000 - serverTimeDelta;
 }
 
 function initConnection (serverId) {
@@ -21,7 +21,7 @@ function initConnection (serverId) {
 
         conn.on('open', () => {
             log.connection("Connected to " + conn.peer);
-            timeRequestSent = Date.now();
+            timeRequestSent = performance.now() / 1000;
             sendMessage(conn, "gettime");
         });
 
@@ -29,11 +29,11 @@ function initConnection (serverId) {
             log.data(`Data received from game server`);
             log.data(data);
             if (data.type === "time") {
-                const timeResponseReceived = Date.now();
+                const timeResponseReceived = performance.now() / 1000;
                 const timeResponseSent = (timeRequestSent + timeResponseReceived) / 2;
                 serverTimeDelta = timeResponseSent - data.timeStamp;
-                log.connection(`RTT: ${timeResponseReceived - timeRequestSent}ms`);
-                log.connection(`serverTimeDelta: ${serverTimeDelta}ms`);
+                log.connection(`RTT: ${timeResponseReceived - timeRequestSent}s`);
+                log.connection(`serverTimeDelta: ${serverTimeDelta}s`);
             }
         });
 
@@ -69,7 +69,7 @@ function onEvent(side) {
     return e => {
         sendEvent({
             side: side,
-            timeStamp: getServerTime(),
+            timeStamp: toServerTime(e.timeStamp),
             speedX: e.speedX,
             speedY: e.speedY
         });
@@ -79,6 +79,11 @@ function onEvent(side) {
 function registerHandlers(dom, side) {
     const t = new Touchnavi(dom);
     t.addSpeedListener(onEvent(side));
+}
+
+function frame(timestamp) {
+    document.getElementById("serverTime").innerText = Math.floor(toServerTime(timestamp));
+    window.requestAnimationFrame(frame);
 }
 
 function init() {
@@ -91,6 +96,8 @@ function init() {
     } else {
         console.error("No serverId in URL");
     }
+
+    window.requestAnimationFrame(frame);
 }
 
 window.onload = init;
