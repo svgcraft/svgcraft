@@ -1,6 +1,11 @@
 "use strict";
 
 let conn = null;
+let serverTimeDelta = null;
+
+function getServerTime() {
+    return (Date.now() - serverTimeDelta) / 1000;
+}
 
 function initConnection (serverId) {
     const peer = new Peer(null, {debug: 2});
@@ -12,13 +17,24 @@ function initConnection (serverId) {
             reliable: true
         });
 
+        let timeRequestSent = null;
+
         conn.on('open', () => {
             log.connection("Connected to " + conn.peer);
+            timeRequestSent = Date.now();
+            conn.send("gettime");
         });
 
         conn.on('data', (data) => {
             log.data(`Data received from game server`);
             log.data(data);
+            if (data.type === "time") {
+                const timeResponseReceived = Date.now();
+                const timeResponseSent = (timeRequestSent + timeResponseReceived) / 2;
+                serverTimeDelta = timeResponseSent - data.timeStamp;
+                log.connection(`RTT: ${timeResponseReceived - timeRequestSent}ms`);
+                log.connection(`serverTimeDelta: ${serverTimeDelta}ms`);
+            }
         });
 
         conn.on('close', () => {
@@ -53,6 +69,7 @@ function onEvent(side) {
     return e => {
         sendEvent({
             side: side,
+            timeStamp: getServerTime(),
             speedX: e.speedX,
             speedY: e.speedY
         });
