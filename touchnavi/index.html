@@ -2,33 +2,34 @@
 <html>
 
 <head>
-  <meta charset="utf-8">
-  <title>Snowballs</title>
-  <script src="./snowballs.js"></script>
-  <script src="./network.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.2.0/dist/peerjs.min.js"></script>
-  <script src="../log.js"></script>
-  <script src="../point.js"></script>
-  <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
+    <meta charset="utf-8">
+    <title>Snowballs</title>
+    <script src="./snowballs.js"></script>
+    <script src="./network.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.2.0/dist/peerjs.min.js"></script>
+    <script src="../log.js"></script>
+    <script src="../point.js"></script>
+    <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
 </head>
 
-<body style="touch-action: none; background-color: black;">
+<body style="touch-action: none; background-color: black">
+    <div style="position:absolute; top:2vmin; left:2vmin; right:2vmin; bottom:2vmin">
+        <svg id="arena" viewBox="0 0 16 9"
+            style="width: auto; height: auto; position: absolute; left: 0; top: 50%; transform: translate(0, -50%); max-width: 100%; max-height: 100%;">
+            <defs>
+                <linearGradient id="skyGradient" gradientTransform="rotate(90)">
+                    <stop offset="5%" stop-color="#0080ff" />
+                    <stop offset="95%" stop-color="#46caff" />
+                </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="16" height="9" fill="url('#skyGradient')" />
+            <circle id="circ" cx="8" cy="4.5" r="0.5" fill="green" />
+            <circle id="circTruePos" style="display:none" cx="8" cy="4.5" r="0.5" fill="green" fill-opacity="0.3" />
+            <circle id="circZeroSpeedPos" style="display:none" cx="8" cy="4.5" r="0.1" fill="green" fill-opacity="0.3" />
+        </svg>
+    </div>
 
-  <svg id="arena" viewBox="0 0 100 100" style="width: 500px; height: 500px; position: absolute; left:10px; top:10px">
-    <defs>
-      <linearGradient id="skyGradient" gradientTransform="rotate(90)">
-        <stop offset="5%" stop-color="#0080ff" />
-        <stop offset="95%" stop-color="#46caff" />
-      </linearGradient>
-    </defs>
-    <rect x="0" y="0" width="100" height="100" fill="url('#skyGradient')" />
-    <circle id="circ" cx="50" cy="50" r="5" fill="green" />
-    <circle id="circTruePos" style="display:none" cx="50" cy="50" r="5" fill="green" fill-opacity="0.3"/>
-    <circle id="circZeroSpeedPos" style="display:none" cx="50" cy="50" r="1" fill="green" fill-opacity="0.3"/>
-  </svg>
-
-  <span id="serverTime" style="position:absolute; top: 1%; right: 1%; color: white; font-family: monospace; font-size: 2vmin">0</span>
-
+    <span id="serverTime" style="position:absolute; top: 1%; right: 1%; color: white; font-family: monospace; font-size: 2vmin">0</span>
 </body>
 
 </html>

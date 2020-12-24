@@ -39,9 +39,9 @@ class Player {
     }
 }
 
-const headRadius = 5;
-const arenaWidth = 100;
-const arenaHeight = 100;
+const headRadius = 0.5;
+const arenaWidth = 16;
+const arenaHeight = 9;
 let lastTimestamp = null;
 let player = null;
 
@@ -96,7 +96,7 @@ function frame(timestamp) {
     window.requestAnimationFrame(frame);
 }
 
-const movementScale = 30;
+const movementScale = 10;
 
 let latestSpeedTimeStamp = -1e10;
 
@@ -157,7 +157,7 @@ function initServer(serverId) {
 }
 
 function init() {
-    player = new Player(new Point(50, 50));
+    player = new Player(new Point(arenaWidth/2, arenaHeight/2));
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has("serverId")) {
         initServer(urlParams.get("serverId"));
