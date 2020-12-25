@@ -4,6 +4,8 @@ class Point {
     constructor(x, y) {
         this.x = x || 0;
         this.y = y || 0;
+        if (typeof this.x !== 'number') throw new TypeError(`${x} is not a number`);
+        if (typeof this.y !== 'number') throw new TypeError(`${y} is not a number`);
     }
 
     static zero() {

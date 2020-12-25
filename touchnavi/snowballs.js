@@ -22,6 +22,7 @@ class Player {
         this.currentPos = initialPos;
         this.zeroSpeedPos = initialPos;
         this.zeroSpeedTime = -1e10;
+        this.lastSpeedUpdateTime = -1e10;
         this.angle = 0.12345;
         this.decceleration = 20; // in svg position units per sec^2
     }
@@ -39,6 +40,8 @@ class Player {
     // time: seconds, at which point in time this speed was adopted
     // speed: Point, speed vector
     setSpeed(time, speed) {
+        if (time < this.lastSpeedUpdateTime) return; // reject stale data
+        this.lastSpeedUpdateTime = time;
         const corner = this.posAtTime(time);
         const v = speed.norm();
         const timeToStop = v / this.decceleration;
@@ -62,9 +65,12 @@ function toServerTime(t) {
     return t / 1000 - serverTimeDelta;
 }
 
-function positionCircle(dom, pos) {
+function positionCircle(dom, pos, radius) {
     dom.setAttribute("cx", pos.x);
     dom.setAttribute("cy", pos.y);
+    if (radius !== undefined) {
+        dom.setAttribute("r", radius);
+    }
 }
 
 function positionVector(dom, start, direction) {
@@ -86,8 +92,9 @@ function frame(timestamp) {
     const aimPos = player.posAtTime(t + aimTime);
     player.currentPos = player.currentPos.add(aimPos.sub(player.currentPos).scale(dt / aimTime));
 
+    const truePos = player.posAtTime(t);
     positionCircle(I("circ"), player.currentPos);
-    positionCircle(I("circTruePos"), player.posAtTime(t));
+    positionCircle(I("circTruePos"), truePos);
     positionCircle(I("circZeroSpeedPos"), player.zeroSpeedPos);
 
     I("serverTime").innerText = Math.floor(t);
@@ -98,14 +105,18 @@ function frame(timestamp) {
 
 const movementScale = 10;
 
-let latestSpeedTimeStamp = -1e10;
+// if player is closer than this much from a wall, speed updates are disabled,
+// otherwise after a few numeric imprecisions, the player will sneak through the wall
+const speedIgnoringThreshDist = 0.4;
 
 function processEvent(e) {
-    if (e.timeStamp > latestSpeedTimeStamp) {
-        const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
-        player.setSpeed(e.timeStamp, speed);
-        latestSpeedTimeStamp = e.timeStamp;
-    }
+    const pos = player.posAtTime(e.timeStamp);
+    const d = distFromSegments(pos, bounceLines);
+    positionCircle(I("distToBorder"), pos, d);
+    if (d < speedIgnoringThreshDist) return;
+    const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
+    player.setSpeed(e.timeStamp, speed);
+
 }
 
 function makeControllerLink(serverId) {
@@ -165,7 +176,7 @@ function genArray(len, f) {
 let bounceLines = [];
 
 function polygonToLines(dom) {
-    const points = dom.getAttribute("points").split(/ *, *| +/);
+    const points = dom.getAttribute("points").split(/ *, *| +/).map(parseFloat);
     return genArray(points.length / 2, i => {
         const a = new Point(points[2*i], points[2*i+1]);
         const b = new Point(points[(2*i+2) % points.length], points[(2*i+3) % points.length]);
@@ -200,13 +211,25 @@ function reflect(speed, wall) {
     //    speed = a * wall + b * rotate90(wall)
     // To bounce, we just need to invert the sign of b.
     return wall.scale(a).sub(wall.rotate(Math.PI/2).scale(b));
+}
 
+function distFromSegment(p, start, direction) {
+    const perp = direction.rotate(Math.PI/2);
+    const [s, t] = lineIntersectionCoeffs(start, direction, p, perp);
+    let res = -1;
+    if (0 <= s && s <= 1) { // distance is perpendicular to segment
+        res = perp.scale(t).norm();
+    } else { // distance goes to a segment endpoint
+        res = Math.min(p.sub(start).norm(), p.sub(start.add(direction)).norm());
+    }
+    console.log(res);
+    return res;
+}
 
-    // [cos(theta), sin(theta)] expresses the speed vector in the coordinate system
-    // spanned by [speed, rotate90(speed)]:
-    //    speed = cos(theta) * speed + sin(theta) * rotate90(speed)
-    // To bounce, we just need to invert the sign of the second (sin) component.
-    return speed.scale(Math.cos(theta)).sub(speed.rotate(Math.PI/2).scale(Math.sin(theta)));
+function distFromSegments(p, segments) {
+    return segments.reduce(
+        (res, [start, direction]) => Math.min(res, distFromSegment(p, start, direction)), 
+        Number.POSITIVE_INFINITY);
 }
 
 function reflections(t, dt, player, bounceLines) {
