@@ -4,9 +4,18 @@ function I(id) {
     return document.getElementById(id);
 }
 
+// returns angle between -Math.PI and Math.PI
+function normalizeAngle(a) {
+    return a - 2 * Math.PI * Math.floor(a / 2 / Math.PI + 0.5);
+}
+
 // avoids getting huge angles by repeatedly adding Math.PI
 function oppositeAngle(a) {
-    return a > 0 ? a - Math.PI : a + Math.PI;
+    return normalizeAngle(a + Math.PI);
+}
+
+function angleDist(a, b) {
+    return Math.abs(normalizeAngle(a - b));
 }
 
 class Player {
@@ -112,11 +121,10 @@ const speedIgnoringThreshDist = 0.4;
 function processEvent(e) {
     const pos = player.posAtTime(e.timeStamp);
     const d = distFromSegments(pos, bounceLines);
-    positionCircle(I("distToBorder"), pos, d);
-    if (d < speedIgnoringThreshDist) return;
+    positionVector(I("distToBorder"), pos, d);
     const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
+    if (d.norm() < speedIgnoringThreshDist && angleDist(d.angle(), speed.angle()) < Math.PI / 2) return;
     player.setSpeed(e.timeStamp, speed);
-
 }
 
 function makeControllerLink(serverId) {
@@ -218,18 +226,19 @@ function distFromSegment(p, start, direction) {
     const [s, t] = lineIntersectionCoeffs(start, direction, p, perp);
     let res = -1;
     if (0 <= s && s <= 1) { // distance is perpendicular to segment
-        res = perp.scale(t).norm();
+        res = perp.scale(t);
     } else { // distance goes to a segment endpoint
-        res = Math.min(p.sub(start).norm(), p.sub(start.add(direction)).norm());
+        const v1 = start.sub(p);
+        const v2 = v1.add(direction);
+        res = Point.min(v1, v2);
     }
-    console.log(res);
     return res;
 }
 
 function distFromSegments(p, segments) {
     return segments.reduce(
-        (res, [start, direction]) => Math.min(res, distFromSegment(p, start, direction)), 
-        Number.POSITIVE_INFINITY);
+        (res, [start, direction]) => Point.min(res, distFromSegment(p, start, direction)),
+        Point.infinity());
 }
 
 function reflections(t, dt, player, bounceLines) {

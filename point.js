@@ -16,6 +16,14 @@ class Point {
         return new Point(r * Math.cos(alpha), r * Math.sin(alpha));
     }
 
+    static min(p1, p2) {
+        return p1.norm() < p2.norm() ? p1 : p2;
+    }
+
+    static infinity() {
+        return new Point(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+    }
+
     add(that) {
         return new Point(this.x + that.x, this.y + that.y);
     }
