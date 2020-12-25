@@ -213,16 +213,18 @@ function reflections(t, dt, player, bounceLines) {
     const used = bounceLines.map(line => false);
     // more than 2 reflections in the same frame is considered very unlikely, upper
     // bound of 10 just to avoid infinite loops in case of insane conditions
-    for (let nReflections = 0; nReflections < 10; nReflections++) {
-        const p = player.posAtTime(t); // different in each outer loop iteration because zeroSpeedPos updated
-        const v = player.speedAtTime(t).scale(dt);
+    let nReflections = 0;
+    for (; nReflections < 10; nReflections++) {
+        const oldPos = player.posAtTime(t - dt); // different in each outer loop iteration because zeroSpeedPos updated
+        const newPos = player.posAtTime(t);
+        const v = newPos.sub(oldPos);
         let minDistCoeff = Number.POSITIVE_INFINITY;
         let directionOfClosestWall = null;
         let indexOfClosestWall = null;
         for (let i = 0; i < bounceLines.length; i++) {
             if (used[i]) continue;
             const [q, w] = bounceLines[i];
-            const coeffs = lineIntersectionCoeffs(q, w, p, v);
+            const coeffs = lineIntersectionCoeffs(q, w, oldPos, v);
             if (coeffs === null) continue;
             const [c1, c2] = coeffs;
             // we prefer to bounce too often rather than too rarely to prevent
@@ -239,7 +241,7 @@ function reflections(t, dt, player, bounceLines) {
             break;
         } else {
             used[indexOfClosestWall] = true;
-            const bouncePoint = p.add(v.scale(minDistCoeff));
+            const bouncePoint = oldPos.add(v.scale(minDistCoeff));
             const d = bouncePoint.sub(player.zeroSpeedPos).norm();
             const tToStop = Math.sqrt(2 * d / player.decceleration);
             const tAtBounce = player.zeroSpeedTime - tToStop;
@@ -250,6 +252,7 @@ function reflections(t, dt, player, bounceLines) {
             positionVector(I("speedAfter"), bouncePoint, bouncedSpeed);
         }
     }
+    if (nReflections > 0) console.log(`nReflections = ${nReflections}`);
 }
 
 function init() {
