@@ -35,7 +35,7 @@ class Player {
         this.zeroSpeedTime = -1e10;
         this.lastSpeedUpdateTime = -1e10;
         this.angle = 0.12345;
-        this.decceleration = 20; // in svg position units per sec^2
+        this.decceleration = 12; // in svg position units per sec^2
     }
     // time: seconds
     speedAtTime(time) {
@@ -115,7 +115,7 @@ function frame(timestamp) {
     // our speed should linearly decrease, and avgV is the speed we should have
     // in aimTime/2 from now
     const speedDelta = aimTime / 2 * player.decceleration; // (constant)
-    const initialV = speedDelta > avgV.norm() ? avgV // no justification from physics, just to make breaking look smoother
+    const initialV = speedDelta > avgV.norm() ? avgV.scale(2) // no justification from physics, just to make breaking look smoother
         : avgV.scale((avgV.norm() + speedDelta) / avgV.norm()); // more correct
     player.currentPos = player.currentPos.add(initialV.scale(dt));
 
