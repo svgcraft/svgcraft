@@ -29,11 +29,10 @@ class Player {
         // current position themselves (and interpolate a trajectory if they're
         // a bit off, without causing jumps)
         this.currentPos = initialPos;
-        // usually equals this.posAtTime(lastTimestamp), unless there was a speed change between the current and last frame
+        // usually equals this.posAtTime(timeAtLastFrame), unless there was a speed change between the current and last frame
         this.oldPos = initialPos;
         this.zeroSpeedPos = initialPos;
         this.zeroSpeedTime = -1e10;
-        this.lastSpeedUpdateTime = -1e10;
         this.angle = 0.12345;
         this.decceleration = 12; // in svg position units per sec^2
     }
@@ -50,9 +49,7 @@ class Player {
     }
     // time: seconds, at which point in time this speed was adopted
     // speed: Point, speed vector
-    setSpeed(time, speed, force) {
-        if (time < this.lastSpeedUpdateTime && !force) return; // reject stale data
-        this.lastSpeedUpdateTime = time;
+    setSpeed(time, speed) {
         const corner = this.posAtTime(time);
         const v = speed.norm();
         const timeToStop = v / this.decceleration;
@@ -138,13 +135,19 @@ const movementScale = 10;
 // otherwise after a few numeric imprecisions, the player will sneak through the wall
 const speedIgnoringThreshDist = 0.4;
 
+let lastSpeedUpdateTimestamp = Number.NEGATIVE_INFINITY;
+
 function processEvent(e) {
-    //const pos = player.posAtTime(e.timeStamp);
-    //const d = distFromSegments(pos, bounceLines);
-    //positionVector(I("distToBorder"), pos, d);
-    const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
-    //if (d.norm() < speedIgnoringThreshDist && angleDist(d.angle(), speed.angle()) < Math.PI / 2) return;
-    player.setSpeed(e.timeStamp, speed);
+    if (e.timeStamp > lastSpeedUpdateTimestamp) {
+        //const pos = player.posAtTime(e.timeStamp);
+        //const d = distFromSegments(pos, bounceLines);
+        //positionVector(I("distToBorder"), pos, d);
+        const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
+        //if (d.norm() < speedIgnoringThreshDist && angleDist(d.angle(), speed.angle()) < Math.PI / 2) return;
+        const timeAtLastFrame = toServerTime(lastTimestamp);
+        player.setSpeed(timeAtLastFrame, speed); // not e.timeStamp, otherwise we get non-linear time and can jump over walls
+    }
+    lastSpeedUpdateTimestamp = e.timeStamp;
 }
 
 function makeControllerLink(serverId) {
@@ -298,7 +301,7 @@ function reflections(t, dt, player, bounceLines) {
             const tAtBounce = player.zeroSpeedTime - tToStop;
             const originalSpeed = player.speedAtTime(tAtBounce);
             const bouncedSpeed = reflect(originalSpeed, directionOfClosestWall);
-            player.setSpeed(tAtBounce, bouncedSpeed, true);
+            player.setSpeed(tAtBounce, bouncedSpeed);
             // wrt new zeroSpeedPos, relevant in next loop iteration, will soon be overwritten by player.posAtTime(t) for next frame
             player.oldPos = player.posAtTime(t - dt);
             positionVector(I("speedBefore"), bouncePoint, originalSpeed);
