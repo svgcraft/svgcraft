@@ -130,11 +130,11 @@ const movementScale = 10;
 const speedIgnoringThreshDist = 0.4;
 
 function processEvent(e) {
-    const pos = player.posAtTime(e.timeStamp);
-    const d = distFromSegments(pos, bounceLines);
-    positionVector(I("distToBorder"), pos, d);
+    //const pos = player.posAtTime(e.timeStamp);
+    //const d = distFromSegments(pos, bounceLines);
+    //positionVector(I("distToBorder"), pos, d);
     const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
-    if (d.norm() < speedIgnoringThreshDist && angleDist(d.angle(), speed.angle()) < Math.PI / 2) return;
+    //if (d.norm() < speedIgnoringThreshDist && angleDist(d.angle(), speed.angle()) < Math.PI / 2) return;
     player.setSpeed(e.timeStamp, speed);
 }
 
