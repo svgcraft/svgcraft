@@ -1,6 +1,6 @@
 "use strict";
 
-let slowDownNetwork = false;
+let slowDownNetwork = true;
 let longDelay = 300;
 let shortDelay = 100;
 let delayDeviation = 50;

@@ -108,7 +108,14 @@ function frame(timestamp) {
     const t = toServerTime(timestamp);
     reflections(t, dt, player, bounceLines);
     const aimPos = player.posAtTime(t + aimTime);
-    player.currentPos = player.currentPos.add(aimPos.sub(player.currentPos).scale(dt / aimTime));
+
+    const move = aimPos.sub(player.currentPos);
+    // average speed while doing the move:
+    const avgV = move.scale(1 / aimTime);
+    // our speed should linearly decrease, and avgV is the speed we should have
+    // in aimTime/2 from now
+    const initialV = avgV.scale((avgV.norm() + aimTime / 2 * player.decceleration) / avgV.norm());
+    player.currentPos = player.currentPos.add(initialV.scale(dt));
 
     const truePos = player.posAtTime(t);
     positionCircle(I("circ"), player.currentPos);
