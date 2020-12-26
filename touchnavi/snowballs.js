@@ -29,6 +29,8 @@ class Player {
         // current position themselves (and interpolate a trajectory if they're
         // a bit off, without causing jumps)
         this.currentPos = initialPos;
+        // usually equals this.posAtTime(lastTimestamp), unless there was a speed change between the current and last frame
+        this.oldPos = initialPos;
         this.zeroSpeedPos = initialPos;
         this.zeroSpeedTime = -1e10;
         this.lastSpeedUpdateTime = -1e10;
@@ -48,8 +50,8 @@ class Player {
     }
     // time: seconds, at which point in time this speed was adopted
     // speed: Point, speed vector
-    setSpeed(time, speed) {
-        if (time < this.lastSpeedUpdateTime) return; // reject stale data
+    setSpeed(time, speed, force) {
+        if (time < this.lastSpeedUpdateTime && !force) return; // reject stale data
         this.lastSpeedUpdateTime = time;
         const corner = this.posAtTime(time);
         const v = speed.norm();
@@ -82,6 +84,13 @@ function positionCircle(dom, pos, radius) {
     }
 }
 
+function placeNewCircle(pos, r, color) {
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("fill-color", color);
+    positionCircle(c, pos, r);
+    I("arena").appendChild(c);
+}
+
 function positionVector(dom, start, direction) {
     dom.setAttribute("x1", start.x);
     dom.setAttribute("y1", start.y);
@@ -108,6 +117,8 @@ function frame(timestamp) {
 
     I("serverTime").innerText = Math.floor(t);
 
+    player.oldPos = truePos;
+    //placeNewCircle(truePos, 0.02, "black");
     lastTimestamp = timestamp;
     window.requestAnimationFrame(frame);
 }
@@ -247,16 +258,15 @@ function reflections(t, dt, player, bounceLines) {
     // bound of 10 just to avoid infinite loops in case of insane conditions
     let nReflections = 0;
     for (; nReflections < 10; nReflections++) {
-        const oldPos = player.posAtTime(t - dt); // different in each outer loop iteration because zeroSpeedPos updated
         const newPos = player.posAtTime(t);
-        const v = newPos.sub(oldPos);
+        const v = newPos.sub(player.oldPos);
         let minDistCoeff = Number.POSITIVE_INFINITY;
         let directionOfClosestWall = null;
         let indexOfClosestWall = null;
         for (let i = 0; i < bounceLines.length; i++) {
             if (used[i]) continue;
             const [q, w] = bounceLines[i];
-            const coeffs = lineIntersectionCoeffs(q, w, oldPos, v);
+            const coeffs = lineIntersectionCoeffs(q, w, player.oldPos, v);
             if (coeffs === null) continue;
             const [c1, c2] = coeffs;
             // we prefer to bounce too often rather than too rarely to prevent
@@ -273,13 +283,15 @@ function reflections(t, dt, player, bounceLines) {
             break;
         } else {
             used[indexOfClosestWall] = true;
-            const bouncePoint = oldPos.add(v.scale(minDistCoeff));
+            const bouncePoint = player.oldPos.add(v.scale(minDistCoeff));
             const d = bouncePoint.sub(player.zeroSpeedPos).norm();
             const tToStop = Math.sqrt(2 * d / player.decceleration);
             const tAtBounce = player.zeroSpeedTime - tToStop;
             const originalSpeed = player.speedAtTime(tAtBounce);
             const bouncedSpeed = reflect(originalSpeed, directionOfClosestWall);
-            player.setSpeed(tAtBounce, bouncedSpeed);
+            player.setSpeed(tAtBounce, bouncedSpeed, true);
+            // wrt new zeroSpeedPos, relevant in next loop iteration, will soon be overwritten by player.posAtTime(t) for next frame
+            player.oldPos = player.posAtTime(t - dt);
             positionVector(I("speedBefore"), bouncePoint, originalSpeed);
             positionVector(I("speedAfter"), bouncePoint, bouncedSpeed);
         }
