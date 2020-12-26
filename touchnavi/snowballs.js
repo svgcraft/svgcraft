@@ -114,7 +114,9 @@ function frame(timestamp) {
     const avgV = move.scale(1 / aimTime);
     // our speed should linearly decrease, and avgV is the speed we should have
     // in aimTime/2 from now
-    const initialV = avgV.scale((avgV.norm() + aimTime / 2 * player.decceleration) / avgV.norm());
+    const speedDelta = aimTime / 2 * player.decceleration; // (constant)
+    const initialV = speedDelta > avgV.norm() ? avgV // no justification from physics, just to make breaking look smoother
+        : avgV.scale((avgV.norm() + speedDelta) / avgV.norm()); // more correct
     player.currentPos = player.currentPos.add(initialV.scale(dt));
 
     const truePos = player.posAtTime(t);
