@@ -18,24 +18,14 @@ function angleDist(a, b) {
     return Math.abs(normalizeAngle(a - b));
 }
 
-class Player {
+class DecceleratingObject {
     // initialPos: Point
-    constructor(initialPos, color) {
-        // currentPos is an interpolated approximation of the true current position,
-        // posAtTime(Date.now()/1000), and to save the true position, we don't save
-        // current coordinates, but the position and time at which speed 0 will be
-        // reached, and the angle from that point to the current position,
-        // so that given the decceleration and current time, clients compute the
-        // current position themselves (and interpolate a trajectory if they're
-        // a bit off, without causing jumps)
-        this.currentPos = initialPos;
-        // usually equals this.posAtTime(timeAtLastFrame), unless there was a speed change between the current and last frame
-        this.oldPos = initialPos;
+    // decceleration: float, in svg position units per sec^2
+    constructor(initialPos, decceleration) {
         this.zeroSpeedPos = initialPos;
         this.zeroSpeedTime = -1e10;
         this.angle = 0.12345;
-        this.decceleration = 12; // in svg position units per sec^2
-        this.color = color;
+        this.decceleration = decceleration;
     }
     // time: seconds
     speedAtTime(time) {
@@ -59,9 +49,48 @@ class Player {
         this.zeroSpeedPos = corner.add(speed.scale(distToStop / v));
         this.angle = oppositeAngle(speed.angle());
     }
+    trajectoryJson() {
+        return {
+            x0: this.zeroSpeedPos.x,
+            y0: this.zeroSpeedPos.y,
+            t0: this.zeroSpeedTime,
+            angle: this.angle
+        };
+    }
+}
+
+class Player extends DecceleratingObject {
+    // initialPos: Point
+    constructor(initialPos, color) {
+        super(initialPos, 12);
+        // currentPos is an interpolated approximation of the true current position,
+        // posAtTime(Date.now()/1000), and to save the true position, we don't save
+        // current coordinates, but the position and time at which speed 0 will be
+        // reached, and the angle from that point to the current position,
+        // so that given the decceleration and current time, clients compute the
+        // current position themselves (and interpolate a trajectory if they're
+        // a bit off, without causing jumps)
+        this.currentPos = initialPos;
+        // usually equals this.posAtTime(timeAtLastFrame), unless there was a speed change between the current and last frame
+        this.oldPos = initialPos;
+        this.color = color;
+        this.nextFreshSnowballId = 0;
+    }
+    freshSnowballId() {
+        return this.nextFreshSnowballId++;
+    }
+}
+
+class Snowball extends DecceleratingObject {
+    constructor(initialPos, id, playerId) {
+        super(initialPos, 8);
+        this.id = id; // each player numbers the snowballs it throws 0, 1, 2, ...
+        this.playerId = playerId;
+    }
 }
 
 const headRadius = 0.5;
+const snowballRadius = 0.13;
 const arenaWidth = 16;
 const arenaHeight = 9;
 
@@ -102,6 +131,7 @@ class GameState {
         this.aimTime = 0.3;
         this.lastT = null;
         this.players = new Map();
+        this.snowballs = new Set();
         this.myId = myId;
         // a list of [a, v] pairs, where a is the start point of the line segment,
         // and v is the vector pointing from a to the line segment's end point
@@ -131,6 +161,18 @@ class GameState {
         I("arena").appendChild(circ);
     }
 
+    addSnowball(snowball) {
+        this.snowballs.add(snowball);
+        const circ = svg("circle", {
+            id: "snowball_" + snowball.playerId + "_" + snowball.id, 
+            cx: -1234,
+            cy: -1234,
+            r: snowballRadius,
+            fill: "white"
+        }, []);
+        I("arena").appendChild(circ);
+    }
+
     frame(timestamp) {
         const t = timestamp / 1000;
         if (this.lastT === null) this.lastT = t;
@@ -153,6 +195,18 @@ class GameState {
             const truePos = player.posAtTime(t);
             positionCircle(I("circ_" + playerId), player.currentPos);
             player.oldPos = truePos;
+        }
+        for (let snowball of this.snowballs) {
+            const p = snowball.posAtTime(t);
+            const v = snowball.speedAtTime(t).norm();
+            const dom = I("snowball_" + snowball.playerId + "_" + snowball.id);
+            const d = 0.7;
+            if (p.x < -d || p.y < -d || p.x > arenaWidth + d || p.y > arenaHeight + d || v < epsilon) {
+                this.snowballs.delete(snowball);
+                dom.remove();
+            } else {
+                positionCircle(dom, p);
+            }
         }
         this.lastT = t;
     }
@@ -239,6 +293,14 @@ class PlayerPeer {
                 player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
                 player.zeroSpeedTime = e.t0 - this.timeSeniority;
                 player.angle = e.angle;
+            } else if (e.type === "snowball") {
+                const snowball = new Snowball();
+                snowball.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
+                snowball.zeroSpeedTime = e.t0 - this.timeSeniority;
+                snowball.angle = e.angle;
+                snowball.id = e.id;
+                snowball.playerId = this.id;
+                gameState.addSnowball(snowball);
             } else if (e.type === "setcolor") {
                 gameState.setPlayerColor(id, e.color);
             } else {
@@ -252,15 +314,18 @@ class PlayerPeer {
 }
 
 class TouchpadPeer {
-    constructor(conn, onInput) {
+    constructor(conn) {
         this.conn = conn;
+        this.onLeftInput = () => {};
+        this.onRightInput = () => {};
         conn.on('open', () => {
             log.connection("Connection to touchpad " + conn.peer + " open");
         });
         conn.on('data', e => {
             log.data(`data received from ${conn.peer}`);
             log.data(e);
-            onInput(e);
+            if (e.side === "left") this.onLeftInput(e);
+            if (e.side === "right") this.onRightInput(e);
         });
         conn.on('close', () => {
             log.connection(`Connection to touchpad ${conn.peer} closed`);
@@ -301,10 +366,18 @@ class GameConnections {
                         conn.close();
                     } else {
                         log.connection("Connected to touchpad " + conn.peer);
-                        this.touchpadPeer = new TouchpadPeer(conn, e => {
+                        this.touchpadPeer = new TouchpadPeer(conn);
+                        this.touchpadPeer.onLeftInput = e => {
                             this.gameState.setPlayerSpeed(this.myId, new Point(e.speedX, e.speedY));
                             this.broadcastTrajectory();
-                        });
+                        };
+                        this.touchpadPeer.onRightInput = e => {
+                            const player = gameState.players.get(this.myId);
+                            const snowball = new Snowball(player.posAtTime(gameState.lastT), player.freshSnowballId(), this.myId);
+                            snowball.setSpeed(gameState.lastT, new Point(e.speedX, e.speedY));
+                            gameState.addSnowball(snowball);
+                            this.broadcastSnowball(snowball);
+                        }
                     }
                     break;
                 default:
@@ -329,15 +402,21 @@ class GameConnections {
 
     broadcastTrajectory() {
         const player = this.gameState.players.get(this.myId);
-        const m = {
-            type: "trajectory",
-            x0: player.zeroSpeedPos.x,
-            y0: player.zeroSpeedPos.y,
-            t0: player.zeroSpeedTime,
-            angle: player.angle
-        };
+        const m = player.trajectoryJson();
+        m.type = "trajectory";
+        this.broadcast(m);
+    }
+
+    broadcastSnowball(snowball) {
+        const m = snowball.trajectoryJson();
+        m.type = "snowball";
+        m.id = snowball.id;
+        this.broadcast(m);
+    }
+
+    broadcast(msg) {
         for (let playerPeer of this.playerPeers.values()) {
-            sendMessage(playerPeer.conn, m);
+            sendMessage(playerPeer.conn, msg);
         }
     }
 }
