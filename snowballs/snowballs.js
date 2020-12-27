@@ -145,7 +145,7 @@ class GameState {
     constructor(myId, bounceLines, events) {
         // we always aim towards the true position of the player aimTime seconds in the future
         this.aimTime = 0.3;
-        this.hitAnimationLength = 0.6;
+        this.hitAnimationLength = 0.3;
         this.lastT = null;
         this.players = new Map();
         this.myId = myId;
@@ -176,13 +176,16 @@ class GameState {
             fill: color
         }, []);
         I("arena").appendChild(circ);
+        const w = 0.2 * headRadius;
         const hitShade = svg("circle", {
             id: "hitShade_" + playerId, 
             cx: player.currentPos.x, 
             cy: player.currentPos.y, 
-            r: headRadius,
-            fill: "black",
-            "fill-opacity": 0
+            r: headRadius + 1.5 * w,
+            fill: "none",
+            "stroke-width": w,
+            "stroke": "black",
+            "stroke-opacity": 0
         }, []);
         I("arena").appendChild(hitShade);
     }
@@ -253,12 +256,14 @@ class GameState {
             const truePos = player.posAtTime(t);
             positionCircle(I("circ_" + playerId), player.currentPos);
 
-            const transparency = (t - player.lastHitTime - this.hitAnimationLength / 2) / this.hitAnimationLength;
+            const transparency = (t - player.lastHitTime) / this.hitAnimationLength;
             const hitShade = I("hitShade_" + playerId);
-            if (transparency <= 1.3 /* add some slack to 1 to make sure it will be set to completely 0 opacity */) {
+            if (transparency <= 1) {
                 positionCircle(hitShade, player.currentPos);
-                hitShade.setAttribute("fill-opacity", Math.max(0, Math.min(1, 1 - transparency)));
-                hitShade.setAttribute("fill", player.lastHitColor);
+                hitShade.setAttribute("stroke-opacity", 1 - transparency);
+                hitShade.setAttribute("stroke", player.lastHitColor);
+            } else {
+                hitShade.setAttribute("stroke-opacity", 0);
             }
             player.oldPos = truePos;
         }
