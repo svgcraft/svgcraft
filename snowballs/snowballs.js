@@ -20,7 +20,7 @@ function angleDist(a, b) {
 
 class Player {
     // initialPos: Point
-    constructor(initialPos) {
+    constructor(initialPos, color) {
         // currentPos is an interpolated approximation of the true current position,
         // posAtTime(Date.now()/1000), and to save the true position, we don't save
         // current coordinates, but the position and time at which speed 0 will be
@@ -35,6 +35,7 @@ class Player {
         this.zeroSpeedTime = -1e10;
         this.angle = 0.12345;
         this.decceleration = 12; // in svg position units per sec^2
+        this.color = color;
     }
     // time: seconds
     speedAtTime(time) {
@@ -63,15 +64,6 @@ class Player {
 const headRadius = 0.5;
 const arenaWidth = 16;
 const arenaHeight = 9;
-let lastTimestamp = null;
-let player = null;
-
-// will remain 0 in server, set to (likely) non-zero in clients
-let serverTimeDelta = 0;
-
-function toServerTime(t) {
-    return t / 1000 - serverTimeDelta;
-}
 
 function positionCircle(dom, pos, radius) {
     dom.setAttribute("cx", pos.x);
@@ -79,13 +71,6 @@ function positionCircle(dom, pos, radius) {
     if (radius !== undefined) {
         dom.setAttribute("r", radius);
     }
-}
-
-function placeNewCircle(pos, r, color) {
-    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c.setAttribute("fill-color", color);
-    positionCircle(c, pos, r);
-    I("arena").appendChild(c);
 }
 
 function positionVector(dom, start, direction) {
@@ -96,115 +81,270 @@ function positionVector(dom, start, direction) {
     dom.setAttribute("y2", target.y);
 }
 
-// we always aim towards the true position of the player aimTime seconds in the future
-const aimTime = 0.3;
-
-function frame(timestamp) {
-    if (lastTimestamp === null) lastTimestamp = timestamp;
-    const dt = (timestamp - lastTimestamp) / 1000;
-    const t = toServerTime(timestamp);
-    reflections(t, dt, player, bounceLines);
-    const aimPos = player.posAtTime(t + aimTime);
-
-    const move = aimPos.sub(player.currentPos);
-    // average speed while doing the move:
-    const avgV = move.scale(1 / aimTime);
-    // our speed should linearly decrease, and avgV is the speed we should have
-    // in aimTime/2 from now
-    const speedDelta = aimTime / 2 * player.decceleration; // (constant)
-    const initialV = speedDelta > avgV.norm() ? avgV.scale(2) // no justification from physics, just to make breaking look smoother
-        : avgV.scale((avgV.norm() + speedDelta) / avgV.norm()); // more correct
-    player.currentPos = player.currentPos.add(initialV.scale(dt));
-
-    const truePos = player.posAtTime(t);
-    positionCircle(I("circ"), player.currentPos);
-    positionCircle(I("circTruePos"), truePos);
-    positionCircle(I("circZeroSpeedPos"), player.zeroSpeedPos);
-
-    I("serverTime").innerText = Math.floor(t);
-
-    player.oldPos = truePos;
-    //placeNewCircle(truePos, 0.02, "black");
-    lastTimestamp = timestamp;
-    window.requestAnimationFrame(frame);
-}
-
-const movementScale = 10;
-
-// if player is closer than this much from a wall, speed updates are disabled,
-// otherwise after a few numeric imprecisions, the player will sneak through the wall
-const speedIgnoringThreshDist = 0.4;
-
-let lastSpeedUpdateTimestamp = Number.NEGATIVE_INFINITY;
-
-function processEvent(e) {
-    if (e.timeStamp > lastSpeedUpdateTimestamp) {
-        //const pos = player.posAtTime(e.timeStamp);
-        //const d = distFromSegments(pos, bounceLines);
-        //positionVector(I("distToBorder"), pos, d);
-        const speed = new Point(e.speedX * movementScale, e.speedY * movementScale);
-        //if (d.norm() < speedIgnoringThreshDist && angleDist(d.angle(), speed.angle()) < Math.PI / 2) return;
-        const timeAtLastFrame = toServerTime(lastTimestamp);
-        player.setSpeed(timeAtLastFrame, speed); // not e.timeStamp, otherwise we get non-linear time and can jump over walls
+function svg(tag, attrs, children, allowedAttrs) {
+    const res = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    if (attrs) {
+        for (const attrName in attrs) {
+            if (!allowedAttrs || allowedAttrs.includes(attrName)) res.setAttribute(attrName, attrs[attrName]);
+        }
     }
-    lastSpeedUpdateTimestamp = e.timeStamp;
+    if (children) {
+        for (const child of children) {
+            res.appendChild(child);
+        }
+    }
+    return res;
 }
 
-function makeControllerLink(serverId) {
-    // ?serverId=${serverId} is already in the URL
-    return window.location.href.replace("index.html", `touchpad.html`);
+class GameState {
+    constructor(myId, bounceLines) {
+        // we always aim towards the true position of the player aimTime seconds in the future
+        this.aimTime = 0.3;
+        this.lastT = null;
+        this.players = new Map();
+        this.myId = myId;
+        // a list of [a, v] pairs, where a is the start point of the line segment,
+        // and v is the vector pointing from a to the line segment's end point
+        this.bounceLines = bounceLines;
+    }
+
+    setPlayerSpeed(playerId, speed) {
+        // Note: We don't use an event timestamp, otherwise we get non-linear time and can jump over walls
+        this.players.get(playerId).setSpeed(this.lastT, speed);
+    }
+
+    setPlayerColor(playerId, color) {
+        this.players.get(playerId).color = color;
+        I("circ_" + playerId).setAttribute("fill", color);
+    }
+
+    addPlayer(playerId, color) {
+        const player = new Player(new Point(arenaWidth/2, arenaHeight/2), color);
+        this.players.set(playerId, player);
+        const circ = svg("circle", {
+            id: "circ_" + playerId, 
+            cx: player.currentPos.x, 
+            cy: player.currentPos.y, 
+            r: headRadius,
+            fill: color
+        }, []);
+        I("arena").appendChild(circ);
+    }
+
+    frame(timestamp) {
+        const t = timestamp / 1000;
+        if (this.lastT === null) this.lastT = t;
+        const dt = t - this.lastT;
+
+        for (let [playerId, player] of this.players) {
+            this.reflections(t, dt, player);
+            const aimPos = player.posAtTime(t + this.aimTime);
+
+            const move = aimPos.sub(player.currentPos);
+            // average speed while doing the move:
+            const avgV = move.scale(1 / this.aimTime);
+            // our speed should linearly decrease, and avgV is the speed we should have
+            // in aimTime/2 from now
+            const speedDelta = this.aimTime / 2 * player.decceleration; // (constant)
+            const initialV = speedDelta > avgV.norm() ? avgV.scale(2) // no justification from physics, just to make breaking look smoother
+                : avgV.scale((avgV.norm() + speedDelta) / avgV.norm()); // more correct
+            player.currentPos = player.currentPos.add(initialV.scale(dt));
+
+            const truePos = player.posAtTime(t);
+            positionCircle(I("circ_" + playerId), player.currentPos);
+            player.oldPos = truePos;
+        }
+        this.lastT = t;
+    }
+
+    reflections(t, dt, player) {
+        const used = this.bounceLines.map(line => false);
+        // more than 2 reflections in the same frame is considered very unlikely, upper
+        // bound of 10 just to avoid infinite loops in case of insane conditions
+        let nReflections = 0;
+        for (; nReflections < 10; nReflections++) {
+            const newPos = player.posAtTime(t);
+            const v = newPos.sub(player.oldPos);
+            let minDistCoeff = Number.POSITIVE_INFINITY;
+            let directionOfClosestWall = null;
+            let indexOfClosestWall = null;
+            for (let i = 0; i < this.bounceLines.length; i++) {
+                if (used[i]) continue;
+                const [q, w] = this.bounceLines[i];
+                const coeffs = lineIntersectionCoeffs(q, w, player.oldPos, v);
+                if (coeffs === null) continue;
+                const [c1, c2] = coeffs;
+                // we prefer to bounce too often rather than too rarely to prevent
+                // players from exiting the arena by sneaking through a corner in
+                // case the player aims exactly at the corner and floating point
+                // instabilities are against us
+                if (0 <= c1 && c1 <= 1 + epsilon && 0 <= c2 && c2 <= 1 + epsilon && c2 < minDistCoeff) {
+                    minDistCoeff = c2;
+                    directionOfClosestWall = w;
+                    indexOfClosestWall = i;
+                }
+            }
+            if (minDistCoeff === Number.POSITIVE_INFINITY) {
+                break;
+            } else {
+                used[indexOfClosestWall] = true;
+                const bouncePoint = player.oldPos.add(v.scale(minDistCoeff));
+                const d = bouncePoint.sub(player.zeroSpeedPos).norm();
+                const tToStop = Math.sqrt(2 * d / player.decceleration);
+                const tAtBounce = player.zeroSpeedTime - tToStop;
+                const originalSpeed = player.speedAtTime(tAtBounce);
+                const bouncedSpeed = reflect(originalSpeed, directionOfClosestWall);
+                player.setSpeed(tAtBounce, bouncedSpeed);
+                // wrt new zeroSpeedPos, relevant in next loop iteration, will soon be overwritten by player.posAtTime(t) for next frame
+                player.oldPos = player.posAtTime(t - dt);
+                positionVector(I("speedBefore"), bouncePoint, originalSpeed);
+                positionVector(I("speedAfter"), bouncePoint, bouncedSpeed);
+            }
+        }
+        if (nReflections > 0) console.log(`nReflections = ${nReflections}`);
+    }
 }
 
-function initServer(serverId) {
-    const peer = new Peer(serverId, {debug: 2});
+function makeControllerLink(myId) {
+    const folder = `${window.location.protocol}//${window.location.host}${window.location.pathname.replace("/index.html", "")}`;
+    return `${folder}/touchpad.html?connectTo=${myId}`;
+}
 
-    peer.on('open', (id) => {
-        log.connection("PeerJS server gave us ID " + id);
-        log.connection("Controller link to share:", makeControllerLink(serverId));
-        log.connection("Waiting for peers to connect");
-    });
-
-    peer.on('connection', (conn) => {
-        log.connection("Connected to " + conn.peer);
-
+class PlayerPeer {
+    constructor(id, conn, gameState) {
+        this.id = id;
+        this.conn = conn;
+        this.gameState = gameState;
+        this.timeSeniority = null; // how many seconds before me did this player start its clock?
+        let timeRequestSent = null;
         conn.on('open', () => {
             log.connection("Connection to " + conn.peer + " open");
+            timeRequestSent = performance.now() / 1000;
+            sendMessage(conn, { type: "gettime" } );
+            sendMessage(conn, { type: "setcolor", color: gameState.players.get(gameState.myId).color });
+            gameState.addPlayer(id, "red");
         });
-
         conn.on('data', e => {
-            log.data(`actions received from client:`);
+            log.data(`data received from ${conn.peer}`);
             log.data(e);
             if (e.type === "gettime") {
-                sendMessage(conn, { type: "time", timeStamp: toServerTime(performance.now()) });
+                sendMessage(conn, { type: "time", timestamp: performance.now() / 1000 });
+            } else if (e.type === "time") {
+                const timeResponseReceived = performance.now() / 1000;
+                const timeResponseSent = (timeRequestSent + timeResponseReceived) / 2;
+                this.timeSeniority = e.timestamp - timeResponseSent;
+                log.connection(`RTT to ${this.id}: ${timeResponseReceived - timeRequestSent}s, clock started ${this.timeSeniority}s earlier`);
+            } else if (e.type === "trajectory") {
+                const player = gameState.players.get(id);
+                player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
+                player.zeroSpeedTime = e.t0 - this.timeSeniority;
+                player.angle = e.angle;
+            } else if (e.type === "setcolor") {
+                gameState.setPlayerColor(id, e.color);
             } else {
-                processEvent(e);
+                log.connection("unknown message type: " + e.type);
             }
         });
         conn.on('close', () => {
-            log.connection(`Connection to client closed`);
+            log.connection(`Connection to ${conn.peer} closed`);
         });
-    });
+    }
+}
 
-    peer.on('disconnected', () => {
-        log.connection("disconnected!");
-    });
+class TouchpadPeer {
+    constructor(conn, onInput) {
+        this.conn = conn;
+        conn.on('open', () => {
+            log.connection("Connection to touchpad " + conn.peer + " open");
+        });
+        conn.on('data', e => {
+            log.data(`data received from ${conn.peer}`);
+            log.data(e);
+            onInput(e);
+        });
+        conn.on('close', () => {
+            log.connection(`Connection to touchpad ${conn.peer} closed`);
+        });
+    }
+}
 
-    peer.on('close', () => {
-        log.connection('Connection to PeerJS server closed');
-    });
+class GameConnections {
+    constructor(myId, friendId, gameState) {
+        this.myId = myId;
+        this.peer = new Peer(myId, {debug: 2});
+        this.playerPeers = new Map();
+        this.touchpadPeer = null;
+        this.gameState = gameState;
 
-    peer.on('error', (err) => {
-        log.connection(err);
-    });
+        this.peer.on('open', (id) => {
+            log.connection("PeerJS server gave us ID " + id);
+            log.connection("Controller link to use on your phone:", makeControllerLink(id));
+            if (friendId) {
+                const conn = this.peer.connect(friendId, { 
+                    reliable: true,
+                    metadata: { type: "player" }
+                });
+                this.playerPeers.set(friendId, new PlayerPeer(friendId, conn, gameState));
+            }
+            log.connection("Waiting for peers to connect");
+        });
+    
+        this.peer.on('connection', (conn) => {
+            switch (conn.metadata?.type) {
+                case "player":
+                    log.connection("Connected to player " + conn.peer);
+                    this.playerPeers.set(conn.peer, new PlayerPeer(conn.peer, conn, gameState));
+                    break;
+                case "touchpad":
+                    if (this.touchpadPeer) {
+                        log.connection("Rejecting touchpad connection because there already is one");
+                        conn.close();
+                    } else {
+                        log.connection("Connected to touchpad " + conn.peer);
+                        this.touchpadPeer = new TouchpadPeer(conn, e => {
+                            this.gameState.setPlayerSpeed(this.myId, new Point(e.speedX, e.speedY));
+                            this.broadcastTrajectory();
+                        });
+                    }
+                    break;
+                default:
+                    log.connection("Rejecting connection of unknown type " + conn.metadata?.type);
+                    conn.close();
+                    break;
+            }
+        });
+    
+        this.peer.on('disconnected', () => {
+            log.connection("disconnected from PeerJS server");
+        });
+    
+        this.peer.on('close', () => {
+            log.connection('Connection to PeerJS server closed');
+        });
+    
+        this.peer.on('error', (err) => {
+            log.connection(err);
+        });
+    }
+
+    broadcastTrajectory() {
+        const player = this.gameState.players.get(this.myId);
+        const m = {
+            type: "trajectory",
+            x0: player.zeroSpeedPos.x,
+            y0: player.zeroSpeedPos.y,
+            t0: player.zeroSpeedTime,
+            angle: player.angle
+        };
+        for (let playerPeer of this.playerPeers.values()) {
+            sendMessage(playerPeer.conn, m);
+        }
+    }
 }
 
 function genArray(len, f) {
     return Array.from(Array(len).keys(), f);
 }
-
-// a list of [a, v] pairs, where a is the start point of the line segment,
-// and v is the vector pointing from a to the line segment's end point
-let bounceLines = [];
 
 function polygonToLines(dom) {
     const points = dom.getAttribute("points").split(/ *, *| +/).map(parseFloat);
@@ -264,63 +404,44 @@ function distFromSegments(p, segments) {
         Point.infinity());
 }
 
-function reflections(t, dt, player, bounceLines) {
-    const used = bounceLines.map(line => false);
-    // more than 2 reflections in the same frame is considered very unlikely, upper
-    // bound of 10 just to avoid infinite loops in case of insane conditions
-    let nReflections = 0;
-    for (; nReflections < 10; nReflections++) {
-        const newPos = player.posAtTime(t);
-        const v = newPos.sub(player.oldPos);
-        let minDistCoeff = Number.POSITIVE_INFINITY;
-        let directionOfClosestWall = null;
-        let indexOfClosestWall = null;
-        for (let i = 0; i < bounceLines.length; i++) {
-            if (used[i]) continue;
-            const [q, w] = bounceLines[i];
-            const coeffs = lineIntersectionCoeffs(q, w, player.oldPos, v);
-            if (coeffs === null) continue;
-            const [c1, c2] = coeffs;
-            // we prefer to bounce too often rather than too rarely to prevent
-            // players from exiting the arena by sneaking through a corner in
-            // case the player aims exactly at the corner and floating point
-            // instabilities are against us
-            if (0 <= c1 && c1 <= 1 + epsilon && 0 <= c2 && c2 <= 1 + epsilon && c2 < minDistCoeff) {
-                minDistCoeff = c2;
-                directionOfClosestWall = w;
-                indexOfClosestWall = i;
-            }
-        }
-        if (minDistCoeff === Number.POSITIVE_INFINITY) {
-            break;
-        } else {
-            used[indexOfClosestWall] = true;
-            const bouncePoint = player.oldPos.add(v.scale(minDistCoeff));
-            const d = bouncePoint.sub(player.zeroSpeedPos).norm();
-            const tToStop = Math.sqrt(2 * d / player.decceleration);
-            const tAtBounce = player.zeroSpeedTime - tToStop;
-            const originalSpeed = player.speedAtTime(tAtBounce);
-            const bouncedSpeed = reflect(originalSpeed, directionOfClosestWall);
-            player.setSpeed(tAtBounce, bouncedSpeed);
-            // wrt new zeroSpeedPos, relevant in next loop iteration, will soon be overwritten by player.posAtTime(t) for next frame
-            player.oldPos = player.posAtTime(t - dt);
-            positionVector(I("speedBefore"), bouncePoint, originalSpeed);
-            positionVector(I("speedAfter"), bouncePoint, bouncedSpeed);
-        }
-    }
-    if (nReflections > 0) console.log(`nReflections = ${nReflections}`);
+const colorNames = [ 
+    "blue", 
+    "burlywood", 
+    "coral", 
+    "crimson",
+    "hotpink",
+    "lawngreen",
+    "orange",
+    "purple",
+    "red",
+    "teal",
+    "turquoise",
+    "yellow"
+];
+
+function randomColor() {
+    return colorNames[Math.floor(Math.random() * colorNames.length)];
 }
 
 function init() {
-    player = new Player(new Point(arenaWidth/2, arenaHeight/2));
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has("serverId")) {
-        initServer(urlParams.get("serverId"));
-    } else {
-        console.error("No serverId in URL");
+    if (!urlParams.has("myId")) {
+        console.error("No myId in URL");
+        return;
     }
-    bounceLines = polygonToLines(I("borderPolygon"));
-    window.requestAnimationFrame(frame);
+    const bounceLines = polygonToLines(I("borderPolygon"));
+    const myId = urlParams.get("myId");
+    const gs = new GameState(myId, bounceLines);
+    const color = urlParams.get("color") || randomColor();
+    gs.addPlayer(myId, color);
+
+    new GameConnections(myId, urlParams.get("friendId"), gs);
+
+    function paint(timestamp) {
+        gs.frame(timestamp);
+        window.requestAnimationFrame(paint);    
+    }
+    window.requestAnimationFrame(paint);
 }
 
 window.onload = init;

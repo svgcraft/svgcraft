@@ -1,11 +1,6 @@
 "use strict";
 
 let conn = null;
-let serverTimeDelta = 0;
-
-function toServerTime(t) {
-    return t / 1000 - serverTimeDelta;
-}
 
 function initConnection (serverId) {
     const peer = new Peer(null, {debug: 2});
@@ -14,40 +9,32 @@ function initConnection (serverId) {
         log.connection("PeerJS server gave us ID " + id);
 
         conn = peer.connect(serverId, {
-            reliable: true // TODO set to false once we do several time measures and are sure we can deal with packet loss/reordering
+            reliable: true,
+            metadata: { type: "touchpad" }
         });
-
-        let timeRequestSent = null;
 
         conn.on('open', () => {
             log.connection("Connected to " + conn.peer);
-            timeRequestSent = performance.now() / 1000;
-            sendMessage(conn, { type: "gettime" } );
+            peer.disconnect(); // we don't need the connection to the PeerJS server any more
         });
 
         conn.on('data', (data) => {
-            log.data(`Data received from game server`);
+            log.data(`Data received (not quite expected), closing connection`);
             log.data(data);
-            if (data.type === "time") {
-                const timeResponseReceived = performance.now() / 1000;
-                const timeResponseSent = (timeRequestSent + timeResponseReceived) / 2;
-                serverTimeDelta = timeResponseSent - data.timeStamp;
-                log.connection(`RTT: ${timeResponseReceived - timeRequestSent}s`);
-                log.connection(`serverTimeDelta: ${serverTimeDelta}s`);
-            }
+            conn.close();
         });
 
         conn.on('close', () => {
-            log.connection("Connection to game server closed");
+            log.connection("Connection closed");
         });
     });
 
     peer.on('disconnected', () => {
-        log.connection("disconnected!");
+        log.connection("Disconnected from PeerJS server");
     });
 
     peer.on('close', () => {
-        log.connection('Connection to PeerJS server closed');
+        log.connection('PeerJS Peer closed');
     });
 
     peer.on('error', (err) => {
@@ -56,7 +43,7 @@ function initConnection (serverId) {
 }
 
 function sendEvent(e) {
-    log.data('Sending event to game server');
+    log.data('Sending event');
     log.data(e);
     if (conn) {
         sendMessage(conn, e);
@@ -65,13 +52,15 @@ function sendEvent(e) {
     }
 }
 
+const movementScale = 10;
+
 function onEvent(side) {
     return e => {
         sendEvent({
             side: side,
-            timeStamp: toServerTime(e.timeStamp),
-            speedX: e.speedX,
-            speedY: e.speedY
+            timestamp: e.timestamp / 1000,
+            speedX: e.speedX * movementScale,
+            speedY: e.speedY * movementScale
         });
     }
 }
@@ -81,23 +70,16 @@ function registerHandlers(dom, side) {
     t.addSpeedListener(onEvent(side));
 }
 
-function frame(timestamp) {
-    document.getElementById("serverTime").innerText = Math.floor(toServerTime(timestamp));
-    window.requestAnimationFrame(frame);
-}
-
 function init() {
     registerHandlers(document.getElementById("LeftPad"), "left");
     registerHandlers(document.getElementById("RightPad"), "right");
 
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has("serverId")) {
-        initConnection(urlParams.get("serverId"));
+    if (urlParams.has("connectTo")) {
+        initConnection(urlParams.get("connectTo"));
     } else {
-        console.error("No serverId in URL");
+        console.error("No connectTo in URL");
     }
-
-    window.requestAnimationFrame(frame);
 }
 
 window.onload = init;
