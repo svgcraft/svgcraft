@@ -211,6 +211,16 @@ class GameState {
         shooter.plusPoints++;
         shooter.snowballs.delete(snowballId);
         I("snowball_" + shooterId + "_" + snowballId).remove();
+        this.updateRanking();
+    }
+
+    updateRanking() {
+        let a = Array.from(this.players.values());
+        a.sort((p1, p2) => p2.plusPoints - p2.minusPoints - (p1.plusPoints - p1.minusPoints));
+        for (let i = 0; i < 2 && i < a.length; i++) {
+            I("rank" + i).textContent = `${i+1}: ${a[i].plusPoints - a[i].minusPoints} (${a[i].plusPoints}-${a[i].minusPoints})`;
+            I("rank" + i).setAttribute("fill", a[i].color);
+        }
     }
 
     frame(timestamp) {

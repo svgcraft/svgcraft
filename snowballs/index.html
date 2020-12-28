@@ -24,8 +24,10 @@
             </defs>
             <rect x="-0.7" y="-0.7" width="17.4" height="10.4" fill="url('#skyGradient')" />
             <!-- Note: polygon must be specified counter-clockwise so that "left while walking" is "further inside" -->
-            <polygon id="borderPolygon" points="0,7 2,9 8,9 9,5 10,9 16,9 16,3 13,0 6,0 5,3 4,0 2,0" 
+            <polygon id="borderPolygon" points="0,7 2,9 8,9 9,5 10,9 16,9 16,3 13,0 6,0 5,3 4,0 2,0 2,0.7 0,0.7" 
                 fill="none" stroke="white" stroke-width="0.05" stroke-dasharray=0.05 />
+            <text id="rank0" x="0" y="0.2" font-size="0.2" fill="white" style="font-family: monospace">1: 0 (0 - 0) </text>
+            <text id="rank1" x="0" y="0.5" font-size="0.2" fill="white" style="font-family: monospace">2: 0 (0 - 0) </text>
             <circle id="circTruePos" style="display:none" cx="8" cy="4.5" r="0.5" fill="green" fill-opacity="0.3" />
             <circle id="circZeroSpeedPos" style="display:none" cx="8" cy="4.5" r="0.1" fill="green" fill-opacity="0.3" />
             <circle id="bouncePoint" style="display:none" cx="8" cy="4.5" r="0.1" fill="red" fill-opacity="0.3" />
