@@ -97,10 +97,11 @@ class Player extends DecceleratingObject {
 }
 
 class Snowball extends DecceleratingObject {
-    constructor(initialPos, id, playerId) {
+    constructor(initialPos, id, playerId, birthTime) {
         super(initialPos, 8);
         this.id = id; // each player numbers the snowballs it throws 0, 1, 2, ...
         this.playerId = playerId;
+        this.birthTime = birthTime;
     }
 }
 
@@ -245,21 +246,21 @@ class GameState {
 
             for (let snowball of player.snowballs.values()) {
                 const p = snowball.posAtTime(t);
+                const p0 = snowball.posAtTime(snowball.birthTime);
+                const traveled = p.sub(p0);
                 const v = snowball.speedAtTime(t).norm();
                 const dom = I("snowball_" + snowball.playerId + "_" + snowball.id);
-                const d = 0.7;
+                positionCircle(dom, p);
                 // we only compute whether a snowball hits ourselves, because each peer computes & broadcasts its own hits
                 const hit = playerId !== this.myId && snowball.hits(myPlayer, t, dt, headRadius + snowballRadius);
                 if (hit) {
                     this.events.publish({ type: "hit", shooter: playerId, snowball: snowball.id });
                 }
-                if (p.x < -d || p.y < -d || p.x > arenaWidth + d || p.y > arenaHeight + d || v < epsilon) {
+                if (lineSegmentIntersectsPolygon(p0, traveled, this.bounceLines) || v < epsilon) {
                     if (!hit) { // if hit, publish already removed the snowball
                         player.snowballs.delete(snowball.id);
                         dom.remove();
                     }
-                } else {
-                    positionCircle(dom, p);
                 }
             }
 
@@ -373,6 +374,7 @@ class PlayerPeer {
                 snowball.angle = e.angle;
                 snowball.id = e.id;
                 snowball.playerId = this.id;
+                snowball.birthTime = e.birthTime - this.timeSeniority;
                 gameState.addSnowball(snowball);
             } else if (e.type === "setcolor") {
                 gameState.setPlayerColor(id, e.color);
@@ -470,10 +472,15 @@ class GameConnections {
                             this.gameState.setPlayerSpeed(this.myId, new Point(e.speedX, e.speedY));
                             this.broadcastTrajectory();
                         };
+                        let lastThrowTime = Number.NEGATIVE_INFINITY; // TODO remove once we only react to swipe events
                         this.touchpadPeer.onRightInput = e => {
+                            const speed = new Point(e.speedX, e.speedY);
+                            const rechargeTime = 0.3; // we need that little time to create a new snowball
+                            if (gameState.lastT - lastThrowTime < rechargeTime || speed.norm() < 5) return;
+                            lastThrowTime = gameState.lastT;
                             const player = gameState.players.get(this.myId);
-                            const snowball = new Snowball(player.posAtTime(gameState.lastT), player.freshSnowballId(), this.myId);
-                            snowball.setSpeed(gameState.lastT, new Point(e.speedX, e.speedY));
+                            const snowball = new Snowball(player.posAtTime(gameState.lastT), player.freshSnowballId(), this.myId, gameState.lastT);
+                            snowball.setSpeed(gameState.lastT, speed);
                             gameState.addSnowball(snowball);
                             this.broadcastSnowball(snowball);
                         }
@@ -510,6 +517,7 @@ class GameConnections {
         const m = snowball.trajectoryJson();
         m.type = "snowball";
         m.id = snowball.id;
+        m.birthTime = snowball.birthTime;
         this.broadcast(m);
     }
 
@@ -580,6 +588,21 @@ function distFromSegments(p, segments) {
     return segments.reduce(
         (res, [start, direction]) => Point.min(res, distFromSegment(p, start, direction)),
         Point.infinity());
+}
+
+function lineSegmentsIntersect(a, v, b, w) {
+    const coeffs = lineIntersectionCoeffs(a, v, b, w);
+    if (coeffs === null) {
+        return false;
+    } else {
+        const [s, t] = coeffs;
+        return 0 <= s && s <= 1 && 0 <= t && t <= 1;
+    }
+}
+
+// Does the line segment going from a to a.add(v) intersect any of the line segment in lines?
+function lineSegmentIntersectsPolygon(a, v, lines) {
+    return lines.some(([b, w]) => lineSegmentsIntersect(a, v, b, w));
 }
 
 const colorNames = [ 
