@@ -493,18 +493,19 @@ class GameConnections {
                         dataConn.on('data', e => {
                             log.data(`data received from ${dataConn.peer}`);
                             log.data(e);
+                            const speed = new Point(e.speedX, e.speedY);
                             if (e.side === "left") {
-                                this.gameState.setPlayerSpeed(this.myId, new Point(e.speedX, e.speedY));
+                                const adjustedSpeed = speed.norm() > 16 ? speed.scale(16 / speed.norm()) : speed;
+                                this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
                                 this.broadcastTrajectory();
                             }
                             if (e.side === "right") {
-                                const speed = new Point(e.speedX, e.speedY);
                                 const rechargeTime = 0.3; // we need that little time to create a new snowball
                                 if (this.gameState.lastT - lastThrowTime < rechargeTime || speed.norm() < 5) return;
                                 lastThrowTime = this.gameState.lastT;
                                 const player = this.gameState.players.get(this.myId);
                                 const snowball = new Snowball(player.posAtTime(this.gameState.lastT), player.freshSnowballId(), this.myId, this.gameState.lastT);
-                                snowball.setSpeed(this.gameState.lastT, speed);
+                                snowball.setSpeed(this.gameState.lastT, speed.scale(16 / speed.norm())); // constant speed for now
                                 this.gameState.addSnowball(snowball);
                                 this.broadcastSnowball(snowball);
                             }
