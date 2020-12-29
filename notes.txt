@@ -51,3 +51,39 @@ https://www.sansar.com/
 https://www.somniumspace.com/
 https://yorb.itp.io
 https://zonko.chat/
+
+
+more platforms collected by Shardul:
+
+Conference focused:
+
+CLOWDR https://clowdr.org/
+MINGLR https://minglr.info/
+
+Research / education focused:
+
+OOEP projects at https://ooep.org/projects.html, particularly Comingle and Circle Z
+FireMeet https://firemeet.io/
+Interstellar https://interstellar.live/ (developed by MIT undergrads for social homework, tracking class deadlines, internally uses Gather infrastructure)
+
+VR-y:
+Virbela https://www.virbela.com/
+Mozilla Hubs https://hubs.mozilla.com/
+
+https://github.com/edemaine/comingle
+
+
+https://aeon.co/essays/how-empathy-and-creativity-can-re-humanise-videoconferencing
+
+humans are defined by their entanglement with the world
+academia, a balance of order and chaos
+calm technology – the extent to which a technology works so well, fits so perfectly with human needs and habits, that it disappears from view
+Build in tactile feedback
+There’s something plain weird about a wall of faces staring out of the screen. That’s a blocker to empathy
+That’s how designing works: incremental improvements based on insights drawn from experience. 
+
+
+https://www.highfidelity.com/  (spatial audio)
+
+https://cozyroom.xyz has spatial audio too
+
