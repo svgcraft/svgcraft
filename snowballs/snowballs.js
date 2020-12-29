@@ -142,6 +142,22 @@ function svg(tag, attrs, children, allowedAttrs) {
     return res;
 }
 
+function positionElem(elem, x, y, w, h) {
+    const svgArenaHeight = parseFloat(I("arena").getAttribute("viewBox").split(" ")[3]);
+    const r = I("arenaRect").getBoundingClientRect();
+    const pxArenaHeight = r.height;
+    const pxPerUnit = pxArenaHeight / svgArenaHeight;
+    elem.style.left = (pxPerUnit * (x + 0.7) + r.left) + "px";
+    elem.style.top = (pxPerUnit * (y + 0.7) + r.top) + "px";
+    if (w) elem.style.width = pxPerUnit * w + "px";
+    if (h) elem.style.height = pxPerUnit * h + "px";
+}
+
+function positionPlayer(playerId, pos) {
+    positionCircle(I("circ_" + playerId), pos);
+    positionElem(I("video_" + playerId), pos.x - headRadius, pos.y - headRadius, 2 * headRadius, 2 * headRadius);
+}
+
 class GameState {
     constructor(myId, bounceLines, events) {
         // we always aim towards the true position of the player aimTime seconds in the future
@@ -169,6 +185,7 @@ class GameState {
     addPlayer(playerId, color) {
         const player = new Player(playerStartPos, color);
         this.players.set(playerId, player);
+
         const circ = svg("circle", {
             id: "circ_" + playerId, 
             cx: player.currentPos.x, 
@@ -189,6 +206,14 @@ class GameState {
             "stroke-opacity": 0
         }, []);
         I("arena").appendChild(hitShade);
+
+        const vid = document.createElement("video");
+        vid.setAttribute("id", "video_" + playerId);
+        vid.setAttribute("autoplay", "autoplay");
+        vid.style.position = "absolute";
+        vid.style.clipPath = "url(#clipVideo)";
+        vid.style.transform = "rotateY(180deg)";
+        document.body.appendChild(vid);
     }
 
     addSnowball(snowball) {
@@ -265,7 +290,7 @@ class GameState {
             }
 
             const truePos = player.posAtTime(t);
-            positionCircle(I("circ_" + playerId), player.currentPos);
+            positionPlayer(playerId, player.currentPos);
 
             const transparency = (t - player.lastHitTime) / this.hitAnimationLength;
             const hitShade = I("hitShade_" + playerId);
@@ -335,35 +360,40 @@ function makeControllerLink(myId) {
 }
 
 class PlayerPeer {
-    constructor(id, conn, gameState) {
+    constructor(id, gameState) {
         this.id = id;
-        this.conn = conn;
+        this.dataConn = null;
+        this.mediaConn = null;
         this.gameState = gameState;
         this.timeSeniority = null; // how many seconds before me did this player start its clock?
+        gameState.addPlayer(id, "black");
+    }
+
+    setDataConn(dataConn) {
         let timeRequestSent = null;
-        conn.on('open', () => {
-            log.connection("Connection to " + conn.peer + " open");
+        this.dataConn = dataConn;
+        dataConn.on('open', () => {
+            log.connection("Connection to " + dataConn.peer + " open");
             timeRequestSent = performance.now() / 1000;
-            sendMessage(conn, { type: "gettime" } );
-            const player = gameState.players.get(gameState.myId);
-            sendMessage(conn, { type: "setcolor", color: player.color });
+            sendMessage(dataConn, { type: "gettime" } );
+            const player = this.gameState.players.get(this.gameState.myId);
+            sendMessage(dataConn, { type: "setcolor", color: player.color });
             const m = player.trajectoryJson();
             m.type = "trajectory";
-            sendMessage(conn, m);
-            gameState.addPlayer(id, "red");
+            sendMessage(dataConn, m);
         });
-        conn.on('data', e => {
-            log.data(`data received from ${conn.peer}`);
+        dataConn.on('data', e => {
+            log.data(`data received from ${dataConn.peer}`);
             log.data(e);
             if (e.type === "gettime") {
-                sendMessage(conn, { type: "time", timestamp: performance.now() / 1000 });
+                sendMessage(dataConn, { type: "time", timestamp: performance.now() / 1000 });
             } else if (e.type === "time") {
                 const timeResponseReceived = performance.now() / 1000;
                 const timeResponseSent = (timeRequestSent + timeResponseReceived) / 2;
                 this.timeSeniority = e.timestamp - timeResponseSent;
                 log.connection(`RTT to ${this.id}: ${timeResponseReceived - timeRequestSent}s, clock started ${this.timeSeniority}s earlier`);
             } else if (e.type === "trajectory") {
-                const player = gameState.players.get(id);
+                const player = this.gameState.players.get(this.id);
                 player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
                 player.zeroSpeedTime = e.t0 - this.timeSeniority;
                 player.angle = e.angle;
@@ -375,36 +405,23 @@ class PlayerPeer {
                 snowball.id = e.id;
                 snowball.playerId = this.id;
                 snowball.birthTime = e.birthTime - this.timeSeniority;
-                gameState.addSnowball(snowball);
+                this.gameState.addSnowball(snowball);
             } else if (e.type === "setcolor") {
-                gameState.setPlayerColor(id, e.color);
+                this.gameState.setPlayerColor(this.id, e.color);
             } else {
                 // TODO refactor to handle all the above in `events` as well
-                this.gameState.events.processEvent(id, e);
+                this.gameState.events.processEvent(this.id, e);
             }
         });
-        conn.on('close', () => {
-            log.connection(`Connection to ${conn.peer} closed`);
+        dataConn.on('close', () => {
+            log.connection(`Connection to ${dataConn.peer} closed`);
         });
     }
-}
 
-class TouchpadPeer {
-    constructor(conn) {
-        this.conn = conn;
-        this.onLeftInput = () => {};
-        this.onRightInput = () => {};
-        conn.on('open', () => {
-            log.connection("Connection to touchpad " + conn.peer + " open");
-        });
-        conn.on('data', e => {
-            log.data(`data received from ${conn.peer}`);
-            log.data(e);
-            if (e.side === "left") this.onLeftInput(e);
-            if (e.side === "right") this.onRightInput(e);
-        });
-        conn.on('close', () => {
-            log.connection(`Connection to touchpad ${conn.peer} closed`);
+    setMediaConn(mediaConn) {
+        this.mediaConn = mediaConn;
+        mediaConn.on('stream', stream => {
+            I("video_" + mediaConn.peer).srcObject = stream;
         });
     }
 }
@@ -429,68 +446,92 @@ class Events {
     }
     broadcastEvent(e) {
         for (let playerPeer of this.playerPeers.values()) {
-            sendMessage(playerPeer.conn, e);
+            sendMessage(playerPeer.dataConn, e);
         }
     }
 }
 
 class GameConnections {
-    constructor(myId, friendId, gameState) {
+    constructor(myId, gameState) {
         this.myId = myId;
         this.peer = new Peer(myId, {debug: 2});
         this.playerPeers = new Map();
-        this.touchpadPeer = null;
+        this.hasTouchpadPeer = false;
         this.gameState = gameState;
+        this.mediaStream = undefined;
 
         this.peer.on('open', (id) => {
             log.connection("PeerJS server gave us ID " + id);
             log.connection("Controller link to use on your phone:", makeControllerLink(id));
-            if (friendId) {
-                const conn = this.peer.connect(friendId, { 
-                    reliable: true,
-                    metadata: { type: "player" }
-                });
-                this.playerPeers.set(friendId, new PlayerPeer(friendId, conn, gameState));
-            }
             log.connection("Waiting for peers to connect");
         });
     
-        this.peer.on('connection', (conn) => {
-            switch (conn.metadata?.type) {
+        this.peer.on('connection', dataConn => {
+            switch (dataConn.metadata?.type) {
                 case "player":
-                    log.connection("Connected to player " + conn.peer);
-                    this.playerPeers.set(conn.peer, new PlayerPeer(conn.peer, conn, gameState));
+                    log.connection("Connected to player " + dataConn.peer);
+                    let pp = null;
+                    if (this.playerPeers.has(dataConn.peer)) {
+                        pp = this.playerPeers.get(dataConn.peer); 
+                    } else {
+                        pp = new PlayerPeer(dataConn.peer, this.gameState);
+                        this.playerPeers.set(dataConn.peer, pp);
+                    }
+                    pp.setDataConn(dataConn);
                     break;
                 case "touchpad":
-                    if (this.touchpadPeer) {
+                    if (this.hasTouchpadPeer) {
                         log.connection("Rejecting touchpad connection because there already is one");
-                        conn.close();
+                        dataConn.close();
                     } else {
-                        log.connection("Connected to touchpad " + conn.peer);
-                        this.touchpadPeer = new TouchpadPeer(conn);
-                        this.touchpadPeer.onLeftInput = e => {
-                            this.gameState.setPlayerSpeed(this.myId, new Point(e.speedX, e.speedY));
-                            this.broadcastTrajectory();
-                        };
+                        log.connection("Connected to touchpad " + dataConn.peer);
+                        this.hasTouchpadPeer = true;
+                        dataConn.on('open', () => {
+                            log.connection("Connection to touchpad " + dataConn.peer + " open");
+                        });
                         let lastThrowTime = Number.NEGATIVE_INFINITY; // TODO remove once we only react to swipe events
-                        this.touchpadPeer.onRightInput = e => {
-                            const speed = new Point(e.speedX, e.speedY);
-                            const rechargeTime = 0.3; // we need that little time to create a new snowball
-                            if (gameState.lastT - lastThrowTime < rechargeTime || speed.norm() < 5) return;
-                            lastThrowTime = gameState.lastT;
-                            const player = gameState.players.get(this.myId);
-                            const snowball = new Snowball(player.posAtTime(gameState.lastT), player.freshSnowballId(), this.myId, gameState.lastT);
-                            snowball.setSpeed(gameState.lastT, speed);
-                            gameState.addSnowball(snowball);
-                            this.broadcastSnowball(snowball);
-                        }
+                        dataConn.on('data', e => {
+                            log.data(`data received from ${dataConn.peer}`);
+                            log.data(e);
+                            if (e.side === "left") {
+                                this.gameState.setPlayerSpeed(this.myId, new Point(e.speedX, e.speedY));
+                                this.broadcastTrajectory();
+                            }
+                            if (e.side === "right") {
+                                const speed = new Point(e.speedX, e.speedY);
+                                const rechargeTime = 0.3; // we need that little time to create a new snowball
+                                if (this.gameState.lastT - lastThrowTime < rechargeTime || speed.norm() < 5) return;
+                                lastThrowTime = this.gameState.lastT;
+                                const player = this.gameState.players.get(this.myId);
+                                const snowball = new Snowball(player.posAtTime(this.gameState.lastT), player.freshSnowballId(), this.myId, this.gameState.lastT);
+                                snowball.setSpeed(this.gameState.lastT, speed);
+                                this.gameState.addSnowball(snowball);
+                                this.broadcastSnowball(snowball);
+                            }
+                        });
+                        dataConn.on('close', () => {
+                            log.connection(`Connection to touchpad ${dataConn.peer} closed`);
+                            this.hasTouchpadPeer = false;
+                        });
                     }
                     break;
                 default:
-                    log.connection("Rejecting connection of unknown type " + conn.metadata?.type);
-                    conn.close();
+                    log.connection("Rejecting connection of unknown type " + dataConn.metadata?.type);
+                    dataConn.close();
                     break;
             }
+        });
+
+        this.peer.on('call', mediaConn => {
+            mediaConn.answer(this.mediaStream);
+            let pp = null;
+            if (this.playerPeers.has(mediaConn.peer)) {
+                pp = this.playerPeers.get(mediaConn.peer); 
+            } else {
+                pp = new PlayerPeer(mediaConn.peer, this.gameState);
+                this.playerPeers.set(mediaConn.peer, pp);
+            }
+            pp.setMediaConn(mediaConn);
         });
     
         this.peer.on('disconnected', () => {
@@ -504,6 +545,19 @@ class GameConnections {
         this.peer.on('error', (err) => {
             log.connection(err);
         });
+    }
+
+    connectToNewPeer(peerId) {
+        const dataConn = this.peer.connect(peerId, { 
+            reliable: true,
+            metadata: { type: "player" }
+        });
+        const pp = new PlayerPeer(peerId, this.gameState);
+        pp.setDataConn(dataConn);
+        if (this.mediaStream) {
+            pp.setMediaConn(this.peer.call(peerId, this.mediaStream));
+        }
+        this.playerPeers.set(peerId, pp);
     }
 
     broadcastTrajectory() {
@@ -523,7 +577,7 @@ class GameConnections {
 
     broadcast(msg) {
         for (let playerPeer of this.playerPeers.values()) {
-            sendMessage(playerPeer.conn, msg);
+            sendMessage(playerPeer.dataConn, msg);
         }
     }
 }
@@ -638,9 +692,27 @@ function init() {
     const color = urlParams.get("color") || randomColor();
     gs.addPlayer(myId, color);
     gs.players.get(myId).setSpeed(performance.now()/1000, Point.polar(playerStartRadius, Math.random() * 2 * Math.PI));
-    const gco = new GameConnections(myId, urlParams.get("friendId"), gs);
+    const gco = new GameConnections(myId, gs);
     events.playerPeers = gco.playerPeers;
     events.gameState = gs;
+
+    I("activateCamera").onclick = () => {
+        I("activateCamera").remove();
+        navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: { width: 240, height: 240 }
+        }).then(stream => {
+            I("video_" + myId).srcObject = stream;
+            I("video_" + myId).muted = true; // we don't want to hear ourselves
+            gco.mediaStream = stream;
+        }).catch(err => {
+            console.log("Error obtaining video:", err);
+        }).then(() => {
+            if (urlParams.has("friendId")) {
+                gco.connectToNewPeer(urlParams.get("friendId"));
+            }
+        });
+    }
 
     function paint(timestamp) {
         gs.frame(timestamp);

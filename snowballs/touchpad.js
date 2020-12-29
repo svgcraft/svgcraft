@@ -52,7 +52,7 @@ function sendEvent(e) {
     }
 }
 
-const movementScale = 10;
+const movementScale = 20;
 
 function onEvent(side) {
     return e => {

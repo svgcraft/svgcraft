@@ -13,7 +13,7 @@
 </head>
 
 <body style="touch-action: none; background-color: black">
-    <div style="position:absolute; top:2vmin; left:2vmin; right:2vmin; bottom:2vmin">
+    <div id="arenaWrapper" style="position:absolute; top:2vmin; left:2vmin; right:2vmin; bottom:2vmin">
         <svg id="arena" viewBox="-0.7 -0.7 17.4 10.4"
             style="width: auto; height: auto; position: absolute; left: 0; top: 50%; transform: translate(0, -50%); max-width: 100%; max-height: 100%;">
             <defs>
@@ -21,8 +21,11 @@
                     <stop offset="5%" stop-color="#0080ff" />
                     <stop offset="95%" stop-color="#46caff" />
                 </linearGradient>
+                <clipPath id="clipVideo" clipPathUnits="objectBoundingBox">
+                    <circle id="roundHeadClip" cx="0.5" cy="0.5" r="0.45" />
+                </clipPath>
             </defs>
-            <rect x="-0.7" y="-0.7" width="17.4" height="10.4" fill="url('#skyGradient')" />
+            <rect id="arenaRect" x="-0.7" y="-0.7" width="17.4" height="10.4" fill="url('#skyGradient')" />
             <!-- Note: polygon must be specified counter-clockwise so that "left while walking" is "further inside" -->
             <polygon id="borderPolygon" points="0,7 2,9 8,9 9,5 10,9 16,9 16,3 13,0 6,0 5,3 4,0 2,0 2,0.7 0,0.7" 
                 fill="none" stroke="white" stroke-width="0.05" stroke-dasharray=0.05 />
@@ -35,6 +38,10 @@
             <line id="speedBefore" style="display:none" x1="1" y1="0" x2="9" y2="1" stroke-width="0.05" stroke="red" stroke-opacity="0.5"/>
             <line id="speedAfter" style="display:none" x1="10" y1="10" x2="1" y2="1" stroke-width="0.05" stroke="yellow" stroke-opacity="0.5"/>
         </svg>
+        <div id="activateCamera" style="position:absolute; transform: translate(-50%, -50%); color: white; 
+            font-family: monospace; font-size: 4vh; top: 50%; left: 50%; background-color:gray; cursor: pointer;">
+            Activate camera
+        </div>
     </div>
 
     <!--span id="serverTime" style="position:absolute; top: 1%; right: 1%; color: white; font-family: monospace; font-size: 2vmin">0</span-->
