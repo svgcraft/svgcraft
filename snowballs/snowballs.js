@@ -350,7 +350,7 @@ class GameState {
                 positionVector(I("speedAfter"), bouncePoint, bouncedSpeed);
             }
         }
-        if (nReflections > 0) console.log(`nReflections = ${nReflections}`);
+        //if (nReflections > 0) console.log(`nReflections = ${nReflections}`);
     }
 }
 
@@ -535,7 +535,7 @@ class GameConnections {
                             const speed = dist.scale(1 / e.deltaT);
                             const newSpeed = oldSpeed.add(speed);
                             const adjustedSpeed = newSpeed.norm() > maxPlayerSpeed ? newSpeed.scale(maxPlayerSpeed / newSpeed.norm()) : newSpeed;
-                            console.log(oldSpeed.norm().toFixed(2), speed.norm().toFixed(2), adjustedSpeed.norm().toFixed(2));
+                            //nsole.log(oldSpeed.norm().toFixed(2), speed.norm().toFixed(2), adjustedSpeed.norm().toFixed(2));
                             this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
                             this.broadcastTrajectory();
                         }
