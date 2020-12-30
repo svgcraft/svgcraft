@@ -235,8 +235,10 @@ class GameState {
         target.lastHitColor = shooter.color;
         target.minusPoints++;
         shooter.plusPoints++;
-        shooter.snowballs.delete(snowballId);
-        I("snowball_" + shooterId + "_" + snowballId).remove();
+        // while the packet from the target peer that tells us that the target peer has been hit
+        // was in flight, the snowball speed might have reached zero or hit a wall and therefore
+        // might already have been removed
+        if (shooter.snowballs.delete(snowballId)) I("snowball_" + shooterId + "_" + snowballId).remove();
         this.updateRanking();
     }
 
