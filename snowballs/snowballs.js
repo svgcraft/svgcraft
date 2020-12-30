@@ -54,7 +54,9 @@ class DecceleratingObject {
             x0: this.zeroSpeedPos.x,
             y0: this.zeroSpeedPos.y,
             t0: this.zeroSpeedTime,
-            angle: this.angle
+            angle: this.angle,
+            // note: in milliseconds, but rounded, so that comparisons will be reliable (we will use them as packet ids)
+            sentT: Math.round(performance.now())
         };
     }
     // that: DecceleratingObject
@@ -368,32 +370,52 @@ class PlayerPeer {
         this.mediaConn = null;
         this.gameState = gameState;
         this.timeSeniority = null; // how many seconds before me did this player start its clock?
+        this.unacked = new Set();
+        this.minRTT = Number.POSITIVE_INFINITY;
+        this.fastAckCount = 0;
         gameState.addPlayer(id, "black");
     }
 
     setDataConn(dataConn) {
-        let timeRequestSent = null;
         this.dataConn = dataConn;
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
-            timeRequestSent = performance.now() / 1000;
-            sendMessage(dataConn, { type: "gettime" } );
             const player = this.gameState.players.get(this.gameState.myId);
-            sendMessage(dataConn, { type: "setcolor", color: player.color });
-            const m = player.trajectoryJson();
-            m.type = "trajectory";
-            sendMessage(dataConn, m);
+            this.send({ type: "setcolor", color: player.color });
         });
         dataConn.on('data', e => {
             log.data(`data received from ${dataConn.peer}`);
             log.data(e);
-            if (e.type === "gettime") {
-                sendMessage(dataConn, { type: "time", timestamp: performance.now() / 1000 });
-            } else if (e.type === "time") {
-                const timeResponseReceived = performance.now() / 1000;
-                const timeResponseSent = (timeRequestSent + timeResponseReceived) / 2;
-                this.timeSeniority = e.timestamp - timeResponseSent;
-                log.connection(`RTT to ${this.id}: ${timeResponseReceived - timeRequestSent}s, clock started ${this.timeSeniority}s earlier`);
+            if (e.sentT) { // presence of sentT means "please ack this"
+                this.send({ type: "ack", originalSentT: e.sentT, receivedT: Math.round(performance.now()) });
+            }
+            if (e.type === "ack") {
+                const timeResponseReceived = performance.now();
+                const rtt = timeResponseReceived - e.originalSentT;
+                //nsole.log(`RTT to ${this.id}: ${rtt}ms`);
+                const timeResponseSent = (e.originalSentT + timeResponseReceived) / 2;
+                const ts = (e.receivedT - timeResponseSent) / 1000;
+                let newTimeSeniority = null;
+                if (this.timeSeniority === null) {
+                    newTimeSeniority = ts;
+                    this.minRTT = rtt;
+                    this.fastAckCount = 1;
+                } else if (rtt < this.minRTT * 1.1) {
+                    this.minRTT = Math.min(rtt, this.minRTT);
+                    newTimeSeniority = (this.timeSeniority * this.fastAckCount + ts) / (this.fastAckCount + 1); // weighted average
+                    this.fastAckCount++;
+                }
+                if (newTimeSeniority !== null && Math.abs(newTimeSeniority - this.timeSeniority) >= 0.000001) {
+                    this.timeSeniority = newTimeSeniority;
+                    log.connection(`clock of ${this.id} started ${this.timeSeniority.toFixed(3)}s earlier`);
+                }
+                this.unacked.delete(e.originalSentT);
+                for (let t of this.unacked) {
+                    if (timeResponseReceived - t > 10000) {
+                        this.unacked.delete(t);
+                        log.connection(`lost 1 packet at t=${t}ms`);
+                    }
+                }
             } else if (e.type === "trajectory") {
                 const player = this.gameState.players.get(this.id);
                 player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
@@ -426,6 +448,18 @@ class PlayerPeer {
             I("video_" + mediaConn.peer).srcObject = stream;
         });
     }
+
+    send(msg) {
+        if (!this.dataConn) {
+            // race condition between obtaining a dataConn and a mediaConn at initialization
+            log.connection("PlayerPeer.dataConn not yet set");
+            return;
+        }
+        if (msg.sentT) {
+            this.unacked.add(msg.sentT);
+        }
+        sendMessage(this.dataConn, msg);
+    }
 }
 
 class Events {
@@ -448,7 +482,7 @@ class Events {
     }
     broadcastEvent(e) {
         for (let playerPeer of this.playerPeers.values()) {
-            sendMessage(playerPeer.dataConn, e);
+            playerPeer.send(e);
         }
     }
 }
@@ -465,6 +499,8 @@ class GameConnections {
         this.hasTouchpadPeer = false;
         this.gameState = gameState;
         this.mediaStream = undefined;
+
+        setInterval(() => { this.broadcastTrajectory(); }, 678);
 
         this.peer.on('open', (id) => {
             log.connection("PeerJS server gave us ID " + id);
@@ -586,7 +622,7 @@ class GameConnections {
 
     connectToNewPeer(peerId) {
         const dataConn = this.peer.connect(peerId, { 
-            reliable: true,
+            reliable: false,
             metadata: { type: "player" }
         });
         const pp = new PlayerPeer(peerId, this.gameState);
@@ -614,7 +650,7 @@ class GameConnections {
 
     broadcast(msg) {
         for (let playerPeer of this.playerPeers.values()) {
-            sendMessage(playerPeer.dataConn, msg);
+            playerPeer.send(msg);
         }
     }
 }
