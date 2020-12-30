@@ -70,7 +70,7 @@ class DecceleratingObject {
 class Player extends DecceleratingObject {
     // initialPos: Point
     constructor(initialPos, color) {
-        super(initialPos, 12);
+        super(initialPos, 7);
         // currentPos is an interpolated approximation of the true current position,
         // posAtTime(Date.now()/1000), and to save the true position, we don't save
         // current coordinates, but the position and time at which speed 0 will be
@@ -98,7 +98,7 @@ class Player extends DecceleratingObject {
 
 class Snowball extends DecceleratingObject {
     constructor(initialPos, id, playerId, birthTime) {
-        super(initialPos, 8);
+        super(initialPos, 4);
         this.id = id; // each player numbers the snowballs it throws 0, 1, 2, ...
         this.playerId = playerId;
         this.birthTime = birthTime;
@@ -356,7 +356,7 @@ class GameState {
 
 function makeControllerLink(myId) {
     const folder = `${window.location.protocol}//${window.location.host}${window.location.pathname.replace("/index.html", "")}`;
-    return `${folder}/touchpad.html?connectTo=${myId}`;
+    return `${folder}/swipepad.html?connectTo=${myId}`;
 }
 
 class PlayerPeer {
@@ -451,6 +451,10 @@ class Events {
     }
 }
 
+let maxPlayerSpeed = 16;
+let snowballSpeed = 16;
+let movementScale = 10;
+
 class GameConnections {
     constructor(myId, gameState) {
         this.myId = myId;
@@ -516,6 +520,36 @@ class GameConnections {
                         });
                     }
                     break;
+                case "swipepad":
+                    log.connection("Connected to swipepad " + dataConn.peer);
+                    dataConn.on('open', () => {
+                        log.connection("Connection to swipepad " + dataConn.peer + " open");
+                    });
+                    dataConn.on('data', e => {
+                        log.data(`data received from ${dataConn.peer}`);
+                        log.data(e);
+                        const dist = new Point(e.deltaX * movementScale, e.deltaY * movementScale);
+                        const player = this.gameState.players.get(this.myId);
+                        if (e.side === "left") {
+                            const oldSpeed = player.speedAtTime(this.gameState.lastT);
+                            const speed = dist.scale(1 / e.deltaT);
+                            const newSpeed = oldSpeed.add(speed);
+                            const adjustedSpeed = newSpeed.norm() > maxPlayerSpeed ? newSpeed.scale(maxPlayerSpeed / newSpeed.norm()) : newSpeed;
+                            console.log(oldSpeed.norm().toFixed(2), speed.norm().toFixed(2), adjustedSpeed.norm().toFixed(2));
+                            this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
+                            this.broadcastTrajectory();
+                        }
+                        if (e.side === "right") {
+                            const snowball = new Snowball(player.posAtTime(this.gameState.lastT), player.freshSnowballId(), this.myId, this.gameState.lastT);
+                            snowball.setSpeed(this.gameState.lastT, dist.scale(snowballSpeed / dist.norm())); // constant speed
+                            this.gameState.addSnowball(snowball);
+                            this.broadcastSnowball(snowball);
+                        }
+                    });
+                    dataConn.on('close', () => {
+                        log.connection(`Connection to swipepad ${dataConn.peer} closed`);
+                    });
+                    break;                    
                 default:
                     log.connection("Rejecting connection of unknown type " + dataConn.metadata?.type);
                     dataConn.close();
