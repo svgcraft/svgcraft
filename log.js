@@ -5,6 +5,7 @@ function ignore(msg) {}
 const log = {
     event: console.log,
     connection: console.log,
+    state: console.log,
     data: ignore,
     debug: ignore,
     parsing: console.log,

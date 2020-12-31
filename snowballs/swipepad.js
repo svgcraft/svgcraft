@@ -13,7 +13,7 @@ function initConnection (serverId) {
         log.connection("PeerJS server gave us ID " + id);
 
         conn = peer.connect(serverId, {
-            reliable: true,
+            reliable: false,
             metadata: { type: "swipepad" }
         });
 

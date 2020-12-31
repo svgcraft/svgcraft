@@ -230,6 +230,19 @@ class GameState {
         document.body.appendChild(vid);
     }
 
+    deletePlayer(playerId) {
+        const player = this.players.get(playerId);
+        // it seems the 'closed' event might be triggered twice
+        if (this.players.delete(playerId)) {
+            I("circ_" + playerId).remove();
+            I("hitShade_" + playerId).remove();
+            I("video_" + playerId).remove();
+            for (let snowball of player.snowballs) {
+                I("snowball_" + playerId + "_" + snowball.id).remove();
+            }
+        }
+    }
+
     addSnowball(snowball) {
         this.players.get(snowball.playerId).snowballs.set(snowball.id, snowball);
         const circ = svg("circle", {
@@ -376,11 +389,12 @@ function makeControllerLink(myId) {
 }
 
 class PlayerPeer {
-    constructor(id, gameState) {
+    constructor(id, gameState, gameConnections) {
         this.id = id;
         this.dataConn = null;
         this.mediaConn = null;
         this.gameState = gameState;
+        this.gameConnections = gameConnections;
         this.timeSeniority = null; // how many seconds before me did this player start its clock?
         this.unacked = new Set();
         this.minRTT = Number.POSITIVE_INFINITY;
@@ -399,7 +413,6 @@ class PlayerPeer {
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
             const player = this.gameState.players.get(this.gameState.myId);
-            this.send({ type: "setcolor", color: player.color });
         });
         dataConn.on('data', e => {
             log.data(`data received from ${dataConn.peer}`);
@@ -459,6 +472,18 @@ class PlayerPeer {
                 player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
                 player.zeroSpeedTime = e.t0 - this.timeSeniority;
                 player.angle = e.angle;
+                if (e.plusPoints !== player.plusPoints) {
+                    log.state(`setting ${this.id}.plusPoints (currently ${player.plusPoints}) to ${e.plusPoints}`);
+                    player.plusPoints = e.plusPoints;
+                    this.gameState.updateRanking();
+                }
+                if (e.minusPoints !== player.minusPoints) {
+                    log.state(`setting ${this.id}.minusPoints (currently ${player.minusPoints}) to ${e.minusPoints}`);
+                    player.minusPoints = e.minusPoints;
+                    this.gameState.updateRanking();
+                }
+                this.gameState.setPlayerColor(this.id, e.color);
+                this.gameConnections.connectToNewPeers(e.peers);
             } else if (e.type === "snowball") {
                 const snowball = new Snowball();
                 snowball.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
@@ -468,8 +493,6 @@ class PlayerPeer {
                 snowball.playerId = this.id;
                 snowball.birthTime = e.birthTime - this.timeSeniority;
                 this.gameState.addSnowball(snowball);
-            } else if (e.type === "setcolor") {
-                this.gameState.setPlayerColor(this.id, e.color);
             } else {
                 // TODO refactor to handle all the above in `events` as well
                 this.gameState.events.processEvent(this.id, e);
@@ -477,6 +500,9 @@ class PlayerPeer {
         });
         dataConn.on('close', () => {
             log.connection(`Connection to ${dataConn.peer} closed`);
+            if (this.mediaConn?.open) this.mediaConn.close();
+            this.gameConnections.playerPeers.delete(this.id);
+            this.gameState.deletePlayer(this.id);
         });
     }
 
@@ -554,7 +580,7 @@ class GameConnections {
                     if (this.playerPeers.has(dataConn.peer)) {
                         pp = this.playerPeers.get(dataConn.peer); 
                     } else {
-                        pp = new PlayerPeer(dataConn.peer, this.gameState);
+                        pp = new PlayerPeer(dataConn.peer, this.gameState, this);
                         this.playerPeers.set(dataConn.peer, pp);
                     }
                     pp.setDataConn(dataConn);
@@ -639,7 +665,7 @@ class GameConnections {
             if (this.playerPeers.has(mediaConn.peer)) {
                 pp = this.playerPeers.get(mediaConn.peer); 
             } else {
-                pp = new PlayerPeer(mediaConn.peer, this.gameState);
+                pp = new PlayerPeer(mediaConn.peer, this.gameState, this);
                 this.playerPeers.set(mediaConn.peer, pp);
             }
             pp.setMediaConn(mediaConn);
@@ -659,11 +685,12 @@ class GameConnections {
     }
 
     connectToNewPeer(peerId) {
+        log.connection("Initiating connection to " + peerId);
         const dataConn = this.peer.connect(peerId, { 
             reliable: false,
             metadata: { type: "player" }
         });
-        const pp = new PlayerPeer(peerId, this.gameState);
+        const pp = new PlayerPeer(peerId, this.gameState, this);
         pp.setDataConn(dataConn);
         if (this.mediaStream) {
             pp.setMediaConn(this.peer.call(peerId, this.mediaStream));
@@ -671,10 +698,23 @@ class GameConnections {
         this.playerPeers.set(peerId, pp);
     }
 
+    connectToNewPeers(peerIds) {
+        for (let peerId of peerIds) {
+            if (this.myId !== peerId && !this.playerPeers.has(peerId)) {
+                this.connectToNewPeer(peerId);
+            }
+        }
+    }
+
     broadcastTrajectory() {
         const player = this.gameState.players.get(this.myId);
         const m = player.trajectoryJson();
+        // this is the kitchen sink message periodically providing all state managed by one player
         m.type = "trajectory";
+        m.plusPoints = player.plusPoints;
+        m.minusPoints = player.minusPoints;
+        m.color = player.color;
+        m.peers = Array.from(this.playerPeers.keys());
         this.broadcast(m);
     }
 
