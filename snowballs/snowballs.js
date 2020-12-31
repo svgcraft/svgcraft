@@ -21,11 +21,13 @@ function angleDist(a, b) {
 class DecceleratingObject {
     // initialPos: Point
     // decceleration: float, in svg position units per sec^2
-    constructor(initialPos, decceleration) {
+    constructor(initialPos) {
         this.zeroSpeedPos = initialPos;
         this.zeroSpeedTime = -1e10;
         this.angle = 0.12345;
-        this.decceleration = decceleration;
+    }
+    get decceleration() {
+        throw "not implemented";
     }
     // time: seconds
     speedAtTime(time) {
@@ -69,10 +71,12 @@ class DecceleratingObject {
     }
 }
 
+let playerDecceleration = 2;
+
 class Player extends DecceleratingObject {
     // initialPos: Point
     constructor(initialPos, color) {
-        super(initialPos, 7);
+        super(initialPos);
         // currentPos is an interpolated approximation of the true current position,
         // posAtTime(Date.now()/1000), and to save the true position, we don't save
         // current coordinates, but the position and time at which speed 0 will be
@@ -96,14 +100,22 @@ class Player extends DecceleratingObject {
     freshSnowballId() {
         return this.nextFreshSnowballId++;
     }
+    get decceleration() {
+        return playerDecceleration;
+    }
 }
+
+let snowballDecceleration = 4;
 
 class Snowball extends DecceleratingObject {
     constructor(initialPos, id, playerId, birthTime) {
-        super(initialPos, 4);
+        super(initialPos);
         this.id = id; // each player numbers the snowballs it throws 0, 1, 2, ...
         this.playerId = playerId;
         this.birthTime = birthTime;
+    }
+    get decceleration() {
+        return snowballDecceleration;
     }
 }
 
@@ -489,7 +501,7 @@ class Events {
 
 let maxPlayerSpeed = 16;
 let snowballSpeed = 16;
-let movementScale = 10;
+let movementScale = 4;
 
 class GameConnections {
     constructor(myId, gameState) {
