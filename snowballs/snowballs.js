@@ -384,7 +384,13 @@ class PlayerPeer {
         this.timeSeniority = null; // how many seconds before me did this player start its clock?
         this.unacked = new Set();
         this.minRTT = Number.POSITIVE_INFINITY;
+        this.maxRTT = Number.NEGATIVE_INFINITY;
+        this.avgRTT = null;
         this.fastAckCount = 0;
+        this.totalAckCount = 0;
+        this.lostPacketCount = 0;
+        this.lastRTTMsg = "";
+        this.lastTimeSeniorityMsg = "";
         gameState.addPlayer(id, "black");
     }
 
@@ -399,7 +405,12 @@ class PlayerPeer {
             log.data(`data received from ${dataConn.peer}`);
             log.data(e);
             if (e.sentT) { // presence of sentT means "please ack this"
-                this.send({ type: "ack", originalSentT: e.sentT, receivedT: Math.round(performance.now()) });
+                this.send({
+                    type: "ack", 
+                    originalSentT: e.sentT, 
+                    receivedT: Math.round(performance.now()),
+                    timeSeniority: this.timeSeniority?.toFixed(3)
+                });
             }
             if (e.type === "ack") {
                 const timeResponseReceived = performance.now();
@@ -417,15 +428,30 @@ class PlayerPeer {
                     newTimeSeniority = (this.timeSeniority * this.fastAckCount + ts) / (this.fastAckCount + 1); // weighted average
                     this.fastAckCount++;
                 }
-                if (newTimeSeniority !== null && Math.abs(newTimeSeniority - this.timeSeniority) >= 0.000001) {
+                this.maxRTT = Math.max(rtt, this.maxRTT);
+                this.avgRTT = (this.avgRTT * this.totalAckCount + rtt) / (this.totalAckCount + 1); // weighted average
+                this.totalAckCount++;
+                const newRTTMsg = `RTT to ${this.id}: min ${Math.round(this.minRTT)}ms, avg ${Math.round(this.avgRTT)}ms, max ${Math.round(this.maxRTT)}ms, `;
+                if (newRTTMsg !== this.lastRTTMsg) {
+                    const packetLossMsg = `${this.lostPacketCount}/${this.totalAckCount+this.lostPacketCount} packets lost (` +
+                        (100*this.lostPacketCount/(this.totalAckCount+this.lostPacketCount)).toFixed(2) + "%)";
+                    log.connection(newRTTMsg + packetLossMsg);
+                    this.lastRTTMsg = newRTTMsg;
+                }
+                if (newTimeSeniority !== null) {
+                    const newTimeSeniorityMsg = `We think the clock of ${this.id} started ${newTimeSeniority.toFixed(3)}s earlier, ` +
+                        `who thinks its clock started ${e.timeSeniority} earlier`;
+                    if (newTimeSeniorityMsg != this.lastTimeSeniorityMsg) {
+                        log.connection(newTimeSeniorityMsg);
+                        this.lastTimeSeniorityMsg = newTimeSeniorityMsg;
+                    }
                     this.timeSeniority = newTimeSeniority;
-                    log.connection(`clock of ${this.id} started ${this.timeSeniority.toFixed(3)}s earlier`);
                 }
                 this.unacked.delete(e.originalSentT);
                 for (let t of this.unacked) {
                     if (timeResponseReceived - t > 10000) {
                         this.unacked.delete(t);
-                        log.connection(`lost 1 packet at t=${t}ms`);
+                        this.lostPacketCount++;
                     }
                 }
             } else if (e.type === "trajectory") {
