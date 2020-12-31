@@ -653,6 +653,16 @@ class GameConnections {
             playerPeer.send(msg);
         }
     }
+
+    shutdown() {
+        if (this.mediaStream) {
+            this.mediaStream.getTracks().forEach(track => {
+                track.stop();
+                return true;
+            });
+        }
+        this.peer.destroy();
+    }
 }
 
 function genArray(len, f) {
@@ -787,11 +797,18 @@ function init() {
         });
     }
 
+    let handle = window.requestAnimationFrame(paint);
     function paint(timestamp) {
         gs.frame(timestamp);
-        window.requestAnimationFrame(paint);    
+        handle = window.requestAnimationFrame(paint);    
     }
-    window.requestAnimationFrame(paint);
+
+    window.addEventListener("keypress", e => {
+        if (e.key === "q") {
+            gco.shutdown();
+            window.cancelAnimationFrame(handle);
+        }
+    });
 }
 
 window.onload = init;
