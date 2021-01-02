@@ -56,6 +56,10 @@ class Point {
         }
     }
 
+    scaleToLength(l) {
+        return this.scale(l / this.norm());
+    }
+
     dot(that) {
         return this.x * that.x + this.y * that.y;
     }
