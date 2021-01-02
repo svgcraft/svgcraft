@@ -142,7 +142,7 @@ const headRadius = 0.5;
 const snowballRadius = 0.13;
 const arenaWidth = 16;
 const arenaHeight = 9;
-// "pointer" is the triangle pointing out of the head, whereas "cursor" is the small circle indicating the mouse position
+// "pointer" is the triangle pointing out of the head, whereas "cursor" is the mouse position
 const pointerRadius = headRadius * 1.9;
 const pointerBaseWidth = headRadius * 1.6;
 const cursorRadius = 0.1;
@@ -214,24 +214,17 @@ function positionElem(elem, x, y, w, h) {
     if (h) elem.style.height = pxPerUnit * h + "px";
 }
 
-let isMouseOverArena = false;
-
 function positionPlayer(playerId, player) {
     positionCircle(I("circ_" + playerId), player.currentPos);
     I("pointerTriangle_" + playerId).setAttribute("d", 
         isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius));
     positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
-    // I("cursor") was already positioned by mousemove event
-    const cursor = new Point(parseFloat(I("cursor").getAttribute("cx")), parseFloat(I("cursor").getAttribute("cy")));
-    I("cursor").style.display = cursor.sub(player.currentPos).norm() >= pointerRadius + cursorRadius && isMouseOverArena ? "" : "none";
 }
 
 function initMouseMoveNavi(gameState) {
     const player = gameState.players.get(gameState.myId);
     I("arena").addEventListener("mousemove", e => {
-        isMouseOverArena = true;
         const mouse = eventToWorldCoords(e);
-        positionCircle(I("cursor"), mouse);
         const current = player.posAtTime(gameState.lastT);
         const d = current.sub(mouse);
         const targetZero = mouse.add(d.scaleToLength(pointerRadius));
@@ -242,14 +235,23 @@ function initMouseMoveNavi(gameState) {
         player.shootingAngle = oppositeAngle(d.angle());
         player.angle = oppositeAngle(player.shootingAngle);
     });
-    I("arena").addEventListener("mouseleave", e => {
-        isMouseOverArena = false;
-    });
     window.addEventListener("keydown", e => {
         if (e.key === "f") {
             gameState.events.publishSnowball(Point.polar(1, player.shootingAngle));
         }
     });
+    // create small disk on which mouse pointer is not shown
+    const noCursor = svg("circle", {
+        id: "noCursor",
+        cx: -1234,
+        cy: -1234,
+        r: cursorRadius,
+        "fill": "white",
+        "fill-opacity": 0
+    }, []);
+    noCursor.style.cursor = "none";
+    I("arena").appendChild(noCursor);
+    I("pointerTriangle_" + gameState.myId).style.cursor = "none";
 }
 
 class GameState {
@@ -314,7 +316,6 @@ class GameState {
         vid.setAttribute("id", "video_" + playerId);
         vid.setAttribute("autoplay", "autoplay");
         vid.style.position = "absolute";
-        vid.style.cursor = "none";
         vid.style.clipPath = "url(#clipVideo)";
         vid.style.transform = "rotateY(180deg)";
         document.body.appendChild(vid);
@@ -423,6 +424,8 @@ class GameState {
             }
             player.oldPos = truePos;
         }
+        const pointerTip = myPlayer.currentPos.add(Point.polar(pointerRadius, myPlayer.shootingAngle));
+        positionCircle(I("noCursor"), pointerTip);
         this.lastT = t;
     }
 
