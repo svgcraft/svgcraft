@@ -71,7 +71,7 @@ class DecceleratingObject {
     }
 }
 
-let playerDecceleration = 2;
+let playerDecceleration = 10;
 
 class Player extends DecceleratingObject {
     // initialPos: Point
@@ -91,6 +91,7 @@ class Player extends DecceleratingObject {
         
         this.nextFreshSnowballId = 0;
         this.snowballs = new Map();
+        this.shootingAngle = 0;
 
         this.lastHitTime = Number.NEGATIVE_INFINITY;
         this.lastHitColor = null;
@@ -123,6 +124,11 @@ const headRadius = 0.5;
 const snowballRadius = 0.13;
 const arenaWidth = 16;
 const arenaHeight = 9;
+// "pointer" is the triangle pointing out of the head, whereas "cursor" is the small circle indicating the mouse position
+const pointerRadius = headRadius * 1.9;
+const pointerBaseWidth = headRadius * 1.6;
+const cursorRadius = 0.1;
+
 let playerStartPos = null;
 
 function positionCircle(dom, pos, radius) {
@@ -141,6 +147,13 @@ function positionVector(dom, start, direction) {
     dom.setAttribute("y2", target.y);
 }
 
+function isoscelesTriangle(baseMid, baseLength, rotation, height) {
+    const tip = baseMid.add(Point.polar(height, rotation));
+    const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
+    const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
+    return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`;
+}
+
 function svg(tag, attrs, children, allowedAttrs) {
     const res = document.createElementNS("http://www.w3.org/2000/svg", tag);
     if (attrs) {
@@ -156,20 +169,64 @@ function svg(tag, attrs, children, allowedAttrs) {
     return res;
 }
 
-function positionElem(elem, x, y, w, h) {
+// "safe" dummy defaults
+let pxPerUnit = 123;
+let arenaLeft = 123;
+let arenaTop = 123;
+
+function onResize() {
     const svgArenaHeight = parseFloat(I("arena").getAttribute("viewBox").split(" ")[3]);
     const r = I("arenaRect").getBoundingClientRect();
     const pxArenaHeight = r.height;
-    const pxPerUnit = pxArenaHeight / svgArenaHeight;
-    elem.style.left = (pxPerUnit * (x + 0.7) + r.left) + "px";
-    elem.style.top = (pxPerUnit * (y + 0.7) + r.top) + "px";
+    pxPerUnit = pxArenaHeight / svgArenaHeight;
+    arenaTop = r.top;
+    arenaLeft = r.left;    
+}
+
+function eventToWorldCoords(e) {
+    const xInPort = e.clientX - arenaLeft;
+    const yInPort = e.clientY - arenaTop;
+    return new Point(xInPort / pxPerUnit - 0.7, yInPort / pxPerUnit - 0.7);
+}
+
+function positionElem(elem, x, y, w, h) {
+    elem.style.left = (pxPerUnit * (x + 0.7) + arenaLeft) + "px";
+    elem.style.top = (pxPerUnit * (y + 0.7) + arenaTop) + "px";
     if (w) elem.style.width = pxPerUnit * w + "px";
     if (h) elem.style.height = pxPerUnit * h + "px";
 }
 
-function positionPlayer(playerId, pos) {
-    positionCircle(I("circ_" + playerId), pos);
-    positionElem(I("video_" + playerId), pos.x - headRadius, pos.y - headRadius, 2 * headRadius, 2 * headRadius);
+let isMouseOverArena = false;
+
+function positionPlayer(playerId, player) {
+    positionCircle(I("circ_" + playerId), player.currentPos);
+    I("pointerTriangle_" + playerId).setAttribute("d", 
+        isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius));
+    positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
+    // I("cursor") was already positioned by mousemove event
+    const cursor = new Point(parseFloat(I("cursor").getAttribute("cx")), parseFloat(I("cursor").getAttribute("cy")));
+    I("cursor").style.display = cursor.sub(player.currentPos).norm() >= pointerRadius + cursorRadius && isMouseOverArena ? "" : "none";
+}
+
+function initMouseMoveNavi(gameState) {
+    const player = gameState.players.get(gameState.myId);
+    I("arena").addEventListener("mousemove", e => {
+        isMouseOverArena = true;
+        const mouse = eventToWorldCoords(e);
+        positionCircle(I("cursor"), mouse);
+        const current = player.posAtTime(gameState.lastT);
+        const d = current.sub(mouse);
+        const targetZero = mouse.add(d.scale(pointerRadius / d.norm()));
+        const move = targetZero.sub(current);
+        const tToStop = Math.sqrt(2 * move.norm() / player.decceleration);
+        player.zeroSpeedTime = gameState.lastT + tToStop;
+        player.zeroSpeedPos = targetZero;
+        player.shootingAngle = oppositeAngle(d.angle());
+        player.angle = oppositeAngle(player.shootingAngle);
+    });
+    I("arena").addEventListener("mouseleave", e => {
+        isMouseOverArena = false;
+    });
 }
 
 class GameState {
@@ -208,6 +265,7 @@ class GameState {
             fill: color
         }, []);
         I("arena").appendChild(circ);
+
         const w = 0.2 * headRadius;
         const hitShade = svg("circle", {
             id: "hitShade_" + playerId, 
@@ -221,10 +279,18 @@ class GameState {
         }, []);
         I("arena").appendChild(hitShade);
 
+        const pointerTriangle = svg("path", {
+            id: "pointerTriangle_" + playerId,
+            d: isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius),
+            fill: color
+        });
+        I("arena").appendChild(pointerTriangle);
+
         const vid = document.createElement("video");
         vid.setAttribute("id", "video_" + playerId);
         vid.setAttribute("autoplay", "autoplay");
         vid.style.position = "absolute";
+        vid.style.cursor = "none";
         vid.style.clipPath = "url(#clipVideo)";
         vid.style.transform = "rotateY(180deg)";
         document.body.appendChild(vid);
@@ -319,7 +385,7 @@ class GameState {
             }
 
             const truePos = player.posAtTime(t);
-            positionPlayer(playerId, player.currentPos);
+            positionPlayer(playerId, player);
 
             const transparency = (t - player.lastHitTime) / this.hitAnimationLength;
             const hitShade = I("hitShade_" + playerId);
@@ -857,6 +923,8 @@ function init() {
     events.playerPeers = gco.playerPeers;
     events.gameState = gs;
 
+    initMouseMoveNavi(gs);
+
     I("activateCamera").onclick = () => {
         I("activateCamera").remove();
         navigator.mediaDevices.getUserMedia({
@@ -887,6 +955,9 @@ function init() {
             window.cancelAnimationFrame(handle);
         }
     });
+
+    window.addEventListener("resize", onResize);
+    onResize();
 }
 
 window.onload = init;
