@@ -227,7 +227,6 @@ function initMouseMoveNavi(gameState) {
         const center = gameState.worldToPixelCoords(gameState.myPlayer.currentPos);
         gameState.events.publish({
             type: "upd",
-            id: gameState.myId,
             view: {
                 x: center.x - (center.x - gameState.myPlayer.view.x) * zoomChange,
                 y: center.y - (center.y - gameState.myPlayer.view.y) * zoomChange,
@@ -237,7 +236,7 @@ function initMouseMoveNavi(gameState) {
     });
     function onResize() {
         const r = I("arenaWrapper").getBoundingClientRect();
-        gameState.events.publish({ type: "upd", id: gameState.myId, view: { w: r.width, h: r.height } } );
+        gameState.events.publish({ type: "upd", view: { w: r.width, h: r.height } } );
     }
     window.addEventListener("resize", onResize);
     onResize();
@@ -315,7 +314,7 @@ class GameState {
             x: - (p.currentPos.x - p.view.w / p.view.scale / 2) * p.view.scale,
             y: - (p.currentPos.y - p.view.h / p.view.scale / 2) * p.view.scale,
         };
-        this.events.publish({ type: "upd", id: this.myId, view: v } );
+        this.events.publish({ type: "upd", view: v } );
     }
 
     viewUpdate(id) {
@@ -611,7 +610,7 @@ class PlayerPeer {
         this.dataConn = dataConn;
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
-            this.gameState.events.publish({ type: "upd", id: this.gameState.myId, view: this.gameState.myPlayer.view } );
+            this.gameState.events.publish({ type: "upd", view: this.gameState.myPlayer.view } );
             // when someone new joins, stop shooting for a while to say hi ;)
             this.gameState.events.publishShowPointers(false);
         });
@@ -762,8 +761,8 @@ class Events {
             case "upd":
                 if (e.view) {
                     floatifyAttrs(e.view, ['x', 'y', 'scale', 'w', 'h']);
-                    transferAttrsToObj(e.view, ['x', 'y', 'scale', 'w', 'h'], this.gameState.players.get(e.id).view);
-                    this.gameState.viewUpdate(e.id);
+                    transferAttrsToObj(e.view, ['x', 'y', 'scale', 'w', 'h'], this.gameState.players.get(sourceId).view);
+                    this.gameState.viewUpdate(sourceId);
                 }
                 if (e.showPointers !== undefined) {
                     this.gameState.showPointers = e.showPointers;
@@ -1123,6 +1122,7 @@ function init() {
     });
 
     gs.setTransform();
+    init_uievents(gs);
 }
 
 window.onload = init;

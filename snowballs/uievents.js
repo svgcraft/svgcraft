@@ -1,14 +1,17 @@
 "use strict";
 
 class Tool {
-    constructor() {}
+    constructor(gameState) {
+        this.gameState = gameState;
+    }
     pointerdown(e) {
-        app.post({
-            action: "upd",
-            id: app.avatarId,
+        /*
+        this.gameState.events.publish({
+            type: "upd",
             pos: event_to_world_coords(e),
             animate: 'jump'
         });
+        */
     }
     first_drag(e) {
         throw "should be implemented by subclass";
@@ -22,8 +25,8 @@ class Tool {
 }
 
 class NavigationTool extends Tool {
-    constructor() {
-        super();
+    constructor(gameState) {
+        super(gameState);
         // e.clientX/Y of last mouse event
         this.last_clientX = null;
         this.last_clientY = null;
@@ -45,55 +48,50 @@ class NavigationTool extends Tool {
         const dy = e.clientY - this.last_clientY;
         this.last_clientX = e.clientX;
         this.last_clientY = e.clientY;
-        app.post({
-            action: "upd",
-            id: app.avatarId,
-            view: {x: app.myAvatar.view.x + dx, y: app.myAvatar.view.y + dy}
+        this.gameState.events.publish({
+            type: "upd",
+            view: {x: this.gameState.myPlayer.view.x + dx, y: this.gameState.myPlayer.view.y + dy}
         }, true);
     }
 }
 
 class PointingTool extends Tool {
-    constructor() {
-        super();
+    constructor(gameState) {
+        super(gameState);
         this.avatarPosBeforeLastJump = null;
     }
     pointerdown(e) {
         this.avatarPosBeforeLastJump = app.myAvatar.pos;
-        app.post({
-            action: "upd",
-            id: app.avatarId,
+        this.gameState.events.publish({
+            type: "upd",
             pos: event_to_world_coords(e),
             animate: 'line'
         });
     }
     first_drag(e) {
-        app.post({
-            action: "upd",
-            id: app.avatarId,
+        this.gameState.events.publish({
+            type: "upd",
             pos: event_to_world_coords(e),
             pointer: event_to_world_coords(e).sub(this.avatarPosBeforeLastJump).angle() / Math.PI * 180
         });
     }
     continue_drag(e) {
-        app.post({
-            action: "upd",
-            id: app.avatarId,
+        this.gameState.events.publish({
+            type: "upd",
             pos: event_to_world_coords(e),
         });
     }
     end_drag(e) {
-        app.post({
-            action: "upd",
-            id: app.avatarId,
+        this.gameState.events.publish({
+            type: "upd",
             pointer: "none"
         });
     }
 }
 
 class ShapeTool extends Tool {
-    constructor() {
-        super();
+    constructor(gameState) {
+        super(gameState);
         // world coordinates of the last pointerdown event
         this.pointerDownPos = null;
     }
@@ -104,9 +102,8 @@ class ShapeTool extends Tool {
     first_drag(e) {
         const p = event_to_world_coords(e);
         if (selectedElemId) {
-            app.post({
-                action: "deselect",
-                who: app.avatarId,
+            this.gameState.events.publish({
+                type: "deselect",
                 what: [selectedElemId]
             });
             selectedElemId = null;
@@ -122,11 +119,10 @@ class ShapeTool extends Tool {
         s.id = app.gen_elem_id(s.tag);
         // s.stroke = I("pick-stroke-color").style.backgroundColor;
         s.fill = I("pick-fill-color").style.backgroundColor;
-        app.post(s);
+        this.gameState.events.publish(s);
         selectedElemId = s.id;
-        app.post({
-            action: "select",
-            who: app.avatarId,
+        this.gameState.events.publish({
+            type: "select",
             what: [selectedElemId]
         });
     }
@@ -136,12 +132,11 @@ class ShapeTool extends Tool {
         const s = create_shape(activeTool, this.pointerDownPos, p);
         s.action = 'upd';
         s.id = selectedElemId;
-        app.post(s);
+        this.gameState.events.publish(s);
     }
     end_drag(e) {
-        app.post({
-            action: "upd",
-            id: app.avatarId,
+        this.gameState.events.publish({
+            type: "upd",
             pointer: "none"
         });
     }
@@ -149,9 +144,8 @@ class ShapeTool extends Tool {
     move_avatar_to_shape_corner(p) {
         const d = p.distanceTo(this.pointerDownPos) + Avatar.pointerRadius;
         const alpha = p.sub(this.pointerDownPos).angle();
-        app.post({
-            action: "upd",
-            id: app.avatarId,
+        this.gameState.events.publish({
+            type: "upd",
             pos: this.pointerDownPos.add(Point.polar(d, alpha)),
             pointer: alpha / Math.PI * 180 + 180
         });
@@ -160,8 +154,8 @@ class ShapeTool extends Tool {
 
 // TODO merge with ShapeTool
 class BlobTool extends Tool {
-    constructor() {
-        super();
+    constructor(gameState) {
+        super(gameState);
         this.allPoints = null;
     }
     pointerdown(e) {
@@ -171,9 +165,8 @@ class BlobTool extends Tool {
     first_drag(e) {
         const p = event_to_world_coords(e);
         if (selectedElemId) {
-            app.post({
-                action: "deselect",
-                who: app.avatarId,
+            this.gameState.events.publish({
+                type: "deselect",
                 what: [selectedElemId]
             });
             selectedElemId = null;
@@ -187,11 +180,10 @@ class BlobTool extends Tool {
         s.fill = 'transparent';
         s.stroke = app.myAvatar.color;
         s["stroke-width"] = 2;
-        app.post(s);
+        this.gameState.events.publish(s);
         selectedElemId = s.id;
-        app.post({
-            action: "select",
-            who: app.avatarId,
+        this.gameState.events.publish({
+            type: "select",
             what: [selectedElemId]
         });
     }
@@ -202,15 +194,14 @@ class BlobTool extends Tool {
         const s = points_to_path(this.filter_points());
         s.action = 'upd';
         s.id = selectedElemId;
-        app.post(s);
+        this.gameState.events.publish(s);
     }
     end_drag(e) {
-        app.post([{
-            action: "upd",
-            id: app.avatarId,
+        this.gameState.events.publish([{
+            type: "upd",
             pointer: "none"
         }, {
-            action: 'upd',
+            type: 'upd',
             id: selectedElemId,
             "stroke-width": 0,
             "fill": I("pick-fill-color").style.backgroundColor
@@ -264,9 +255,8 @@ class BlobTool extends Tool {
         const prev = this.allPoints[i];
         const d = p.distanceTo(prev) + Avatar.pointerRadius;
         const alpha = p.sub(prev).angle();
-        app.post({
-            action: "upd",
-            id: app.avatarId,
+        this.gameState.events.publish({
+            type: "upd",
             pos: prev.add(Point.polar(d, alpha)),
             pointer: alpha / Math.PI * 180 + 180
         });
@@ -280,7 +270,7 @@ var selectedElemId = null;
 
 // We use the term "pointer" to refer to the mouse pointer on desktop, and the finger on mobile/tablets
 class PointerEvents {
-    constructor() {
+    constructor(gameState) {
         // This variable behaves like the following state machine:
         //
         //           v
@@ -297,12 +287,12 @@ class PointerEvents {
         //
         this.pointerState = "UP";
         this.tools = {
-            navigation: new NavigationTool(),
-            pointing: new PointingTool(),
-            rectangle: new ShapeTool(),
-            triangle: new ShapeTool(),
-            square: new ShapeTool(),
-            blob: new BlobTool()
+            navigation: new NavigationTool(gameState),
+            pointing: new PointingTool(gameState),
+            rectangle: new ShapeTool(gameState),
+            triangle: new ShapeTool(gameState),
+            square: new ShapeTool(gameState),
+            blob: new BlobTool(gameState)
         };
         this._draggee = null; // can be null, "handle" or "tool"
         this.onadjustcorner = null;
@@ -329,17 +319,15 @@ class PointerEvents {
             const mouseDownPosWithinHandle = p.sub(cornerPos);
             const alpha = mouseDownPosWithinHandle.angle();
             const avatarOffset = Point.polar(Avatar.pointerRadius, alpha);
-            app.post({
-                action: "upd",
-                id: app.avatarId,
+            this.gameState.events.publish({
+                type: "upd",
                 pos: p.add(avatarOffset),
                 animate: 'jump'
             });
             this.onadjustcorner = (e) => {
                 const p = event_to_world_coords(e);
-                app.post([{
-                    action: "upd",
-                    id: app.avatarId,
+                this.gameState.events.publish([{
+                    type: "upd",
                     pos: p.add(avatarOffset),
                     pointer: alpha / Math.PI * 180 + 180
                 }, geomUpdater(p.sub(mouseDownPosWithinHandle))]);
@@ -352,7 +340,7 @@ class PointerEvents {
     pointerdown_common(e) {
         this.pointerState = "DOWN";
         set_corner_handle_cursor("none");
-        set_cursor("none");
+        //set_cursor("none");
     }
     pointermove(e) {
         if (this.pointerState === "UP") return; // mousedown happened somewhere else
@@ -380,9 +368,8 @@ class PointerEvents {
             if (this.pointerState === "DRAGGING") this.tools[activeTool].end_drag(e);
             break;
         case "handle":
-            app.post({
-                action: "upd",
-                id: app.avatarId,
+            this.gameState.events.publish({
+                type: "upd",
                 pointer: "none"
             });
             this.onadjustcorner = null;
@@ -395,7 +382,7 @@ class PointerEvents {
 }
 
 function set_corner_handle_cursor(name) {
-    const l = I("mainsvg").classList;
+    const l = I("arena").classList;
     for (const c of l) {
         if (c.startsWith("set_corner_handle_cursors_to_")) {
             l.remove(c);
@@ -407,7 +394,8 @@ function set_corner_handle_cursor(name) {
 function set_cursor_for_active_tool() {
     switch (activeTool) {
     case "navigation":
-        set_cursor("grab");
+        //set_cursor("grab");
+        set_cursor("default");
         break;
     case "pointing":
         set_cursor("default");
@@ -445,8 +433,7 @@ function shape_contextmenu(e) {
     // in any case, deselect whatever's currently selected
     if (previouslySelected) {
         m.push({
-            action: "deselect",
-            who: app.avatarId,
+            type: "deselect",
             what: [previouslySelected]
         });
         selectedElemId = null;
@@ -459,20 +446,18 @@ function shape_contextmenu(e) {
         const c = I(selectedElemId).getAttribute("fill");
         if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
         m.push({
-            action: "select",
-            who: app.avatarId,
+            type: "select",
             what: [selectedElemId]
         });
     }
 
-    app.post(m);
+    this.gameState.events.publish(m);
 }
 
 function background_contextmenu(e) {
     if (selectedElemId) {
-        app.post({
-            action: "deselect",
-            who: app.avatarId,
+        this.gameState.events.publish({
+            type: "deselect",
             what: [selectedElemId]
         });
         selectedElemId = null;
@@ -483,14 +468,22 @@ function background_contextmenu(e) {
 
 const MOUSEBUTTONS_LEFT = 1;
 
-var pointerEventsHandler = new PointerEvents();
+let pointerEventsHandler = null;
 
 function mousedown_corner_handle(elem, cornerPos, geomUpdater) {
     return pointerEventsHandler.pointerdown_on_corner_handle(elem, cornerPos, geomUpdater);
 }
 
-function init_uievents() {
-    I("mapport").onpointerdown = (e) => {
+let cursor_debug = false;
+
+function set_cursor(name) {
+    if (cursor_debug && name === "none") name = "crosshair";
+    I("arena").style.cursor = name;
+}
+
+function init_uievents(gameState) {
+    pointerEventsHandler = new PointerEvents(gameState);
+    I("arenaWrapper").onpointerdown = (e) => {
         if (e.buttons !== MOUSEBUTTONS_LEFT) return;
         pointerEventsHandler.pointerdown_on_map(e);
     };
@@ -506,8 +499,7 @@ function init_uievents() {
     window.addEventListener('contextmenu', (e) => {
         e.preventDefault();
     });
-    I("BackgroundRect").oncontextmenu = background_contextmenu;
-    window.addEventListener('resize', expand_background);
+    // I("BackgroundRect").oncontextmenu = background_contextmenu;
     set_cursor_for_active_tool();
     set_corner_handle_cursor("move");
 }
