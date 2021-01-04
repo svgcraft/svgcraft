@@ -1090,11 +1090,12 @@ function init() {
     initMouseMoveNavi(gs);
     gs.adaptViewToPlayerPos();
 
+    const videoRes = urlParams.get("videoRes") || 240;
     I("activateCamera").onclick = () => {
         I("activateCamera").remove();
         navigator.mediaDevices.getUserMedia({
             audio: true,
-            video: { width: 240, height: 240 }
+            video: { width: videoRes, height: videoRes }
         }).then(stream => {
             I("video_" + myId).srcObject = stream;
             I("video_" + myId).muted = true; // we don't want to hear ourselves
