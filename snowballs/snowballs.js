@@ -211,8 +211,10 @@ function initMouseMoveNavi(gameState) {
         gameState.myPlayer.angle = oppositeAngle(gameState.myPlayer.shootingAngle);
     });
     window.addEventListener("keydown", e => {
-        if (e.key === "f") {
+        if (e.key === "f" && gameState.showPointers) {
             gameState.events.publishSnowball(Point.polar(1, gameState.myPlayer.shootingAngle));
+        } else if (e.key === "s") {
+            gameState.events.publishShowPointers(!gameState.showPointers);
         }
     });
     I("arena").addEventListener("wheel", e => {
@@ -243,7 +245,8 @@ function initMouseMoveNavi(gameState) {
         cy: -1234,
         r: cursorRadius,
         "fill": "white",
-        "fill-opacity": 0
+        "fill-opacity": 0,
+        "class": "pointer"
     }, []);
     noCursor.style.cursor = "none";
     I("arena").appendChild(noCursor);
@@ -266,6 +269,17 @@ class GameState {
 
     get myPlayer() {
         return this.players.get(this.myId);
+    }
+
+    get showPointers() {
+        return !I("arena").classList.contains("hidePointers");
+    }
+    set showPointers(b) {
+        if (b) {
+            I("arena").classList.remove("hidePointers");
+        } else {
+            I("arena").classList.add("hidePointers");
+        }
     }
 
     setPlayerSpeed(playerId, speed) {
@@ -340,7 +354,8 @@ class GameState {
         const pointerTriangle = svg("path", {
             id: "pointerTriangle_" + playerId,
             d: isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius),
-            fill: color
+            fill: color,
+            class: "pointer"
         });
         I("arena").appendChild(pointerTriangle);
 
@@ -576,7 +591,8 @@ class PlayerPeer {
         this.dataConn = dataConn;
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
-            const player = this.gameState.players.get(this.gameState.myId);
+            // when someone new joins, stop shooting for a while to say hi ;)
+            this.gameState.events.publishShowPointers(false);
         });
         dataConn.on('data', e => {
             log.data(`data received from ${dataConn.peer}`);
@@ -713,6 +729,9 @@ class Events {
         snowball.setSpeed(this.gameState.lastT, direction.scaleToLength(snowballSpeed));
         this.publish(snowball.toJson());
     }
+    publishShowPointers(showPointers) {
+        this.publish({ type: "upd", showPointers: showPointers });
+    }
     publish(e) {
         this.processEvent(this.gameState.myId, e);
         this.broadcastEvent(e);
@@ -724,6 +743,9 @@ class Events {
                     floatifyAttrs(e.view, ['x', 'y', 'scale', 'w', 'h']);
                     transferAttrsToObj(e.view, ['x', 'y', 'scale', 'w', 'h'], this.gameState.players.get(e.id).view);
                     this.gameState.viewUpdate(e.id);
+                }
+                if (e.showPointers !== undefined) {
+                    this.gameState.showPointers = e.showPointers;
                 }
                 break;
             case "snowball":
