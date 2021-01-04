@@ -404,23 +404,6 @@ function set_corner_handle_cursor(name) {
     l.add("set_corner_handle_cursors_to_" + name);
 }
 
-function wheel_zoom(e) {
-    e.preventDefault();
-    const zoomChange = Math.exp(e.deltaY * -0.001);
-    const rect = I("mapport").getBoundingClientRect();
-    const xInPort = e.clientX - rect.left;
-    const yInPort = e.clientY - rect.top;
-    app.post({
-        action: "upd",
-        id: app.avatarId,
-        view: {
-            x: xInPort - (xInPort - app.myAvatar.view.x) * zoomChange,
-            y: yInPort - (yInPort - app.myAvatar.view.y) * zoomChange,
-            scale: app.myAvatar.view.scale * zoomChange
-        }
-    }, true);
-}
-
 function set_cursor_for_active_tool() {
     switch (activeTool) {
     case "navigation":
@@ -523,7 +506,6 @@ function init_uievents() {
     window.addEventListener('contextmenu', (e) => {
         e.preventDefault();
     });
-    I("mapport").onwheel = wheel_zoom;
     I("BackgroundRect").oncontextmenu = background_contextmenu;
     window.addEventListener('resize', expand_background);
     set_cursor_for_active_tool();

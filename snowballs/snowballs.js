@@ -97,6 +97,17 @@ class Player extends DecceleratingObject {
         this.lastHitColor = null;
         this.minusPoints = 0;
         this.plusPoints = 0;
+
+        this.view = {
+            // position of svg origin on the screen, in px
+            x: 0,
+            y: 0,
+            // zoom level, in px per svg unit
+            scale: 80,
+            // width and height of viewport in px
+            w: 1600,
+            h: 900
+        };
     }
     freshSnowballId() {
         return this.nextFreshSnowballId++;
@@ -140,12 +151,11 @@ class Snowball extends DecceleratingObject {
 
 const headRadius = 0.5;
 const snowballRadius = 0.13;
-const arenaWidth = 16;
-const arenaHeight = 9;
 // "pointer" is the triangle pointing out of the head, whereas "cursor" is the mouse position
 const pointerRadius = headRadius * 1.9;
 const pointerBaseWidth = headRadius * 1.6;
 const cursorRadius = 0.1;
+const viewBoundaryWidth = 0.2;
 
 let playerStartPos = null;
 
@@ -187,59 +197,45 @@ function svg(tag, attrs, children, allowedAttrs) {
     return res;
 }
 
-// "safe" dummy defaults
-let pxPerUnit = 123;
-let arenaLeft = 123;
-let arenaTop = 123;
-
-function onResize() {
-    const svgArenaHeight = parseFloat(I("arena").getAttribute("viewBox").split(" ")[3]);
-    const r = I("arenaRect").getBoundingClientRect();
-    const pxArenaHeight = r.height;
-    pxPerUnit = pxArenaHeight / svgArenaHeight;
-    arenaTop = r.top;
-    arenaLeft = r.left;    
-}
-
-function eventToWorldCoords(e) {
-    const xInPort = e.clientX - arenaLeft;
-    const yInPort = e.clientY - arenaTop;
-    return new Point(xInPort / pxPerUnit - 0.7, yInPort / pxPerUnit - 0.7);
-}
-
-function positionElem(elem, x, y, w, h) {
-    elem.style.left = (pxPerUnit * (x + 0.7) + arenaLeft) + "px";
-    elem.style.top = (pxPerUnit * (y + 0.7) + arenaTop) + "px";
-    if (w) elem.style.width = pxPerUnit * w + "px";
-    if (h) elem.style.height = pxPerUnit * h + "px";
-}
-
-function positionPlayer(playerId, player) {
-    positionCircle(I("circ_" + playerId), player.currentPos);
-    I("pointerTriangle_" + playerId).setAttribute("d", 
-        isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius));
-    positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
-}
-
 function initMouseMoveNavi(gameState) {
-    const player = gameState.players.get(gameState.myId);
     I("arena").addEventListener("mousemove", e => {
-        const mouse = eventToWorldCoords(e);
-        const current = player.posAtTime(gameState.lastT);
+        const mouse = gameState.eventToWorldCoords(e);
+        const current = gameState.myPlayer.posAtTime(gameState.lastT);
         const d = current.sub(mouse);
         const targetZero = mouse.add(d.scaleToLength(pointerRadius));
         const move = targetZero.sub(current);
-        const tToStop = Math.sqrt(2 * move.norm() / player.decceleration);
-        player.zeroSpeedTime = gameState.lastT + tToStop;
-        player.zeroSpeedPos = targetZero;
-        player.shootingAngle = oppositeAngle(d.angle());
-        player.angle = oppositeAngle(player.shootingAngle);
+        const tToStop = Math.sqrt(2 * move.norm() / gameState.myPlayer.decceleration);
+        gameState.myPlayer.zeroSpeedTime = gameState.lastT + tToStop;
+        gameState.myPlayer.zeroSpeedPos = targetZero;
+        gameState.myPlayer.shootingAngle = oppositeAngle(d.angle());
+        gameState.myPlayer.angle = oppositeAngle(gameState.myPlayer.shootingAngle);
     });
     window.addEventListener("keydown", e => {
         if (e.key === "f") {
-            gameState.events.publishSnowball(Point.polar(1, player.shootingAngle));
+            gameState.events.publishSnowball(Point.polar(1, gameState.myPlayer.shootingAngle));
         }
     });
+    I("arena").addEventListener("wheel", e => {
+        e.preventDefault();
+        const zoomChange = Math.exp(e.deltaY * -0.001);
+        const xInPort = e.clientX;
+        const yInPort = e.clientY;
+        gameState.events.publish({
+            type: "upd",
+            id: gameState.myId,
+            view: {
+                x: xInPort - (xInPort - gameState.myPlayer.view.x) * zoomChange,
+                y: yInPort - (yInPort - gameState.myPlayer.view.y) * zoomChange,
+                scale: gameState.myPlayer.view.scale * zoomChange
+            }
+        });
+    });
+    function onResize() {
+        const r = I("arenaWrapper").getBoundingClientRect();
+        gameState.events.publish({ type: "upd", id: gameState.myId, view: { w: r.width, h: r.height } } );
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
     // create small disk on which mouse pointer is not shown
     const noCursor = svg("circle", {
         id: "noCursor",
@@ -268,6 +264,10 @@ class GameState {
         this.events = events;
     }
 
+    get myPlayer() {
+        return this.players.get(this.myId);
+    }
+
     setPlayerSpeed(playerId, speed) {
         // Note: We don't use an event timestamp, otherwise we get non-linear time and can jump over walls
         this.players.get(playerId).setSpeed(this.lastT, speed);
@@ -277,6 +277,38 @@ class GameState {
         this.players.get(playerId).color = color;
         I("circ_" + playerId).setAttribute("fill", color);
         I("pointerTriangle_" + playerId).setAttribute("fill", color);
+        for (let i = 0; i < 4; i++) {
+            for (const stop of I(`gradient${i}_${playerId}`).getElementsByTagName("stop")) {
+                stop.setAttribute("stop-color", color);
+            }
+        }
+    }
+
+    encodeTransform() {
+        return `translate(${this.myPlayer.view.x}px, ${this.myPlayer.view.y}px) scale(${this.myPlayer.view.scale})`;
+    }
+    
+    setTransform() {
+        I("arena").style.transform = this.encodeTransform();
+    }
+
+    viewUpdate(id) {
+        if (id === this.myId) {
+            this.setTransform();
+        }
+        const view = this.players.get(id).view;
+        const x1 = - view.x  / view.scale;
+        const x1i = x1 + viewBoundaryWidth;
+        const x2 = (- view.x + view.w) / view.scale;
+        const x2i = x2 - viewBoundaryWidth;
+        const y1 = - view.y / view.scale;
+        const y1i = y1 + viewBoundaryWidth;
+        const y2 = (- view.y + view.h) / view.scale;
+        const y2i = y2 - viewBoundaryWidth;
+        I(`viewBound0_${id}`).setAttribute("points", `${x2},${y1} ${x2},${y2} ${x2i},${y2i} ${x2i},${y1i}`);
+        I(`viewBound1_${id}`).setAttribute("points", `${x2},${y1} ${x1},${y1} ${x1i},${y1i} ${x2i},${y1i}`);
+        I(`viewBound2_${id}`).setAttribute("points", `${x1},${y1} ${x1},${y2} ${x1i},${y2i} ${x1i},${y1i}`);
+        I(`viewBound3_${id}`).setAttribute("points", `${x1},${y2} ${x2},${y2} ${x2i},${y2i} ${x1i},${y2i}`);
     }
 
     addPlayer(playerId, color) {
@@ -312,6 +344,20 @@ class GameState {
         });
         I("arena").appendChild(pointerTriangle);
 
+        for (let i = 0; i < 4; i++) {
+            const flip = Math.floor((i + 1) % 4 / 2);
+            const dontFlip = 1 - flip;
+            const gradient = svg("linearGradient", {
+                id: `gradient${i}_${playerId}`,
+                gradientTransform: `rotate(${i % 2 * 90})`
+            }, [
+                svg("stop", { offset: "0%"  , "stop-color": color, "stop-opacity": flip * 0.7 }),
+                svg("stop", { offset: "100%", "stop-color": color, "stop-opacity": dontFlip * 0.7 })
+            ])
+            I("arenaDefs").appendChild(gradient);
+            I("arena").appendChild(svg("polygon", { id: `viewBound${i}_${playerId}`, fill: `url(#gradient${i}_${playerId})` }));
+        }
+
         const vid = document.createElement("video");
         vid.setAttribute("id", "video_" + playerId);
         vid.setAttribute("autoplay", "autoplay");
@@ -332,9 +378,33 @@ class GameState {
             for (let snowball of player.snowballs) {
                 I("snowball_" + playerId + "_" + snowball.id).remove();
             }
+            for (let i = 0; i < 4; i++) {
+                I(`gradient${i}_${playerId}`).remove();
+                I(`viewBound${i}_${playerId}`).remove();
+            }
         }
     }
 
+    eventToWorldCoords(e) {
+        const xInPort = e.clientX - this.myPlayer.view.x;
+        const yInPort = e.clientY - this.myPlayer.view.y;
+        return new Point(xInPort / this.myPlayer.view.scale, yInPort / this.myPlayer.view.scale);
+    }
+    
+    positionElem(elem, x, y, w, h) {
+        elem.style.left = (this.myPlayer.view.scale * x + this.myPlayer.view.x) + "px";
+        elem.style.top = (this.myPlayer.view.scale * y + this.myPlayer.view.y) + "px";
+        if (w) elem.style.width = (this.myPlayer.view.scale * w) + "px";
+        if (h) elem.style.height = (this.myPlayer.view.scale * h) + "px";
+    }
+    
+    positionPlayer(playerId, player) {
+        positionCircle(I("circ_" + playerId), player.currentPos);
+        I("pointerTriangle_" + playerId).setAttribute("d", 
+            isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius));
+        this.positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
+    }
+    
     addSnowball(snowball) {
         this.players.get(snowball.playerId).snowballs.set(snowball.id, snowball);
         const circ = svg("circle", {
@@ -411,7 +481,7 @@ class GameState {
             }
 
             const truePos = player.posAtTime(t);
-            positionPlayer(playerId, player);
+            this.positionPlayer(playerId, player);
 
             const transparency = (t - player.lastHitTime) / this.hitAnimationLength;
             const hitShade = I("hitShade_" + playerId);
@@ -612,6 +682,26 @@ class PlayerPeer {
     }
 }
 
+
+function transferAttrsToDom(j, attrs, target) {
+    for (const attr of attrs) {
+        if (j[attr] !== undefined) target.setAttribute(attr, j[attr]);
+    }
+}
+
+function transferAttrsToObj(j, attrs, target) {
+    for (const attr of attrs) {
+        if (j[attr] !== undefined) target[attr] = j[attr];
+    }
+}
+
+function floatifyAttrs(o, attrs) {
+    for (const attr of attrs) {
+        if (o[attr] === null || o[attr] === undefined) continue;
+        o[attr] = parseFloat(o[attr]);
+    }
+}
+
 class Events {
     constructor(playerPeers, gameState) {
         this.playerPeers = playerPeers;
@@ -629,6 +719,13 @@ class Events {
     }
     processEvent(sourceId, e) {
         switch (e.type) {
+            case "upd":
+                if (e.view) {
+                    floatifyAttrs(e.view, ['x', 'y', 'scale', 'w', 'h']);
+                    transferAttrsToObj(e.view, ['x', 'y', 'scale', 'w', 'h'], this.gameState.players.get(e.id).view);
+                    this.gameState.viewUpdate(e.id);
+                }
+                break;
             case "snowball":
                 const snowball = Snowball.fromJson(e);
                 snowball.playerId = sourceId;
@@ -842,6 +939,10 @@ function polygonToLines(dom) {
     });
 }
 
+function pointsToPolygonStr(points) {
+    return points.map(p => p.x + "," + p.y).join(' ');
+}
+
 const epsilon = 1e-20;
 
 // All argument types are Point, return type is an array of length 2.
@@ -976,8 +1077,7 @@ function init() {
         }
     });
 
-    window.addEventListener("resize", onResize);
-    onResize();
+    gs.setTransform();
 }
 
 window.onload = init;

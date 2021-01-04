@@ -9,23 +9,23 @@
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.2.0/dist/peerjs.min.js"></script>
     <script src="../log.js"></script>
     <script src="../point.js"></script>
+    <script src="./uievents.js"></script>
     <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
 </head>
 
-<body style="touch-action: none; background-color: black">
-    <div id="arenaWrapper" style="position:absolute; top:2vmin; left:2vmin; right:2vmin; bottom:2vmin">
-        <svg id="arena" viewBox="-0.7 -0.7 17.4 10.4"
-            style="width: auto; height: auto; position: absolute; left: 0; top: 50%; transform: translate(0, -50%); max-width: 100%; max-height: 100%;">
-            <defs>
+<body style="touch-action: none; background-color: black; overflow: hidden">
+    <div id="arenaWrapper" style="position:absolute; top:0; left:0; right:0; bottom:0; overflow: hidden;">
+        <svg id="arena" style="position: absolute; overflow: visible; top: 0; left: 0; transform-origin: top left;">
+            <defs id="arenaDefs">
                 <linearGradient id="skyGradient" gradientTransform="rotate(90)">
-                    <stop offset="5%" stop-color="#0080ff" />
-                    <stop offset="95%" stop-color="#46caff" />
+                    <stop offset="49.9750125%" stop-color="#0080ff" />
+                    <stop offset="50.0249875%" stop-color="#46caff" />
                 </linearGradient>
                 <clipPath id="clipVideo" clipPathUnits="objectBoundingBox">
                     <circle id="roundHeadClip" cx="0.5" cy="0.5" r="0.45" />
                 </clipPath>
             </defs>
-            <rect id="arenaRect" x="-0.7" y="-0.7" width="17.4" height="10.4" fill="url('#skyGradient')" />
+            <rect x="-10000" y="-10000" width="20000" height="20000" fill="url('#skyGradient')" />
             <!-- Note: polygon must be specified counter-clockwise so that "left while walking" is "further inside" -->
             <polygon id="borderPolygon" points="0,7 2,9 8,9 9,5 10,9 16,9 16,3 13,0 6,0 5,3 4,0 2,0 2,0.7 0,0.7" 
                 fill="none" stroke="white" stroke-width="0.05" stroke-dasharray=0.05 />
