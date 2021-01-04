@@ -211,6 +211,7 @@ function initMouseMoveNavi(gameState) {
         gameState.myPlayer.angle = oppositeAngle(gameState.myPlayer.shootingAngle);
     });
     window.addEventListener("keydown", e => {
+        if (e.repeat) return;
         if (e.key === "f" && gameState.showPointers) {
             gameState.events.publishSnowball(Point.polar(1, gameState.myPlayer.shootingAngle));
         } else if (e.key === "s") {
