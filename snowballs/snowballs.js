@@ -214,7 +214,11 @@ function initMouseMoveNavi(gameState) {
         if (e.key === "f" && gameState.showPointers) {
             gameState.events.publishSnowball(Point.polar(1, gameState.myPlayer.shootingAngle));
         } else if (e.key === "s") {
+            // synced between players
             gameState.events.publishShowPointers(!gameState.showPointers);
+        } else if (e.key === "b") {
+            // individual
+            I("arena").classList.toggle("hideViewBounds");
         }
     });
     I("arenaWrapper").addEventListener("wheel", e => {
@@ -378,7 +382,7 @@ class GameState {
                 svg("stop", { offset: "100%", "stop-color": color, "stop-opacity": dontFlip * 0.7 })
             ])
             I("arenaDefs").appendChild(gradient);
-            I("arena").appendChild(svg("polygon", { id: `viewBound${i}_${playerId}`, fill: `url(#gradient${i}_${playerId})` }));
+            I("arena").appendChild(svg("polygon", { id: `viewBound${i}_${playerId}`, class: "viewBound", fill: `url(#gradient${i}_${playerId})` }));
         }
 
         const vid = document.createElement("video");
@@ -607,6 +611,7 @@ class PlayerPeer {
         this.dataConn = dataConn;
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
+            this.gameState.events.publish({ type: "upd", id: this.gameState.myId, view: this.gameState.myPlayer.view } );
             // when someone new joins, stop shooting for a while to say hi ;)
             this.gameState.events.publishShowPointers(false);
         });

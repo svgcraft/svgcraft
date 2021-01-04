@@ -14,13 +14,16 @@
         .hidePointers .pointer {
             display: none;
         }
+        .hideViewBounds .viewBound {
+            display: none;
+        }
     </style>
     <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
 </head>
 
 <body style="touch-action: none; background-color: black; overflow: hidden">
     <div id="arenaWrapper" style="position:absolute; top:0; left:0; right:0; bottom:0; overflow: hidden;">
-        <svg id="arena" class="hidePointers" style="position: absolute; overflow: visible; top: 0; left: 0; transform-origin: top left;">
+        <svg id="arena" class="hidePointers hideViewBounds" style="position: absolute; overflow: visible; top: 0; left: 0; transform-origin: top left;">
             <defs id="arenaDefs">
                 <linearGradient id="skyGradient" gradientTransform="rotate(90)">
                     <stop offset="49.9750125%" stop-color="#0080ff" />
