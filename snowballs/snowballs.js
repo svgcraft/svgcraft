@@ -198,7 +198,7 @@ function svg(tag, attrs, children, allowedAttrs) {
 }
 
 function initMouseMoveNavi(gameState) {
-    I("arena").addEventListener("mousemove", e => {
+    I("arenaWrapper").addEventListener("mousemove", e => {
         const mouse = gameState.eventToWorldCoords(e);
         const current = gameState.myPlayer.posAtTime(gameState.lastT);
         const d = current.sub(mouse);
@@ -217,17 +217,16 @@ function initMouseMoveNavi(gameState) {
             gameState.events.publishShowPointers(!gameState.showPointers);
         }
     });
-    I("arena").addEventListener("wheel", e => {
+    I("arenaWrapper").addEventListener("wheel", e => {
         e.preventDefault();
         const zoomChange = Math.exp(e.deltaY * -0.001);
-        const xInPort = e.clientX;
-        const yInPort = e.clientY;
+        const center = gameState.worldToPixelCoords(gameState.myPlayer.currentPos);
         gameState.events.publish({
             type: "upd",
             id: gameState.myId,
             view: {
-                x: xInPort - (xInPort - gameState.myPlayer.view.x) * zoomChange,
-                y: yInPort - (yInPort - gameState.myPlayer.view.y) * zoomChange,
+                x: center.x - (center.x - gameState.myPlayer.view.x) * zoomChange,
+                y: center.y - (center.y - gameState.myPlayer.view.y) * zoomChange,
                 scale: gameState.myPlayer.view.scale * zoomChange
             }
         });
@@ -306,6 +305,15 @@ class GameState {
         I("arena").style.transform = this.encodeTransform();
     }
 
+    adaptViewToPlayerPos() {
+        const p = this.myPlayer;
+        const v = {
+            x: - (p.currentPos.x - p.view.w / p.view.scale / 2) * p.view.scale,
+            y: - (p.currentPos.y - p.view.h / p.view.scale / 2) * p.view.scale,
+        };
+        this.events.publish({ type: "upd", id: this.myId, view: v } );
+    }
+
     viewUpdate(id) {
         if (id === this.myId) {
             this.setTransform();
@@ -379,7 +387,7 @@ class GameState {
         vid.style.position = "absolute";
         vid.style.clipPath = "url(#clipVideo)";
         vid.style.transform = "rotateY(180deg)";
-        document.body.appendChild(vid);
+        I("arenaWrapper").appendChild(vid);
     }
 
     deletePlayer(playerId) {
@@ -405,10 +413,18 @@ class GameState {
         const yInPort = e.clientY - this.myPlayer.view.y;
         return new Point(xInPort / this.myPlayer.view.scale, yInPort / this.myPlayer.view.scale);
     }
+
+    worldToPixelCoords(p) {
+        return new Point(
+            this.myPlayer.view.scale * p.x + this.myPlayer.view.x,
+            this.myPlayer.view.scale * p.y + this.myPlayer.view.y
+        );                
+    }
     
     positionElem(elem, x, y, w, h) {
-        elem.style.left = (this.myPlayer.view.scale * x + this.myPlayer.view.x) + "px";
-        elem.style.top = (this.myPlayer.view.scale * y + this.myPlayer.view.y) + "px";
+        const p = this.worldToPixelCoords(new Point(x, y));
+        elem.style.left = p.x + "px";
+        elem.style.top = p.y + "px";
         if (w) elem.style.width = (this.myPlayer.view.scale * w) + "px";
         if (h) elem.style.height = (this.myPlayer.view.scale * h) + "px";
     }
@@ -1054,7 +1070,7 @@ function init() {
         return;
     }
     const bounceLines = polygonToLines(I("borderPolygon"));
-    playerStartPos = new Point(4, 5);
+    playerStartPos = new Point(-20, 5);
     const playerStartRadius = 5;
     const myId = urlParams.get("myId");
     const events = new Events();
@@ -1067,6 +1083,7 @@ function init() {
     events.gameState = gs;
 
     initMouseMoveNavi(gs);
+    gs.adaptViewToPlayerPos();
 
     I("activateCamera").onclick = () => {
         I("activateCamera").remove();
