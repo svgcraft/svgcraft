@@ -197,19 +197,7 @@ function svg(tag, attrs, children, allowedAttrs) {
     return res;
 }
 
-function initMouseMoveNavi(gameState) {
-    I("arenaWrapper").addEventListener("mousemove", e => {
-        const mouse = gameState.eventToWorldCoords(e);
-        const current = gameState.myPlayer.posAtTime(gameState.lastT);
-        const d = current.sub(mouse);
-        const targetZero = mouse.add(d.scaleToLength(pointerRadius));
-        const move = targetZero.sub(current);
-        const tToStop = Math.sqrt(2 * move.norm() / gameState.myPlayer.decceleration);
-        gameState.myPlayer.zeroSpeedTime = gameState.lastT + tToStop;
-        gameState.myPlayer.zeroSpeedPos = targetZero;
-        gameState.myPlayer.shootingAngle = oppositeAngle(d.angle());
-        gameState.myPlayer.angle = oppositeAngle(gameState.myPlayer.shootingAngle);
-    });
+function initMiscEvents(gameState) {
     window.addEventListener("keydown", e => {
         if (e.repeat) return;
         if (e.key === "f" && gameState.showPointers) {
@@ -663,26 +651,7 @@ class PlayerPeer {
                         this.lostPacketCount++;
                     }
                 }
-            } else if (e.type === "trajectory") {
-                const player = this.gameState.players.get(this.id);
-                player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
-                player.zeroSpeedTime = e.t0 - this.timeSeniority;
-                player.angle = e.angle;
-                if (e.plusPoints !== player.plusPoints) {
-                    log.state(`setting ${this.id}.plusPoints (currently ${player.plusPoints}) to ${e.plusPoints}`);
-                    player.plusPoints = e.plusPoints;
-                    this.gameState.updateRanking();
-                }
-                if (e.minusPoints !== player.minusPoints) {
-                    log.state(`setting ${this.id}.minusPoints (currently ${player.minusPoints}) to ${e.minusPoints}`);
-                    player.minusPoints = e.minusPoints;
-                    this.gameState.updateRanking();
-                }
-                player.shootingAngle = e.shootingAngle;
-                this.gameState.setPlayerColor(this.id, e.color);
-                this.gameConnections.connectToNewPeers(e.peers);
             } else {
-                // TODO refactor to handle all the above in `events` as well
                 this.gameState.events.processEvent(this.id, e);
             }
         });
@@ -752,7 +721,12 @@ class Events {
         this.processEvent(this.gameState.myId, e);
         this.broadcastEvent(e);
     }
+    get gameConnections() {
+        // all PlayerPeers link to the same GameConnections object, TODO maybe there's a nicer way to access it?
+        return this.playerPeers.values().next().value.gameConnections;
+    }
     processEvent(sourceId, e) {
+        const timeSeniority = sourceId === this.gameState.myId ? 0 : this.playerPeers.get(sourceId).timeSeniority;
         switch (e.type) {
             case "upd":
                 if (e.view) {
@@ -767,13 +741,31 @@ class Events {
             case "snowball":
                 const snowball = Snowball.fromJson(e);
                 snowball.playerId = sourceId;
-                const timeSeniority = sourceId === this.gameState.myId ? 0 : this.playerPeers.get(sourceId).timeSeniority;
                 snowball.zeroSpeedTime -= timeSeniority;
                 snowball.birthTime -= timeSeniority;
                 this.gameState.addSnowball(snowball);
                 break;
             case "hit":
                 this.gameState.hit(e.shooter, sourceId/*source of event=target of ball*/, e.snowball);
+                break;
+            case "trajectory":
+                const player = this.gameState.players.get(sourceId);
+                player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
+                player.zeroSpeedTime = e.t0 - timeSeniority;
+                player.angle = e.angle;
+                if (e.plusPoints !== undefined && e.plusPoints !== player.plusPoints) {
+                    log.state(`setting ${sourceId}.plusPoints (currently ${player.plusPoints}) to ${e.plusPoints}`);
+                    player.plusPoints = e.plusPoints;
+                    this.gameState.updateRanking();
+                }
+                if (e.minusPoints !== undefined && e.minusPoints !== player.minusPoints) {
+                    log.state(`setting ${sourceId}.minusPoints (currently ${player.minusPoints}) to ${e.minusPoints}`);
+                    player.minusPoints = e.minusPoints;
+                    this.gameState.updateRanking();
+                }
+                player.shootingAngle = e.shootingAngle;
+                if (e.color !== undefined) this.gameState.setPlayerColor(sourceId, e.color);
+                if (e.peers !== undefined) this.gameConnections.connectToNewPeers(e.peers);
                 break;
             default:
                 throw `Unknown event type ${e.type} (or event type that should be handled elsewhere)`;
@@ -1021,7 +1013,7 @@ function init() {
     events.playerPeers = gco.playerPeers;
     events.gameState = gs;
 
-    initMouseMoveNavi(gs);
+    initMiscEvents(gs);
     gs.adaptViewToPlayerPos();
 
     const videoRes = urlParams.get("videoRes") || 240;

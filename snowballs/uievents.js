@@ -13,6 +13,23 @@ class Tool {
         });
         */
     }
+    hover(e) {
+        const mouse = this.gameState.eventToWorldCoords(e);
+        const current = this.gameState.myPlayer.posAtTime(this.gameState.lastT);
+        const d = current.sub(mouse);
+        const targetZero = mouse.add(d.scaleToLength(pointerRadius));
+        const move = targetZero.sub(current);
+        const tToStop = Math.sqrt(2 * move.norm() / this.gameState.myPlayer.decceleration);
+        this.gameState.events.publish({
+            type: "trajectory",
+            x0: targetZero.x,
+            y0: targetZero.y,
+            t0: this.gameState.lastT + tToStop,
+            angle: d.angle(),
+            // when bouncing on a wall, angle changes, while shootingAngle remains
+            shootingAngle: oppositeAngle(d.angle())
+        });
+    }
     first_drag(e) {
         throw "should be implemented by subclass";
     }
@@ -268,22 +285,25 @@ var activeTool = "navigation";
 
 var selectedElemId = null;
 
-// We use the term "pointer" to refer to the mouse pointer on desktop, and the finger on mobile/tablets
+// We use the term "pointer" to refer to the mouse pointer on desktop, and the finger on touchscreens,
+// even though touchscreen support is not yet implemented
 class PointerEvents {
     constructor(gameState) {
         // This variable behaves like the following state machine:
         //
-        //           v
+        //    +pointerhover+
+        //     \         /
+        //      \       /
         //       +-> UP ----pointerdown----+
         //       |    ^                    |
         //       |    |                    v
         //       |    +-----pointerup---- DOWN
         //       |                         |
         //       |                         |
-        //     DRAGGING <---pointermove----+
+        //     DRAGGING <---pointerdrag----+
         //    ^        \
         //   /          \
-        //  +-pointermove+
+        //  +-pointerdrag+
         //
         this.pointerState = "UP";
         this.tools = {
@@ -342,7 +362,11 @@ class PointerEvents {
         set_corner_handle_cursor("none");
         //set_cursor("none");
     }
-    pointermove(e) {
+    pointerhover(e) {
+        if (this.pointerState !== "UP") return;
+        this.tools[activeTool].hover(e);
+    }
+    pointerdrag(e) {
         if (this.pointerState === "UP") return; // mousedown happened somewhere else
         switch (this.draggee) {
         case "tool":
@@ -488,8 +512,11 @@ function init_uievents(gameState) {
         pointerEventsHandler.pointerdown_on_map(e);
     };
     window.addEventListener('pointermove', (e) => {
-        if (e.buttons !== MOUSEBUTTONS_LEFT) return;
-        pointerEventsHandler.pointermove(e);
+        if (e.buttons === MOUSEBUTTONS_LEFT) {
+            pointerEventsHandler.pointerdrag(e);
+        } else if (e.buttons === 0) {
+            pointerEventsHandler.pointerhover(e);
+        }
     });
     // TODO what if multiple mouse buttons are pressed?
     window.addEventListener('pointerup', (e) => {
