@@ -582,11 +582,6 @@ class GameState {
     }
 }
 
-function makeControllerLink(myId) {
-    const folder = `${window.location.protocol}//${window.location.host}${window.location.pathname.replace("/index.html", "")}`;
-    return `${folder}/swipepad.html?connectTo=${myId}`;
-}
-
 class PlayerPeer {
     constructor(id, gameState, gameConnections) {
         this.id = id;
@@ -808,7 +803,6 @@ class GameConnections {
 
         this.peer.on('open', (id) => {
             log.connection("PeerJS server gave us ID " + id);
-            log.connection("Controller link to use on your phone:", makeControllerLink(id));
             log.connection("Waiting for peers to connect");
         });
     
@@ -825,66 +819,6 @@ class GameConnections {
                     }
                     pp.setDataConn(dataConn);
                     break;
-                case "touchpad":
-                    if (this.hasTouchpadPeer) {
-                        log.connection("Rejecting touchpad connection because there already is one");
-                        dataConn.close();
-                    } else {
-                        log.connection("Connected to touchpad " + dataConn.peer);
-                        this.hasTouchpadPeer = true;
-                        dataConn.on('open', () => {
-                            log.connection("Connection to touchpad " + dataConn.peer + " open");
-                        });
-                        let lastThrowTime = Number.NEGATIVE_INFINITY; // TODO remove once we only react to swipe events
-                        dataConn.on('data', e => {
-                            log.data(`data received from ${dataConn.peer}`);
-                            log.data(e);
-                            const speed = new Point(e.speedX, e.speedY);
-                            if (e.side === "left") {
-                                const adjustedSpeed = speed.norm() > 16 ? speed.scaleToLength(maxPlayerSpeed) : speed;
-                                this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
-                                this.broadcastTrajectory();
-                            }
-                            if (e.side === "right") {
-                                const rechargeTime = 0.3; // we need that little time to create a new snowball
-                                if (this.gameState.lastT - lastThrowTime < rechargeTime || speed.norm() < 5) return;
-                                lastThrowTime = this.gameState.lastT;
-                                this.gameState.events.publishSnowball(speed);
-                            }
-                        });
-                        dataConn.on('close', () => {
-                            log.connection(`Connection to touchpad ${dataConn.peer} closed`);
-                            this.hasTouchpadPeer = false;
-                        });
-                    }
-                    break;
-                case "swipepad":
-                    log.connection("Connected to swipepad " + dataConn.peer);
-                    dataConn.on('open', () => {
-                        log.connection("Connection to swipepad " + dataConn.peer + " open");
-                    });
-                    dataConn.on('data', e => {
-                        log.data(`data received from ${dataConn.peer}`);
-                        log.data(e);
-                        const dist = new Point(e.deltaX * movementScale, e.deltaY * movementScale);
-                        const player = this.gameState.players.get(this.myId);
-                        if (e.side === "left") {
-                            const oldSpeed = player.speedAtTime(this.gameState.lastT);
-                            const speed = dist.scale(1 / e.deltaT);
-                            const newSpeed = oldSpeed.add(speed);
-                            const adjustedSpeed = newSpeed.norm() > maxPlayerSpeed ? newSpeed.scaleToLength(maxPlayerSpeed) : newSpeed;
-                            //nsole.log(oldSpeed.norm().toFixed(2), speed.norm().toFixed(2), adjustedSpeed.norm().toFixed(2));
-                            this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
-                            this.broadcastTrajectory();
-                        }
-                        if (e.side === "right") {
-                            this.gameState.events.publishSnowball(dist);
-                        }
-                    });
-                    dataConn.on('close', () => {
-                        log.connection(`Connection to swipepad ${dataConn.peer} closed`);
-                    });
-                    break;                    
                 default:
                     log.connection("Rejecting connection of unknown type " + dataConn.metadata?.type);
                     dataConn.close();
