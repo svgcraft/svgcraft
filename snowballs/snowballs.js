@@ -91,12 +91,14 @@ class Player extends DecceleratingObject {
         
         this.nextFreshSnowballId = 0;
         this.snowballs = new Map();
-        this.shootingAngle = 0;
+        this.pointerAngle = 0;
 
         this.lastHitTime = Number.NEGATIVE_INFINITY;
         this.lastHitColor = null;
         this.minusPoints = 0;
         this.plusPoints = 0;
+
+        this.tool = "navigation";
 
         this.view = {
             // position of svg origin on the screen, in px
@@ -151,6 +153,9 @@ class Snowball extends DecceleratingObject {
 
 const headRadius = 0.5;
 const snowballRadius = 0.13;
+const toolDist = 0.1; // distance between head and tools, and between tools
+const toolRadius = 0.2;
+const toolDistAngle = Math.asin((toolDist/2 + toolRadius) / (headRadius + toolDist + toolRadius)) * 2;
 // "pointer" is the triangle pointing out of the head, whereas "cursor" is the mouse position
 const pointerRadius = headRadius * 1.9;
 const pointerBaseWidth = headRadius * 1.6;
@@ -198,18 +203,6 @@ function svg(tag, attrs, children, allowedAttrs) {
 }
 
 function initMiscEvents(gameState) {
-    window.addEventListener("keydown", e => {
-        if (e.repeat) return;
-        if (e.key === "f" && gameState.showPointers) {
-            gameState.events.publishSnowball(Point.polar(1, gameState.myPlayer.shootingAngle));
-        } else if (e.key === "s") {
-            // synced between players
-            gameState.events.publishShowPointers(!gameState.showPointers);
-        } else if (e.key === "b") {
-            // individual
-            I("arena").classList.toggle("hideViewBounds");
-        }
-    });
     I("arenaWrapper").addEventListener("wheel", e => {
         e.preventDefault();
         const zoomChange = Math.exp(e.deltaY * -0.001);
@@ -229,19 +222,6 @@ function initMiscEvents(gameState) {
     }
     window.addEventListener("resize", onResize);
     onResize();
-    // create small disk on which mouse pointer is not shown
-    const noCursor = svg("circle", {
-        id: "noCursor",
-        cx: -1234,
-        cy: -1234,
-        r: cursorRadius,
-        "fill": "white",
-        "fill-opacity": 0,
-        "class": "pointer"
-    }, []);
-    noCursor.style.cursor = "none";
-    I("arena").appendChild(noCursor);
-    I("pointerTriangle_" + gameState.myId).style.cursor = "none";
 }
 
 class GameState {
@@ -262,17 +242,6 @@ class GameState {
         return this.players.get(this.myId);
     }
 
-    get showPointers() {
-        return !I("arena").classList.contains("hidePointers");
-    }
-    set showPointers(b) {
-        if (b) {
-            I("arena").classList.remove("hidePointers");
-        } else {
-            I("arena").classList.add("hidePointers");
-        }
-    }
-
     setPlayerSpeed(playerId, speed) {
         // Note: We don't use an event timestamp, otherwise we get non-linear time and can jump over walls
         this.players.get(playerId).setSpeed(this.lastT, speed);
@@ -281,7 +250,6 @@ class GameState {
     setPlayerColor(playerId, color) {
         this.players.get(playerId).color = color;
         I("circ_" + playerId).setAttribute("fill", color);
-        I("pointerTriangle_" + playerId).setAttribute("fill", color);
         for (let i = 0; i < 4; i++) {
             for (const stop of I(`gradient${i}_${playerId}`).getElementsByTagName("stop")) {
                 stop.setAttribute("stop-color", color);
@@ -351,14 +319,6 @@ class GameState {
         }, []);
         I("arena").appendChild(hitShade);
 
-        const pointerTriangle = svg("path", {
-            id: "pointerTriangle_" + playerId,
-            d: isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius),
-            fill: color,
-            class: "pointer"
-        });
-        I("arena").appendChild(pointerTriangle);
-
         for (let i = 0; i < 4; i++) {
             const flip = Math.floor((i + 1) % 4 / 2);
             const dontFlip = 1 - flip;
@@ -377,6 +337,7 @@ class GameState {
         vid.setAttribute("id", "video_" + playerId);
         vid.setAttribute("autoplay", "autoplay");
         vid.style.position = "absolute";
+        vid.style.cursor = "none";
         vid.style.clipPath = "url(#clipVideo)";
         vid.style.transform = "rotateY(180deg)";
         I("arenaWrapper").appendChild(vid);
@@ -386,10 +347,10 @@ class GameState {
         const player = this.players.get(playerId);
         // it seems the 'closed' event might be triggered twice
         if (this.players.delete(playerId)) {
+            window.uiEventsHandler.tools[player.tool].deactivateFor(playerId);
             I("circ_" + playerId).remove();
             I("hitShade_" + playerId).remove();
             I("video_" + playerId).remove();
-            I("pointerTriangle_" + playerId).remove();
             for (let snowball of player.snowballs) {
                 I("snowball_" + playerId + "_" + snowball.id).remove();
             }
@@ -423,8 +384,7 @@ class GameState {
     
     positionPlayer(playerId, player) {
         positionCircle(I("circ_" + playerId), player.currentPos);
-        I("pointerTriangle_" + playerId).setAttribute("d", 
-            isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius));
+        window.uiEventsHandler.tools[player.tool].positionFor(playerId);
         this.positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
     }
     
@@ -517,8 +477,6 @@ class GameState {
             }
             player.oldPos = truePos;
         }
-        const pointerTip = myPlayer.currentPos.add(Point.polar(pointerRadius, myPlayer.shootingAngle));
-        positionCircle(I("noCursor"), pointerTip);
         this.lastT = t;
     }
 
@@ -595,8 +553,6 @@ class PlayerPeer {
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
             this.gameState.events.publish({ type: "upd", view: this.gameState.myPlayer.view } );
-            // when someone new joins, stop shooting for a while to say hi ;)
-            this.gameState.events.publishShowPointers(false);
         });
         dataConn.on('data', e => {
             log.data(`data received from ${dataConn.peer}`);
@@ -714,8 +670,12 @@ class Events {
         snowball.setSpeed(this.gameState.lastT, direction.scaleToLength(snowballSpeed));
         this.publish(snowball.toJson());
     }
-    publishShowPointers(showPointers) {
-        this.publish({ type: "upd", showPointers: showPointers });
+    publishActiveTool(toolname) {
+        this.publish({
+            type: "upd",
+            id: this.gameState.myId,
+            tool: toolname
+        });
     }
     publish(e) {
         this.processEvent(this.gameState.myId, e);
@@ -727,15 +687,19 @@ class Events {
     }
     processEvent(sourceId, e) {
         const timeSeniority = sourceId === this.gameState.myId ? 0 : this.playerPeers.get(sourceId).timeSeniority;
+        const player = this.gameState.players.get(sourceId);
         switch (e.type) {
             case "upd":
                 if (e.view) {
                     floatifyAttrs(e.view, ['x', 'y', 'scale', 'w', 'h']);
-                    transferAttrsToObj(e.view, ['x', 'y', 'scale', 'w', 'h'], this.gameState.players.get(sourceId).view);
+                    transferAttrsToObj(e.view, ['x', 'y', 'scale', 'w', 'h'], player.view);
                     this.gameState.viewUpdate(sourceId);
                 }
-                if (e.showPointers !== undefined) {
-                    this.gameState.showPointers = e.showPointers;
+                if (e.tool) {
+                    // TODO get rid of global variables
+                    window.uiEventsHandler.tools[player.tool].deactivateFor(sourceId);
+                    player.tool = e.tool;
+                    window.uiEventsHandler.tools[player.tool].activateFor(sourceId);
                 }
                 break;
             case "snowball":
@@ -749,7 +713,6 @@ class Events {
                 this.gameState.hit(e.shooter, sourceId/*source of event=target of ball*/, e.snowball);
                 break;
             case "trajectory":
-                const player = this.gameState.players.get(sourceId);
                 player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
                 player.zeroSpeedTime = e.t0 - timeSeniority;
                 player.angle = e.angle;
@@ -763,7 +726,9 @@ class Events {
                     player.minusPoints = e.minusPoints;
                     this.gameState.updateRanking();
                 }
-                player.shootingAngle = e.shootingAngle;
+                if (e.pointerAngle !== undefined) {
+                    player.pointerAngle = e.pointerAngle;
+                }
                 if (e.color !== undefined) this.gameState.setPlayerColor(sourceId, e.color);
                 if (e.peers !== undefined) this.gameConnections.connectToNewPeers(e.peers);
                 break;
@@ -870,7 +835,7 @@ class GameConnections {
         const m = player.trajectoryJson();
         // this is the kitchen sink message periodically providing all state managed by one player
         m.type = "trajectory";
-        m.shootingAngle = player.shootingAngle;
+        m.pointerAngle = player.pointerAngle;
         m.plusPoints = player.plusPoints;
         m.minusPoints = player.minusPoints;
         m.color = player.color;

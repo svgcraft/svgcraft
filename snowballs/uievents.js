@@ -4,20 +4,34 @@ class Tool {
     constructor(gameState) {
         this.gameState = gameState;
     }
+    // can be dynamically computed depending on player position
+    get enabled() {
+        return false;
+    }
+    // probably constant, measured from center of player
+    get playerDistToMouse() {
+        return pointerRadius;
+    }
+    get iconSvg() {
+        throw "should be implemented by subclass";
+    }
+    activateFor(playerId) {
+        throw "should be implemented by subclass";
+    }
+    positionFor(playerId) {
+        throw "should be implemented by subclass";
+    }
+    deactivateFor(playerId) {
+        throw "should be implemented by subclass";
+    }
     pointerdown(e) {
-        /*
-        this.gameState.events.publish({
-            type: "upd",
-            pos: event_to_world_coords(e),
-            animate: 'jump'
-        });
-        */
+        throw "should be implemented by subclass";
     }
     hover(e) {
         const mouse = this.gameState.eventToWorldCoords(e);
         const current = this.gameState.myPlayer.posAtTime(this.gameState.lastT);
         const d = current.sub(mouse);
-        const targetZero = mouse.add(d.scaleToLength(pointerRadius));
+        const targetZero = mouse.add(d.scaleToLength(this.playerDistToMouse));
         const move = targetZero.sub(current);
         const tToStop = Math.sqrt(2 * move.norm() / this.gameState.myPlayer.decceleration);
         this.gameState.events.publish({
@@ -26,8 +40,8 @@ class Tool {
             y0: targetZero.y,
             t0: this.gameState.lastT + tToStop,
             angle: d.angle(),
-            // when bouncing on a wall, angle changes, while shootingAngle remains
-            shootingAngle: oppositeAngle(d.angle())
+            // when bouncing on a wall, angle changes, while pointerAngle remains
+            pointerAngle: oppositeAngle(d.angle())
         });
     }
     first_drag(e) {
@@ -39,6 +53,25 @@ class Tool {
     end_drag(e) {
         throw "should be implemented by subclass";
     }
+    keydown(e) {
+        if (e.key === "b") {
+            I("arena").classList.toggle("hideViewBounds");
+        }
+    }
+}
+
+class ToolSelectionTool extends Tool {
+    constructor(gameState) {
+        super(gameState);
+    }
+    activateFor(playerId) {}
+    positionFor(playerId) {}
+    deactivateFor(playerId) {}
+    pointerdown(e) {}
+    hover(e) {}
+    first_drag(e) {}
+    continue_drag(e) {}
+    end_drag(e) {}
 }
 
 class NavigationTool extends Tool {
@@ -48,8 +81,34 @@ class NavigationTool extends Tool {
         this.last_clientX = null;
         this.last_clientY = null;
     }
+    get enabled() {
+        return true;
+    }
+    get playerDistToMouse() {
+        return 0;
+    }
+    get iconSvg() {
+        return svg("g", { transform: `scale(${1/70}) translate(-15, -15)`}, [
+            svg("path", {
+                "d": "M 6 15 L 24 15",
+                "stroke": "#E75A70",
+                "stroke-width": 3,
+                "marker-start": "url(#red_arrowhead)",
+                "marker-end": "url(#red_arrowhead)"
+            }),
+            svg("path", {
+                "d": "M 15 6 L 15 24",
+                "stroke": "#E75A70",
+                "stroke-width": 3,
+                "marker-start": "url(#red_arrowhead)",
+                "marker-end": "url(#red_arrowhead)"
+            }),
+        ]);
+    }
+    activateFor(playerId) {}
+    positionFor(playerId) {}
+    deactivateFor(playerId) {}
     pointerdown(e) {
-        super.pointerdown(e);
         this.last_clientX = e.clientX;
         this.last_clientY = e.clientY;
     }
@@ -69,6 +128,70 @@ class NavigationTool extends Tool {
             type: "upd",
             view: {x: this.gameState.myPlayer.view.x + dx, y: this.gameState.myPlayer.view.y + dy}
         }, true);
+    }
+}
+
+class SnowballTool extends NavigationTool {
+    constructor(gameState) {
+        super(gameState);
+    }
+    get playerDistToMouse() {
+        return pointerRadius;
+    }
+    get iconSvg() {
+        return svg("circle", {
+            cx: 0,
+            cy: 0,
+            r: snowballRadius,
+            fill: "white"
+        });
+    }
+    activateFor(playerId) {
+        const player = this.gameState.players.get(playerId);
+        const pointerTriangle = svg("path", {
+            id: "pointerTriangle_" + playerId,
+            d: isoscelesTriangle(player.currentPos, pointerBaseWidth, player.pointerAngle, pointerRadius),
+            fill: player.color,
+            class: "pointer"
+        });
+        if (playerId === this.gameState.myId) {
+            pointerTriangle.style.cursor = "none";
+            // create small disk on which mouse pointer is not shown
+            const noCursor = svg("circle", {
+                id: "noCursor",
+                cx: -1234,
+                cy: -1234,
+                r: cursorRadius,
+                "fill": "white",
+                "fill-opacity": 0,
+                "class": "pointer"
+            }, []);
+            noCursor.style.cursor = "none";
+            I("arena").appendChild(noCursor);
+        }
+        I("arena").appendChild(pointerTriangle);        
+    }
+    positionFor(playerId) {
+        const player = this.gameState.players.get(playerId);
+        I("pointerTriangle_" + playerId).setAttribute("d", 
+            isoscelesTriangle(player.currentPos, pointerBaseWidth, player.pointerAngle, pointerRadius));
+        if (playerId === this.gameState.myId) {
+            const pointerTip = player.currentPos.add(Point.polar(pointerRadius, player.pointerAngle));
+            positionCircle(I("noCursor"), pointerTip);
+        }
+    }
+    deactivateFor(playerId) {
+        I("pointerTriangle_" + playerId).remove();
+        if (playerId === this.gameState.myId) {
+            I("noCursor").remove();
+        }
+    }
+    keydown(e) {
+        if (e.key === "f") {
+            this.gameState.events.publishSnowball(Point.polar(1, this.gameState.myPlayer.pointerAngle));
+        } else {
+            super.keydown(e);
+        }
     }
 }
 
@@ -126,9 +249,9 @@ class ShapeTool extends Tool {
             selectedElemId = null;
         }
         this.move_avatar_to_shape_corner(p);
-        const s = create_shape(activeTool, this.pointerDownPos, p);
+        const s = create_shape(this.gameState.myPlayer.tool, this.pointerDownPos, p);
         s.action = 'new';
-        if (activeTool === 'rectangle') {
+        if (this.gameState.myPlayer.tool === 'rectangle') {
             s.tag = 'rect';
         } else {
             s.tag = 'path';
@@ -146,7 +269,7 @@ class ShapeTool extends Tool {
     continue_drag(e) {
         const p = event_to_world_coords(e);
         this.move_avatar_to_shape_corner(p);
-        const s = create_shape(activeTool, this.pointerDownPos, p);
+        const s = create_shape(this.gameState.myPlayer.tool, this.pointerDownPos, p);
         s.action = 'upd';
         s.id = selectedElemId;
         this.gameState.events.publish(s);
@@ -280,39 +403,23 @@ class BlobTool extends Tool {
     }
 }
 
-// possible values: any member name of the tools object above
-var activeTool = "navigation";
-
 var selectedElemId = null;
 
 // We use the term "pointer" to refer to the mouse pointer on desktop, and the finger on touchscreens,
 // even though touchscreen support is not yet implemented
-class PointerEvents {
+class UiEvents {
     constructor(gameState) {
-        // This variable behaves like the following state machine:
-        //
-        //    +pointerhover+
-        //     \         /
-        //      \       /
-        //       +-> UP ----pointerdown----+
-        //       |    ^                    |
-        //       |    |                    v
-        //       |    +-----pointerup---- DOWN
-        //       |                         |
-        //       |                         |
-        //     DRAGGING <---pointerdrag----+
-        //    ^        \
-        //   /          \
-        //  +-pointerdrag+
-        //
+        this.gameState = gameState;
         this.pointerState = "UP";
         this.tools = {
             navigation: new NavigationTool(gameState),
+            snowball: new SnowballTool(gameState),
             pointing: new PointingTool(gameState),
             rectangle: new ShapeTool(gameState),
             triangle: new ShapeTool(gameState),
             square: new ShapeTool(gameState),
-            blob: new BlobTool(gameState)
+            blob: new BlobTool(gameState),
+            toolSelection: new ToolSelectionTool(gameState)
         };
         this._draggee = null; // can be null, "handle" or "tool"
         this.onadjustcorner = null;
@@ -325,7 +432,7 @@ class PointerEvents {
         this._draggee = v;
     }
     pointerdown_on_map(e) {
-        this.tools[activeTool].pointerdown(e);
+        this.tools[this.gameState.myPlayer.tool].pointerdown(e);
         this.draggee = "tool";
         this.pointerdown_common(e);
     }
@@ -364,7 +471,7 @@ class PointerEvents {
     }
     pointerhover(e) {
         if (this.pointerState !== "UP") return;
-        this.tools[activeTool].hover(e);
+        this.tools[this.gameState.myPlayer.tool].hover(e);
     }
     pointerdrag(e) {
         if (this.pointerState === "UP") return; // mousedown happened somewhere else
@@ -372,11 +479,11 @@ class PointerEvents {
         case "tool":
             switch (this.pointerState) {
             case "DOWN":
-                this.tools[activeTool].first_drag(e);
+                this.tools[this.gameState.myPlayer.tool].first_drag(e);
                 this.pointerState = "DRAGGING";
                 break;
             case "DRAGGING":
-                this.tools[activeTool].continue_drag(e);
+                this.tools[this.gameState.myPlayer.tool].continue_drag(e);
                 break;
             }
             break;
@@ -389,7 +496,7 @@ class PointerEvents {
         if (this.pointerState === "UP") return; // mousedown happened somewhere else
         switch (this.draggee) {
         case "tool":
-            if (this.pointerState === "DRAGGING") this.tools[activeTool].end_drag(e);
+            if (this.pointerState === "DRAGGING") this.tools[this.gameState.myPlayer.tool].end_drag(e);
             break;
         case "handle":
             this.gameState.events.publish({
@@ -400,8 +507,47 @@ class PointerEvents {
             break;
         }
         this.pointerState = "UP";
-        set_cursor_for_active_tool();
         set_corner_handle_cursor("move");
+    }
+    keydown(e) {
+        if (e.repeat) return;
+        this.tools[this.gameState.myPlayer.tool].keydown(e);
+    }
+    showTools() {
+        const ts = Object.entries(this.tools).filter(([toolname, tool]) => tool.enabled);
+        let toolAngle = this.gameState.myPlayer.pointerAngle + toolDistAngle;
+        for (const [toolname, tool] of ts) {
+            const p = this.gameState.myPlayer.zeroSpeedPos.add(Point.polar(headRadius + toolDist + toolRadius, toolAngle));
+            const g = svg("g", { id: toolname + "-tool", transform: `translate(${p.x}, ${p.y})` }, [
+                svg("circle", { cx: 0, cy: 0, r: toolRadius, fill: "#555" }),
+                tool.iconSvg
+            ]);
+            g.onclick = e => {
+                this.gameState.events.publishActiveTool(toolname);
+                this.hideTools();
+            };
+            g.style.cursor = "pointer";
+            I("arena").appendChild(g);
+            toolAngle += toolDistAngle;
+        }
+        I("video_" + this.gameState.myId).style.cursor = "default";
+    }
+    hideTools() {
+        for (const toolname of Object.keys(this.tools)) {
+            const d = I(toolname + '-tool');
+            if (d) d.remove();
+        }
+        I("video_" + this.gameState.myId).style.cursor = "none";
+    }
+    contextmenu(e) {
+        if (this.gameState.myPlayer.tool === "toolSelection") {
+            this.hideTools();
+            this.gameState.events.publishActiveTool(this.lastActiveTool);
+        } else {
+            this.lastActiveTool = this.gameState.myPlayer.tool;
+            this.showTools();
+            this.gameState.events.publishActiveTool("toolSelection");
+        }
     }
 }
 
@@ -413,39 +559,6 @@ function set_corner_handle_cursor(name) {
         }
     }
     l.add("set_corner_handle_cursors_to_" + name);
-}
-
-function set_cursor_for_active_tool() {
-    switch (activeTool) {
-    case "navigation":
-        //set_cursor("grab");
-        set_cursor("default");
-        break;
-    case "pointing":
-        set_cursor("default");
-        break;
-    case "square":
-    case "rectangle":
-    case "triangle":
-        set_cursor("crosshair");
-        break;
-    case "blob":
-        set_cursor("default");
-        break;
-    default:
-        throw 'unknown tool'
-    }
-}
-
-function toolbutton_click(e) {
-    for (const toolBtn of I("Tools").children) {
-        toolBtn.classList.remove("ActiveTool");
-    }
-    const id = e.currentTarget.id;
-    if (!id.endsWith("-tool")) throw 'unexpected tool id';
-    activeTool = id.substr(0, id.length-5);
-    e.currentTarget.classList.add("ActiveTool");
-    set_cursor_for_active_tool();
 }
 
 function shape_contextmenu(e) {
@@ -492,10 +605,8 @@ function background_contextmenu(e) {
 
 const MOUSEBUTTONS_LEFT = 1;
 
-let pointerEventsHandler = null;
-
 function mousedown_corner_handle(elem, cornerPos, geomUpdater) {
-    return pointerEventsHandler.pointerdown_on_corner_handle(elem, cornerPos, geomUpdater);
+    return window.uiEventsHandler.pointerdown_on_corner_handle(elem, cornerPos, geomUpdater);
 }
 
 let cursor_debug = false;
@@ -506,27 +617,30 @@ function set_cursor(name) {
 }
 
 function init_uievents(gameState) {
-    pointerEventsHandler = new PointerEvents(gameState);
-    I("arenaWrapper").onpointerdown = (e) => {
+    window.uiEventsHandler = new UiEvents(gameState);
+    I("arenaWrapper").onpointerdown = e => {
         if (e.buttons !== MOUSEBUTTONS_LEFT) return;
-        pointerEventsHandler.pointerdown_on_map(e);
+        window.uiEventsHandler.pointerdown_on_map(e);
     };
-    window.addEventListener('pointermove', (e) => {
+    window.addEventListener('pointermove', e => {
         if (e.buttons === MOUSEBUTTONS_LEFT) {
-            pointerEventsHandler.pointerdrag(e);
+            window.uiEventsHandler.pointerdrag(e);
         } else if (e.buttons === 0) {
-            pointerEventsHandler.pointerhover(e);
+            window.uiEventsHandler.pointerhover(e);
         }
     });
     // TODO what if multiple mouse buttons are pressed?
-    window.addEventListener('pointerup', (e) => {
-        pointerEventsHandler.pointerup(e);
+    window.addEventListener('pointerup', e => {
+        window.uiEventsHandler.pointerup(e);
     });
     // never show the browser's context menu (also prevents the browser context menu on long taps)
-    window.addEventListener('contextmenu', (e) => {
+    window.addEventListener('contextmenu', e => {
         e.preventDefault();
+        window.uiEventsHandler.contextmenu(e);
+    });
+    window.addEventListener("keydown", e => {
+        window.uiEventsHandler.keydown(e);
     });
     // I("BackgroundRect").oncontextmenu = background_contextmenu;
-    set_cursor_for_active_tool();
     set_corner_handle_cursor("move");
 }
