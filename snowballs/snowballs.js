@@ -206,12 +206,11 @@ function initMiscEvents(gameState) {
     I("arenaWrapper").addEventListener("wheel", e => {
         e.preventDefault();
         const zoomChange = Math.exp(e.deltaY * -0.001);
-        const center = gameState.worldToPixelCoords(gameState.myPlayer.currentPos);
         gameState.events.publish({
             type: "upd",
             view: {
-                x: center.x - (center.x - gameState.myPlayer.view.x) * zoomChange,
-                y: center.y - (center.y - gameState.myPlayer.view.y) * zoomChange,
+                x: e.clientX - (e.clientX - gameState.myPlayer.view.x) * zoomChange,
+                y: e.clientY - (e.clientY - gameState.myPlayer.view.y) * zoomChange,
                 scale: gameState.myPlayer.view.scale * zoomChange
             }
         });
