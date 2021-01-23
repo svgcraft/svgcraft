@@ -153,13 +153,13 @@ class Snowball extends DecceleratingObject {
 
 const headRadius = 0.5;
 const snowballRadius = 0.13;
-const toolDist = 0.1; // distance between head and tools, and between tools
-const toolRadius = 0.2;
-const toolDistAngle = Math.asin((toolDist/2 + toolRadius) / (headRadius + toolDist + toolRadius)) * 2;
 // "pointer" is the triangle pointing out of the head, whereas "cursor" is the mouse position
 const pointerRadius = headRadius * 1.9;
 const pointerBaseWidth = headRadius * 1.6;
 const cursorRadius = 0.1;
+const toolRadius = 0.25;
+const toolDist = pointerRadius - headRadius - toolRadius; // distance between head and tools, and between tools
+const toolDistAngle = Math.asin((toolDist/2 + toolRadius) / (headRadius + toolDist + toolRadius)) * 2;
 const viewBoundaryWidth = 0.2;
 
 let playerStartPos = null;
@@ -336,7 +336,6 @@ class GameState {
         vid.setAttribute("id", "video_" + playerId);
         vid.setAttribute("autoplay", "autoplay");
         vid.style.position = "absolute";
-        vid.style.cursor = "none";
         vid.style.clipPath = "url(#clipVideo)";
         vid.style.transform = "rotateY(180deg)";
         I("arenaWrapper").appendChild(vid);

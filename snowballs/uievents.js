@@ -84,9 +84,6 @@ class NavigationTool extends Tool {
     get enabled() {
         return true;
     }
-    get playerDistToMouse() {
-        return 0;
-    }
     get iconSvg() {
         return svg("g", { transform: `scale(${1/70}) translate(-15, -15)`}, [
             svg("path", {
@@ -154,8 +151,8 @@ class SnowballTool extends NavigationTool {
             fill: player.color,
             class: "pointer"
         });
+        I("arena").appendChild(pointerTriangle);
         if (playerId === this.gameState.myId) {
-            pointerTriangle.style.cursor = "none";
             // create small disk on which mouse pointer is not shown
             const noCursor = svg("circle", {
                 id: "noCursor",
@@ -169,7 +166,6 @@ class SnowballTool extends NavigationTool {
             noCursor.style.cursor = "none";
             I("arena").appendChild(noCursor);
         }
-        I("arena").appendChild(pointerTriangle);        
     }
     positionFor(playerId) {
         const player = this.gameState.players.get(playerId);
@@ -530,14 +526,12 @@ class UiEvents {
             I("arena").appendChild(g);
             toolAngle += toolDistAngle;
         }
-        I("video_" + this.gameState.myId).style.cursor = "default";
     }
     hideTools() {
         for (const toolname of Object.keys(this.tools)) {
             const d = I(toolname + '-tool');
             if (d) d.remove();
         }
-        I("video_" + this.gameState.myId).style.cursor = "none";
     }
     contextmenu(e) {
         if (this.gameState.myPlayer.tool === "toolSelection") {
