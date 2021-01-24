@@ -103,6 +103,8 @@ class Player extends DecceleratingObject {
         // relative to pointerAngle
         this.leftTongAngle = TongsTool.maxTongAngle;
         this.rightTongAngle = TongsTool.maxTongAngle;
+        this.draggee = null;
+        this.relDraggeePos = null;
 
         this.view = {
             // position of svg origin on the screen, in px
@@ -461,8 +463,28 @@ class GameState {
         positionCircle(I("circ_" + playerId), player.currentPos);
         window.uiEventsHandler.tools[player.tool].positionFor(playerId);
         this.positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
+        if (player.draggee) {
+            this.positionObj(player.draggee, player.currentPos.add(player.relDraggeePos));
+        }
+    }
+
+    positionObj(o, absPos) {
+        this.applyAbsCoordsRelatively(o.parent, (x, y) => {
+            o.x0 = x;
+            o.y0 = y;
+            I(o.id).setAttribute("transform", `translate(${o.x0}, ${o.y0}) scale(${o.scale})`);
+        })(absPos.x, absPos.y);
     }
     
+    applyAbsCoordsRelatively(anchor, f) {
+        if (anchor === "objects") {
+            return f;
+        } else {
+            const anchorO = this.objects.get(anchor);
+            return this.applyAbsCoordsRelatively(anchorO.parent, (x, y) => f((x - anchorO.x0)/anchorO.scale, (y - anchorO.y0)/anchorO.scale));
+        }
+    }
+
     addSnowball(snowball) {
         this.players.get(snowball.playerId).snowballs.set(snowball.id, snowball);
         const circ = svg("circle", {
@@ -789,6 +811,8 @@ class Events {
                 if (e.leftTongAngle !== undefined || e.rightTongAngle !== undefined || e.tongsRadius !== undefined) {
                     window.uiEventsHandler.tools[player.tool].positionFor(sourceId);
                 }
+                if (e.draggee !== undefined) player.draggee = this.gameState.objects.get(e.draggee);
+                if (e.relDraggeePos !== undefined) player.relDraggeePos = e.relDraggeePos;
                 break;
             case "rect":
             case "line":

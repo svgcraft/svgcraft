@@ -280,14 +280,16 @@ class TongsTool extends NavigationTool {
                 m = { 
                     type: "upd", 
                     leftTongAngle: normalizeAngle(leftTangentAngle - this.gameState.myPlayer.pointerAngle),
-                    rightTongAngle: normalizeAngle(this.gameState.myPlayer.pointerAngle - rightTangentAngle)
+                    rightTongAngle: normalizeAngle(this.gameState.myPlayer.pointerAngle - rightTangentAngle),
+                    draggee: o.id,
+                    relDraggeePos: this.gameState.absCoords(o).sub(this.gameState.myPlayer.posAtTime(this.gameState.lastT))
                 };
             }
         }
         this.gameState.events.publish(m);
     }
     ungrab() {
-        this.gameState.events.publish({ type: "upd", leftTongAngle: TongsTool.maxTongAngle, rightTongAngle: TongsTool.maxTongAngle });
+        this.gameState.events.publish({ type: "upd", draggee: null, leftTongAngle: TongsTool.maxTongAngle, rightTongAngle: TongsTool.maxTongAngle });
     }
     click(e) {
         this.ungrab();
@@ -295,6 +297,26 @@ class TongsTool extends NavigationTool {
     end_drag(e) {
         this.ungrab();
         super.end_drag(e);
+    }
+    moveObjWithoutChangingPointerAngle(e) {
+        const mouse = this.gameState.eventToWorldCoords(e);
+        const targetZero = mouse.sub(Point.polar(this.playerDistToMouse, this.gameState.myPlayer.pointerAngle));
+        const current = this.gameState.myPlayer.posAtTime(this.gameState.lastT);
+        const move = targetZero.sub(current);
+        const tToStop = Math.sqrt(2 * move.norm() / this.gameState.myPlayer.decceleration);
+        this.gameState.events.publish({
+            type: "trajectory",
+            x0: targetZero.x,
+            y0: targetZero.y,
+            t0: this.gameState.lastT + tToStop
+        });
+    }
+    move_impl(e) {
+        if (this.gameState.myPlayer.draggee) {
+            this.moveObjWithoutChangingPointerAngle(e);
+        } else {
+            super.move_impl(e);
+        }
     }
     keydown(e) {
         if (e.key === "d") {
