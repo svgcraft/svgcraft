@@ -151,7 +151,7 @@ class SnowballTool extends NavigationTool {
             fill: player.color,
             class: "pointer"
         });
-        I("arena").appendChild(pointerTriangle);
+        I("players").appendChild(pointerTriangle);
         if (playerId === this.gameState.myId) {
             // create small disk on which mouse pointer is not shown
             const noCursor = svg("circle", {
@@ -164,7 +164,7 @@ class SnowballTool extends NavigationTool {
                 "class": "pointer"
             }, []);
             noCursor.style.cursor = "none";
-            I("arena").appendChild(noCursor);
+            I("players").appendChild(noCursor);
         }
     }
     positionFor(playerId) {
@@ -523,7 +523,7 @@ class UiEvents {
                 this.hideTools();
             };
             g.style.cursor = "pointer";
-            I("arena").appendChild(g);
+            I("players").appendChild(g);
             toolAngle += toolDistAngle;
         }
     }

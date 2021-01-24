@@ -89,7 +89,6 @@ class Player extends DecceleratingObject {
         this.oldPos = initialPos;
         this.color = color;
         
-        this.nextFreshSnowballId = 0;
         this.snowballs = new Map();
         this.pointerAngle = 0;
 
@@ -111,9 +110,6 @@ class Player extends DecceleratingObject {
             h: 900
         };
     }
-    freshSnowballId() {
-        return this.nextFreshSnowballId++;
-    }
     get decceleration() {
         return playerDecceleration;
     }
@@ -124,7 +120,7 @@ let snowballDecceleration = 4;
 class Snowball extends DecceleratingObject {
     constructor(initialPos, id, playerId, birthTime) {
         super(initialPos);
-        this.id = id; // each player numbers the snowballs it throws 0, 1, 2, ...
+        this.id = id; // a globally unique string id
         this.playerId = playerId;
         this.birthTime = birthTime;
     }
@@ -223,6 +219,24 @@ function initMiscEvents(gameState) {
     onResize();
 }
 
+const styleAttrs = ["stroke", "stroke-width", "stroke-linejoin", "stroke-linecap", "fill", "fill-opacity"];
+const positionAttrs = ["cx", "cy", "r", "rx", "ry", "d", "x", "y", "x1", "y1", "x2", "y2", "width", "height"];
+const gAttrs = ["x0", "y0", "scale"];
+const updatableSvgAttrs = styleAttrs.concat(positionAttrs);
+const updatableAttrs = updatableSvgAttrs.concat(gAttrs);
+
+function transferAttrsToDom(j, attrs, target) {
+    for (const attr of attrs) {
+        if (j[attr] !== undefined) target.setAttribute(attr, j[attr]);
+    }
+}
+
+function transferAttrsToObj(j, attrs, target) {
+    for (const attr of attrs) {
+        if (j[attr] !== undefined) target[attr] = j[attr];
+    }
+}
+
 class GameState {
     constructor(myId, bounceLines, events) {
         // we always aim towards the true position of the player aimTime seconds in the future
@@ -235,6 +249,43 @@ class GameState {
         // and v is the vector pointing from a to the line segment's end point
         this.bounceLines = bounceLines;
         this.events = events;
+        this.nextFreshId = 0;
+        this.objects = new Map();
+    }
+
+    update(e) {
+        const parent = I(e.parent);
+        if (parent === undefined) {
+            log.state(`Ignoring object because its parent ${e.parent} was not found`, e);
+            return;
+        }
+        let o = this.objects.get(e.id);
+        let d = I(e.id) ?? undefined;
+        if ((o === undefined) != (d === undefined)) throw 'GameState.objects and DOM got out of sync';
+        const needsG = e.type === "rect" || e.type === "circle";
+        if (o === undefined) {
+            o = { type: e.type, id: e.id };
+            this.objects.set(e.id, e);
+            if (needsG) {
+                d = svg(e.type);
+                const g = svg("g", { id: e.id }, [d]);
+                parent.appendChild(g)
+            } else {
+                d = svg(e.type, { id: e.id });
+                parent.appendChild(d);
+            }
+        } else {
+            if (needsG) d = d.children[0];
+        }
+        transferAttrsToObj(e, updatableAttrs, o);
+        transferAttrsToDom(o, updatableSvgAttrs, d);
+        if (needsG) {
+            d.parentNode.setAttribute("transform", `translate(${o.x0}, ${o.y0})` + (o.scale ? ` scale(${o.scale})` : ""));
+        }
+    }
+
+    freshId() {
+        return `${this.myId}_${this.nextFreshId++}`;
     }
 
     get myPlayer() {
@@ -303,7 +354,7 @@ class GameState {
             r: headRadius,
             fill: color
         }, []);
-        I("arena").appendChild(circ);
+        I("players").appendChild(circ);
 
         const w = 0.2 * headRadius;
         const hitShade = svg("circle", {
@@ -316,7 +367,7 @@ class GameState {
             "stroke": "black",
             "stroke-opacity": 0
         }, []);
-        I("arena").appendChild(hitShade);
+        I("players").appendChild(hitShade);
 
         for (let i = 0; i < 4; i++) {
             const flip = Math.floor((i + 1) % 4 / 2);
@@ -329,7 +380,7 @@ class GameState {
                 svg("stop", { offset: "100%", "stop-color": color, "stop-opacity": dontFlip * 0.7 })
             ])
             I("arenaDefs").appendChild(gradient);
-            I("arena").appendChild(svg("polygon", { id: `viewBound${i}_${playerId}`, class: "viewBound", fill: `url(#gradient${i}_${playerId})` }));
+            I("players").appendChild(svg("polygon", { id: `viewBound${i}_${playerId}`, class: "viewBound", fill: `url(#gradient${i}_${playerId})` }));
         }
 
         const vid = document.createElement("video");
@@ -350,7 +401,7 @@ class GameState {
             I("hitShade_" + playerId).remove();
             I("video_" + playerId).remove();
             for (let snowball of player.snowballs) {
-                I("snowball_" + playerId + "_" + snowball.id).remove();
+                I(snowball.id).remove();
             }
             for (let i = 0; i < 4; i++) {
                 I(`gradient${i}_${playerId}`).remove();
@@ -389,13 +440,13 @@ class GameState {
     addSnowball(snowball) {
         this.players.get(snowball.playerId).snowballs.set(snowball.id, snowball);
         const circ = svg("circle", {
-            id: "snowball_" + snowball.playerId + "_" + snowball.id, 
+            id: snowball.id, 
             cx: -1234,
             cy: -1234,
             r: snowballRadius,
             fill: "white"
         }, []);
-        I("arena").appendChild(circ);
+        I("players").appendChild(circ);
     }
 
     hit(shooterId, targetId, snowballId) {
@@ -408,7 +459,7 @@ class GameState {
         // while the packet from the target peer that tells us that the target peer has been hit
         // was in flight, the snowball speed might have reached zero or hit a wall and therefore
         // might already have been removed
-        if (shooter.snowballs.delete(snowballId)) I("snowball_" + shooterId + "_" + snowballId).remove();
+        if (shooter.snowballs.delete(snowballId)) I(snowballId).remove();
         this.updateRanking();
     }
 
@@ -446,7 +497,7 @@ class GameState {
                 const p0 = snowball.posAtTime(snowball.birthTime);
                 const traveled = p.sub(p0);
                 const v = snowball.speedAtTime(t).norm();
-                const dom = I("snowball_" + snowball.playerId + "_" + snowball.id);
+                const dom = I(snowball.id);
                 positionCircle(dom, p);
                 // we only compute whether a snowball hits ourselves, because each peer computes & broadcasts its own hits
                 const hit = playerId !== this.myId && snowball.hits(myPlayer, t, dt, headRadius + snowballRadius);
@@ -664,7 +715,7 @@ class Events {
     }
     publishSnowball(direction) {
         const player = this.gameState.players.get(this.gameState.myId);
-        const snowball = new Snowball(player.posAtTime(this.gameState.lastT), player.freshSnowballId(), this.gameState.myId, this.gameState.lastT);
+        const snowball = new Snowball(player.posAtTime(this.gameState.lastT), this.gameState.freshId(), this.gameState.myId, this.gameState.lastT);
         snowball.setSpeed(this.gameState.lastT, direction.scaleToLength(snowballSpeed));
         this.publish(snowball.toJson());
     }
@@ -684,6 +735,13 @@ class Events {
         return this.playerPeers.values().next().value.gameConnections;
     }
     processEvent(sourceId, e) {
+        if (Array.isArray(e)) {
+            for (const x of e) this.processOneEvent(sourceId, x);
+        } else {
+            this.processOneEvent(sourceId, e);
+        }
+    }
+    processOneEvent(sourceId, e) {
         const timeSeniority = sourceId === this.gameState.myId ? 0 : this.playerPeers.get(sourceId).timeSeniority;
         const player = this.gameState.players.get(sourceId);
         switch (e.type) {
@@ -699,6 +757,11 @@ class Events {
                     player.tool = e.tool;
                     window.uiEventsHandler.tools[player.tool].activateFor(sourceId);
                 }
+                break;
+            case "rect":
+            case "line":
+            case "circle":
+                this.gameState.update(e);
                 break;
             case "snowball":
                 const snowball = Snowball.fromJson(e);
@@ -996,6 +1059,10 @@ function init() {
                 gco.connectToNewPeer(urlParams.get("friendId"));
             }
         });
+    }
+
+    if (!urlParams.has("friendId")) {
+        new Mill(new Point(-16, 5), gs).init();
     }
 
     let handle = window.requestAnimationFrame(paint);
