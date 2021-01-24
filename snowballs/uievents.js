@@ -4,6 +4,7 @@ class Tool {
     constructor(gameState) {
         this.gameState = gameState;
     }
+    static iconColor = "#E75A70";
     // can be dynamically computed depending on player position
     get enabled() {
         return false;
@@ -53,6 +54,7 @@ class Tool {
     end_drag(e) {
         throw "should be implemented by subclass";
     }
+    click(e) {}
     keydown(e) {
         if (e.key === "b") {
             I("arena").classList.toggle("hideViewBounds");
@@ -88,14 +90,14 @@ class NavigationTool extends Tool {
         return svg("g", { transform: `scale(${1/70}) translate(-15, -15)`}, [
             svg("path", {
                 "d": "M 6 15 L 24 15",
-                "stroke": "#E75A70",
+                "stroke": Tool.iconColor,
                 "stroke-width": 3,
                 "marker-start": "url(#red_arrowhead)",
                 "marker-end": "url(#red_arrowhead)"
             }),
             svg("path", {
                 "d": "M 15 6 L 15 24",
-                "stroke": "#E75A70",
+                "stroke": Tool.iconColor,
                 "stroke-width": 3,
                 "marker-start": "url(#red_arrowhead)",
                 "marker-end": "url(#red_arrowhead)"
@@ -185,6 +187,120 @@ class SnowballTool extends NavigationTool {
     keydown(e) {
         if (e.key === "f") {
             this.gameState.events.publishSnowball(Point.polar(1, this.gameState.myPlayer.pointerAngle));
+        } else {
+            super.keydown(e);
+        }
+    }
+}
+
+class TongsTool extends NavigationTool {
+    constructor(gameState) {
+        super(gameState);
+    }
+    static maxTongAngle = Math.PI / 10;
+    static minTongAngle = Math.PI / 360;
+    static tongsBaseWidth = 0.4;
+    get playerDistToMouse() {
+        const maxDraggeeRadius = Math.tan(TongsTool.maxTongAngle) * this.gameState.myPlayer.tongsRadius;
+        const maxDraggeeDist = this.gameState.myPlayer.tongsRadius / Math.cos(TongsTool.maxTongAngle);
+        return maxDraggeeDist - maxDraggeeRadius;
+    }
+    get iconSvg() {
+        return svg("polyline", {
+            points: "-0.125,-0.125 0.125,0 -0.125,0.125",
+            fill: "none",
+            "stroke": Tool.iconColor,
+            "stroke-width": 0.04
+        });
+    }
+    activateFor(playerId) {
+        const player = this.gameState.players.get(playerId);
+        const leftTongTriangle = svg("path", {
+            id: "leftTongTriangle_" + playerId,
+            fill: player.color
+        });
+        I("players").appendChild(leftTongTriangle);
+        const rightTongTriangle = svg("path", {
+            id: "rightTongTriangle_" + playerId,
+            fill: player.color
+        });
+        I("players").appendChild(rightTongTriangle);
+        if (playerId === this.gameState.myId) {
+            // create small disk on which mouse pointer is not shown,
+            // move it around with tip of left tong, no need for one on
+            // the right because only relevant when both tips are at the same pos (closed tongs)
+            const leftNoCursor = svg("circle", {
+                id: "leftNoCursor",
+                r: cursorRadius,
+                "fill": "white",
+                "fill-opacity": 0,
+            });
+            leftNoCursor.style.cursor = "none";
+            I("players").appendChild(leftNoCursor);
+        }
+        this.positionFor(playerId);
+    }
+    positionFor(playerId) {
+        const player = this.gameState.players.get(playerId);
+        const leftTip = player.currentPos.add(Point.polar(player.tongsRadius, player.pointerAngle + player.leftTongAngle));
+        const leftBase = player.currentPos.add(Point.polar(TongsTool.tongsBaseWidth, player.pointerAngle + player.leftTongAngle + Math.PI / 2));
+        I("leftTongTriangle_" + playerId).setAttribute("d", pathStr(["M", player.currentPos, "L", leftTip, "L", leftBase, "z"]));
+        const rightTip = player.currentPos.add(Point.polar(player.tongsRadius, player.pointerAngle - player.rightTongAngle));
+        const rightBase = player.currentPos.add(Point.polar(TongsTool.tongsBaseWidth, player.pointerAngle - player.leftTongAngle - Math.PI / 2));
+        I("rightTongTriangle_" + playerId).setAttribute("d", pathStr(["M", player.currentPos, "L", rightTip, "L", rightBase, "z"]));
+        if (playerId === this.gameState.myId) {
+            positionCircle(I("leftNoCursor"), leftTip);
+        }
+    }
+    deactivateFor(playerId) {
+        I("leftTongTriangle_" + playerId).remove();
+        I("rightTongTriangle_" + playerId).remove();
+        if (playerId === this.gameState.myId) {
+            I("leftNoCursor").remove();
+        }
+    }
+    pointerdown(e) {
+        this.grab(this.gameState.objects.get(e.target.parentNode.id)); // circle is in a g
+        super.pointerdown(e);
+    }
+    grab(o) {
+        // default: don't grab o, just close tongs into the empty
+        let m = { type: "upd", leftTongAngle: TongsTool.minTongAngle, rightTongAngle: TongsTool.minTongAngle };
+        if (o?.type === "circle") {
+            const draggeeRadius = this.gameState.absLengthIn(o.r, o.id);
+            const toDraggee = this.gameState.absCoords(o).sub(this.gameState.myPlayer.currentPos);
+            const draggeeDist = toDraggee.norm();
+            const halfRadialDraggeeWidth = Math.asin(draggeeRadius / draggeeDist);
+            const leftTangentAngle = toDraggee.angle() + halfRadialDraggeeWidth;
+            const rightTangentAngle = toDraggee.angle() - halfRadialDraggeeWidth;
+            if (draggeeDist >= headRadius + draggeeRadius &&
+                normalizeAngle(this.gameState.myPlayer.pointerAngle + this.gameState.myPlayer.leftTongAngle - leftTangentAngle) >= 0 &&
+                normalizeAngle(rightTangentAngle - (this.gameState.myPlayer.pointerAngle - this.gameState.myPlayer.rightTongAngle)) >= 0) {
+                // grab o
+                m = { 
+                    type: "upd", 
+                    leftTongAngle: normalizeAngle(leftTangentAngle - this.gameState.myPlayer.pointerAngle),
+                    rightTongAngle: normalizeAngle(this.gameState.myPlayer.pointerAngle - rightTangentAngle)
+                };
+            }
+        }
+        this.gameState.events.publish(m);
+    }
+    ungrab() {
+        this.gameState.events.publish({ type: "upd", leftTongAngle: TongsTool.maxTongAngle, rightTongAngle: TongsTool.maxTongAngle });
+    }
+    click(e) {
+        this.ungrab();
+    }
+    end_drag(e) {
+        this.ungrab();
+        super.end_drag(e);
+    }
+    keydown(e) {
+        if (e.key === "d") {
+            this.gameState.events.publish({ type: "upd", tongsRadius: this.gameState.myPlayer.tongsRadius * 1.1 });
+        } else if (e.key === "a") {
+            this.gameState.events.publish({ type: "upd", tongsRadius: this.gameState.myPlayer.tongsRadius / 1.1 });
         } else {
             super.keydown(e);
         }
@@ -410,6 +526,7 @@ class UiEvents {
         this.tools = {
             navigation: new NavigationTool(gameState),
             snowball: new SnowballTool(gameState),
+            tongs: new TongsTool(gameState),
             pointing: new PointingTool(gameState),
             rectangle: new ShapeTool(gameState),
             triangle: new ShapeTool(gameState),
@@ -493,6 +610,7 @@ class UiEvents {
         switch (this.draggee) {
         case "tool":
             if (this.pointerState === "DRAGGING") this.tools[this.gameState.myPlayer.tool].end_drag(e);
+            if (this.pointerState === "DOWN") this.tools[this.gameState.myPlayer.tool].click(e);
             break;
         case "handle":
             this.gameState.events.publish({

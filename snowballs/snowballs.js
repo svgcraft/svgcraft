@@ -99,6 +99,11 @@ class Player extends DecceleratingObject {
 
         this.tool = "navigation";
 
+        this.tongsRadius = pointerRadius;
+        // relative to pointerAngle
+        this.leftTongAngle = TongsTool.maxTongAngle;
+        this.rightTongAngle = TongsTool.maxTongAngle;
+
         this.view = {
             // position of svg origin on the screen, in px
             x: 0,
@@ -176,11 +181,16 @@ function positionVector(dom, start, direction) {
     dom.setAttribute("y2", target.y);
 }
 
+// l: list of string or Point
+function pathStr(l) {
+    return l.map(e => typeof(e) === "string" ? e : e.x + " " + e.y).join(" ");
+}
+
 function isoscelesTriangle(baseMid, baseLength, rotation, height) {
     const tip = baseMid.add(Point.polar(height, rotation));
     const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
     const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
-    return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`;
+    return pathStr(["M", p1, "L", p2, "L", tip, "z"]);
 }
 
 function svg(tag, attrs, children, allowedAttrs) {
@@ -264,8 +274,8 @@ class GameState {
         if ((o === undefined) != (d === undefined)) throw 'GameState.objects and DOM got out of sync';
         const needsG = e.type === "rect" || e.type === "circle";
         if (o === undefined) {
-            o = { type: e.type, id: e.id };
-            this.objects.set(e.id, e);
+            o = { type: e.type, id: e.id, scale: 1, parent: e.parent };
+            this.objects.set(o.id, o);
             if (needsG) {
                 d = svg(e.type);
                 const g = svg("g", { id: e.id }, [d]);
@@ -280,8 +290,24 @@ class GameState {
         transferAttrsToObj(e, updatableAttrs, o);
         transferAttrsToDom(o, updatableSvgAttrs, d);
         if (needsG) {
-            d.parentNode.setAttribute("transform", `translate(${o.x0}, ${o.y0})` + (o.scale ? ` scale(${o.scale})` : ""));
+            d.parentNode.setAttribute("transform", `translate(${o.x0}, ${o.y0}) scale(${o.scale})`);
         }
+    }
+
+    absCoordsIn(x, y, id) {
+        if (id === "objects") return new Point(x, y);
+        const o = this.objects.get(id);
+        return this.absCoordsIn(x * o.scale + o.x0, y * o.scale + o.y0, o.parent);
+    }
+
+    absCoords(o) {
+        return this.absCoordsIn(o.x0, o.y0, o.parent);
+    }
+
+    absLengthIn(l, id) {
+        if (id === "objects") return l;
+        const o = this.objects.get(id);
+        return this.absLengthIn(l * o.scale, o.parent);
     }
 
     freshId() {
@@ -756,6 +782,12 @@ class Events {
                     window.uiEventsHandler.tools[player.tool].deactivateFor(sourceId);
                     player.tool = e.tool;
                     window.uiEventsHandler.tools[player.tool].activateFor(sourceId);
+                }
+                player.leftTongAngle = e.leftTongAngle ?? player.leftTongAngle;
+                player.rightTongAngle = e.rightTongAngle ?? player.rightTongAngle;
+                player.tongsRadius = e.tongsRadius ?? player.tongsRadius;
+                if (e.leftTongAngle !== undefined || e.rightTongAngle !== undefined || e.tongsRadius !== undefined) {
+                    window.uiEventsHandler.tools[player.tool].positionFor(sourceId);
                 }
                 break;
             case "rect":
