@@ -120,6 +120,14 @@ class Player extends DecceleratingObject {
     get decceleration() {
         return playerDecceleration;
     }
+    state_upd() {
+        const m = {
+            type: "upd"
+        };
+        transferAttrsToObj(this, ["view", "tool", "leftTongAngle", "rightTongAngle", "tongsRadius", "relDraggeePos"], m);
+        if (this.draggee) m.draggee = this.draggee.id;
+        return m;
+    }
 }
 
 let snowballDecceleration = 4;
@@ -333,6 +341,10 @@ class GameState {
                 stop.setAttribute("stop-color", color);
             }
         }
+        // TODO for modularity, this code should be in each tool
+        I("pointerTriangle_" + playerId)?.setAttribute("fill", color);
+        I("leftTongTriangle_" + playerId)?.setAttribute("fill", color);
+        I("rightTongTriangle_" + playerId)?.setAttribute("fill", color);
     }
 
     encodeTransform() {
@@ -649,7 +661,7 @@ class PlayerPeer {
         this.dataConn = dataConn;
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
-            this.gameState.events.publish({ type: "upd", view: this.gameState.myPlayer.view } );
+            this.send(this.gameState.myPlayer.state_upd()); // TODO move more "trajectory" kitchen sink data here
             if (requestDump) this.send({ type: "getdump" });
         });
         dataConn.on('data', e => {
