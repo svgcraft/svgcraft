@@ -645,11 +645,12 @@ class PlayerPeer {
         gameState.addPlayer(id, "black");
     }
 
-    setDataConn(dataConn) {
+    setDataConn(dataConn, requestDump) {
         this.dataConn = dataConn;
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
             this.gameState.events.publish({ type: "upd", view: this.gameState.myPlayer.view } );
+            if (requestDump) this.send({ type: "getdump" });
         });
         dataConn.on('data', e => {
             log.data(`data received from ${dataConn.peer}`);
@@ -704,6 +705,8 @@ class PlayerPeer {
                         this.lostPacketCount++;
                     }
                 }
+            } else if (e.type === "getdump") {
+                this.send(Array.from(this.gameState.objects.values()));
             } else {
                 this.gameState.events.processEvent(this.id, e);
             }
@@ -925,14 +928,14 @@ class GameConnections {
         });
     }
 
-    connectToNewPeer(peerId) {
+    connectToNewPeer(peerId, requestDump) {
         log.connection("Initiating connection to " + peerId);
         const dataConn = this.peer.connect(peerId, { 
-            reliable: false,
+            reliable: true,
             metadata: { type: "player" }
         });
         const pp = new PlayerPeer(peerId, this.gameState, this);
-        pp.setDataConn(dataConn);
+        pp.setDataConn(dataConn, requestDump);
         if (this.mediaStream) {
             pp.setMediaConn(this.peer.call(peerId, this.mediaStream));
         }
@@ -1112,7 +1115,7 @@ function init() {
             console.log("Error obtaining video:", err);
         }).then(() => {
             if (urlParams.has("friendId")) {
-                gco.connectToNewPeer(urlParams.get("friendId"));
+                gco.connectToNewPeer(urlParams.get("friendId"), true);
             }
         });
     }
