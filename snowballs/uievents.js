@@ -197,12 +197,11 @@ class TongsTool extends NavigationTool {
     constructor(gameState) {
         super(gameState);
     }
-    static maxTongAngle = Math.PI / 10;
     static minTongAngle = Math.PI / 360;
     static tongsBaseWidth = 0.4;
     get playerDistToMouse() {
-        const maxDraggeeRadius = Math.tan(TongsTool.maxTongAngle) * this.gameState.myPlayer.tongsRadius;
-        const maxDraggeeDist = this.gameState.myPlayer.tongsRadius / Math.cos(TongsTool.maxTongAngle);
+        const maxDraggeeRadius = Math.tan(this.gameState.myPlayer.maxTongAngle) * this.gameState.myPlayer.tongsRadius;
+        const maxDraggeeDist = this.gameState.myPlayer.tongsRadius / Math.cos(this.gameState.myPlayer.maxTongAngle);
         return maxDraggeeDist - maxDraggeeRadius;
     }
     get iconSvg() {
@@ -289,7 +288,12 @@ class TongsTool extends NavigationTool {
         this.gameState.events.publish(m);
     }
     ungrab() {
-        this.gameState.events.publish({ type: "upd", draggee: null, leftTongAngle: TongsTool.maxTongAngle, rightTongAngle: TongsTool.maxTongAngle });
+        this.gameState.events.publish({ 
+            type: "upd", 
+            draggee: null, 
+            leftTongAngle: this.gameState.myPlayer.maxTongAngle,
+            rightTongAngle: this.gameState.myPlayer.maxTongAngle
+        });
     }
     click(e) {
         this.ungrab();
@@ -319,13 +323,23 @@ class TongsTool extends NavigationTool {
         }
     }
     keydown(e) {
-        if (e.key === "d") {
-            this.gameState.events.publish({ type: "upd", tongsRadius: this.gameState.myPlayer.tongsRadius * 1.1 });
-        } else if (e.key === "a") {
-            this.gameState.events.publish({ type: "upd", tongsRadius: this.gameState.myPlayer.tongsRadius / 1.1 });
-        } else {
-            super.keydown(e);
+        if (!this.gameState.myPlayer.draggee) {
+            switch (e.key) {
+            case "d":
+                this.gameState.events.publish({ type: "upd", tongsRadius: this.gameState.myPlayer.tongsRadius * 1.1 });
+                break;
+            case "a":
+                this.gameState.events.publish({ type: "upd", tongsRadius: this.gameState.myPlayer.tongsRadius / 1.1 });
+                break;
+            case "w":
+                this.gameState.events.publish({ type: "upd", maxTongAngle: this.gameState.myPlayer.maxTongAngle * 1.1 });
+                break;
+            case "s":
+                this.gameState.events.publish({ type: "upd", maxTongAngle: this.gameState.myPlayer.maxTongAngle / 1.1 });
+                break;
+            }
         }
+        super.keydown(e);
     }
 }
 

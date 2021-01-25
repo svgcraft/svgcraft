@@ -101,8 +101,9 @@ class Player extends DecceleratingObject {
 
         this.tongsRadius = pointerRadius;
         // relative to pointerAngle
-        this.leftTongAngle = TongsTool.maxTongAngle;
-        this.rightTongAngle = TongsTool.maxTongAngle;
+        this.maxTongAngle = Math.PI / 20;
+        this.leftTongAngle = this.maxTongAngle;
+        this.rightTongAngle = this.maxTongAngle;
         this.draggee = null;
         this.relDraggeePos = null;
 
@@ -124,7 +125,7 @@ class Player extends DecceleratingObject {
         const m = {
             type: "upd"
         };
-        transferAttrsToObj(this, ["view", "tool", "leftTongAngle", "rightTongAngle", "tongsRadius", "relDraggeePos"], m);
+        transferAttrsToObj(this, ["view", "tool", "maxTongAngle", "leftTongAngle", "rightTongAngle", "tongsRadius", "relDraggeePos"], m);
         if (this.draggee) m.draggee = this.draggee.id;
         return m;
     }
@@ -823,7 +824,12 @@ class Events {
                 player.leftTongAngle = e.leftTongAngle ?? player.leftTongAngle;
                 player.rightTongAngle = e.rightTongAngle ?? player.rightTongAngle;
                 player.tongsRadius = e.tongsRadius ?? player.tongsRadius;
-                if (e.leftTongAngle !== undefined || e.rightTongAngle !== undefined || e.tongsRadius !== undefined) {
+                if (e.maxTongAngle !== undefined) {
+                    player.maxTongAngle = e.maxTongAngle;
+                    player.leftTongAngle = e.maxTongAngle;
+                    player.rightTongAngle = e.maxTongAngle;
+                }
+                if (e.leftTongAngle !== undefined || e.rightTongAngle !== undefined || e.tongsRadius !== undefined || e.maxTongAngle !== undefined) {
                     window.uiEventsHandler.tools[player.tool].positionFor(sourceId);
                 }
                 if (e.draggee !== undefined) player.draggee = this.gameState.objects.get(e.draggee);
