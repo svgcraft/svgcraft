@@ -242,21 +242,34 @@ function initMiscEvents(gameState) {
     onResize();
 }
 
-const styleAttrs = ["stroke", "stroke-width", "stroke-linejoin", "stroke-linecap", "fill", "fill-opacity"];
-const positionAttrs = ["cx", "cy", "r", "rx", "ry", "d", "x", "y", "x1", "y1", "x2", "y2", "width", "height"];
+const styleAttrs = ["stroke", "stroke-width", "stroke-linejoin", "stroke-linecap", "fill", "fill-opacity", "text-anchor", "font-size"];
+const positionAttrs = ["cx", "cy", "r", "rx", "ry", "d", "x", "y", "x1", "y1", "x2", "y2", "width", "height", "textContent"];
 const gAttrs = ["x0", "y0", "scale"];
 const updatableSvgAttrs = styleAttrs.concat(positionAttrs);
 const updatableAttrs = updatableSvgAttrs.concat(gAttrs);
 
 function transferAttrsToDom(j, attrs, target) {
     for (const attr of attrs) {
-        if (j[attr] !== undefined) target.setAttribute(attr, j[attr]);
+        if (j[attr] !== undefined) {
+            if (attr === "textContent") {
+                target.textContent = j[attr];
+            } else {
+                target.setAttribute(attr, j[attr]);
+            }
+        }
     }
 }
 
 function transferAttrsToObj(j, attrs, target) {
     for (const attr of attrs) {
         if (j[attr] !== undefined) target[attr] = j[attr];
+    }
+}
+
+function floatifyAttrs(o, attrs) {
+    for (const attr of attrs) {
+        if (o[attr] === null || o[attr] === undefined) continue;
+        o[attr] = parseFloat(o[attr]);
     }
 }
 
@@ -295,6 +308,10 @@ class GameState {
                 parent.appendChild(g)
             } else {
                 d = svg(e.type, { id: e.id });
+                if (e.type === "text") {
+                    d.style.pointerEvents = "none";
+                    d.style.cursor = "default";
+                }
                 parent.appendChild(d);
             }
         } else {
@@ -766,26 +783,6 @@ class PlayerPeer {
     }
 }
 
-
-function transferAttrsToDom(j, attrs, target) {
-    for (const attr of attrs) {
-        if (j[attr] !== undefined) target.setAttribute(attr, j[attr]);
-    }
-}
-
-function transferAttrsToObj(j, attrs, target) {
-    for (const attr of attrs) {
-        if (j[attr] !== undefined) target[attr] = j[attr];
-    }
-}
-
-function floatifyAttrs(o, attrs) {
-    for (const attr of attrs) {
-        if (o[attr] === null || o[attr] === undefined) continue;
-        o[attr] = parseFloat(o[attr]);
-    }
-}
-
 class Events {
     constructor(playerPeers, gameState) {
         this.playerPeers = playerPeers;
@@ -864,6 +861,7 @@ class Events {
             case "rect":
             case "line":
             case "circle":
+            case "text":
                 this.gameState.update(e);
                 break;
             case "snowball":
@@ -1166,6 +1164,9 @@ function init() {
 
     if (!urlParams.has("friendId")) {
         new Mill(new Point(-16, 5), gs).init();
+        if (urlParams.has("letters")) {
+            new LetterSoup(new Point(-26, 5), gs, urlParams.get("letters")).init();
+        }
     }
 
     let handle = window.requestAnimationFrame(paint);
