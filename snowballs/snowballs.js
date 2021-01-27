@@ -421,7 +421,12 @@ class GameState {
                 svg("stop", { offset: "100%", "stop-color": color, "stop-opacity": dontFlip * 0.7 })
             ])
             I("arenaDefs").appendChild(gradient);
-            I("players").appendChild(svg("polygon", { id: `viewBound${i}_${playerId}`, class: "viewBound", fill: `url(#gradient${i}_${playerId})` }));
+            I("players").appendChild(svg("polygon", { 
+                id: `viewBound${i}_${playerId}`, 
+                class: "viewBound", 
+                fill: `url(#gradient${i}_${playerId})`,
+                "pointer-events": "none"
+            }));
         }
 
         const vid = document.createElement("video");
