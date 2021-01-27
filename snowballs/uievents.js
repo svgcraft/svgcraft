@@ -174,6 +174,7 @@ class SnowballTool extends NavigationTool {
             fill: player.color,
             class: "pointer"
         });
+        pointerTriangle.style.pointerEvents = "none";
         I("players").appendChild(pointerTriangle);
         if (playerId === this.gameState.myId) {
             // create small disk on which mouse pointer is not shown
@@ -207,6 +208,7 @@ class SnowballTool extends NavigationTool {
     }
     keydown(e) {
         if (e.key === "f") {
+            if (e.repeat) return;
             this.gameState.events.publishSnowball(Point.polar(1, this.gameState.myPlayer.pointerAngle));
         } else {
             super.keydown(e);
@@ -242,11 +244,13 @@ class TongsTool extends NavigationTool {
             id: "leftTongTriangle_" + playerId,
             fill: player.color
         });
+        leftTongTriangle.style.pointerEvents = "none";
         I("players").appendChild(leftTongTriangle);
         const rightTongTriangle = svg("path", {
             id: "rightTongTriangle_" + playerId,
             fill: player.color
         });
+        rightTongTriangle.style.pointerEvents = "none";
         I("players").appendChild(rightTongTriangle);
         if (playerId === this.gameState.myId) {
             // create small disk on which mouse pointer is not shown,
@@ -285,9 +289,10 @@ class TongsTool extends NavigationTool {
     grab(o) {
         // default: don't grab o, just close tongs into the empty
         let m = { type: "upd", leftTongAngle: TongsTool.minTongAngle, rightTongAngle: TongsTool.minTongAngle };
-        if (o?.type === "circle") {
-            const draggeeRadius = this.gameState.absLengthIn(o.r, o.id);
-            const toDraggee = this.gameState.absCoords(o).sub(this.gameState.myPlayer.currentPos);
+        if (o?.type === "circle" || o instanceof Player) {
+            const draggeeRadius = o instanceof Player ? headRadius : this.gameState.absLengthIn(o.r, o.id);
+            const oPos = o instanceof Player ? o.currentPos : this.gameState.absCoords(o);
+            const toDraggee = oPos.sub(this.gameState.myPlayer.currentPos);
             const draggeeDist = toDraggee.norm();
             const halfRadialDraggeeWidth = Math.asin(draggeeRadius / draggeeDist);
             const leftTangentAngle = toDraggee.angle() + halfRadialDraggeeWidth;
@@ -301,7 +306,7 @@ class TongsTool extends NavigationTool {
                     leftTongAngle: normalizeAngle(leftTangentAngle - this.gameState.myPlayer.pointerAngle),
                     rightTongAngle: normalizeAngle(this.gameState.myPlayer.pointerAngle - rightTangentAngle),
                     draggee: o.id,
-                    relDraggeePos: this.gameState.absCoords(o).sub(this.gameState.myPlayer.posAtTime(this.gameState.lastT))
+                    relDraggeePos: oPos.sub(this.gameState.myPlayer.posAtTime(this.gameState.lastT))
                 };
             }
         }
@@ -319,7 +324,11 @@ class TongsTool extends NavigationTool {
         if (this.isPointerAngleFixed) {
             this.ungrab();
         } else {
-            this.grab(this.gameState.objects.get(e.target.parentNode.id)); // circle is in a g
+            if (e.target.id.startsWith("circ_")) {
+                this.grab(this.gameState.players.get(e.target.id.substr(5)));
+            } else {
+                this.grab(this.gameState.objects.get(e.target.parentNode.id)); // circle is in a g
+            }
         }
         this.isPointerAngleFixed = !this.isPointerAngleFixed;
     }
@@ -661,7 +670,6 @@ class UiEvents {
         set_corner_handle_cursor("move");
     }
     keydown(e) {
-        if (e.repeat) return;
         this.tools[this.gameState.myPlayer.tool].keydown(e);
     }
     showTools() {

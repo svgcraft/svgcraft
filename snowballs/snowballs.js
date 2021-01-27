@@ -75,7 +75,7 @@ let playerDecceleration = 10;
 
 class Player extends DecceleratingObject {
     // initialPos: Point
-    constructor(initialPos, color) {
+    constructor(initialPos, color, id) {
         super(initialPos);
         // currentPos is an interpolated approximation of the true current position,
         // posAtTime(Date.now()/1000), and to save the true position, we don't save
@@ -88,6 +88,7 @@ class Player extends DecceleratingObject {
         // usually equals this.posAtTime(timeAtLastFrame), unless there was a speed change between the current and last frame
         this.oldPos = initialPos;
         this.color = color;
+        this.id = id;
         
         this.snowballs = new Map();
         this.pointerAngle = 0;
@@ -106,6 +107,7 @@ class Player extends DecceleratingObject {
         this.rightTongAngle = this.maxTongAngle;
         this.draggee = null;
         this.relDraggeePos = null;
+        this.capturedBy = null;
 
         this.view = {
             // position of svg origin on the screen, in px
@@ -385,7 +387,7 @@ class GameState {
     }
 
     addPlayer(playerId, color) {
-        const player = new Player(playerStartPos, color);
+        const player = new Player(playerStartPos, color, playerId);
         this.players.set(playerId, player);
 
         const circ = svg("circle", {
@@ -433,6 +435,7 @@ class GameState {
         vid.setAttribute("id", "video_" + playerId);
         vid.setAttribute("autoplay", "autoplay");
         vid.style.position = "absolute";
+        vid.style.pointerEvents = "none"; // clicks go through down to the svg circle
         vid.style.clipPath = "url(#clipVideo)";
         vid.style.transform = "rotateY(180deg)";
         I("arenaWrapper").appendChild(vid);
@@ -477,11 +480,11 @@ class GameState {
         if (h) elem.style.height = (this.myPlayer.view.scale * h) + "px";
     }
     
-    positionPlayer(playerId, player) {
-        positionCircle(I("circ_" + playerId), player.currentPos);
-        window.uiEventsHandler.tools[player.tool].positionFor(playerId);
-        this.positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
-        if (player.draggee) {
+    positionPlayer(player) {
+        positionCircle(I("circ_" + player.id), player.currentPos);
+        window.uiEventsHandler.tools[player.tool].positionFor(player.id);
+        this.positionElem(I("video_" + player.id), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
+        if (player.draggee && !(player.draggee instanceof Player)) {
             this.positionObj(player.draggee, player.currentPos.add(player.relDraggeePos));
         }
     }
@@ -578,9 +581,6 @@ class GameState {
                 }
             }
 
-            const truePos = player.posAtTime(t);
-            this.positionPlayer(playerId, player);
-
             const transparency = (t - player.lastHitTime) / this.hitAnimationLength;
             const hitShade = I("hitShade_" + playerId);
             if (transparency <= 1) {
@@ -590,8 +590,17 @@ class GameState {
             } else {
                 hitShade.setAttribute("stroke-opacity", 0);
             }
+            const truePos = player.posAtTime(t);
             player.oldPos = truePos;
         }
+
+        for (let [playerId, player] of this.players) {
+            if (player.capturedBy) {
+                player.currentPos = player.capturedBy.currentPos.add(player.capturedBy.relDraggeePos);
+            }
+            this.positionPlayer(player);
+        }
+
         this.lastT = t;
     }
 
@@ -837,7 +846,19 @@ class Events {
                 if (e.leftTongAngle !== undefined || e.rightTongAngle !== undefined || e.tongsRadius !== undefined || e.maxTongAngle !== undefined) {
                     window.uiEventsHandler.tools[player.tool].positionFor(sourceId);
                 }
-                if (e.draggee !== undefined) player.draggee = this.gameState.objects.get(e.draggee);
+                if (e.draggee) {
+                    const dr = this.gameState.players.get(e.draggee);
+                    if (dr) {
+                        dr.capturedBy = player;
+                        player.draggee = dr;
+                    } else {
+                        player.draggee = this.gameState.objects.get(e.draggee);
+                    }
+                }
+                if (e.draggee === null && player.draggee) {
+                    if (player.draggee instanceof Player) player.draggee.capturedBy = null;
+                    player.draggee = null;
+                }
                 if (e.relDraggeePos !== undefined) player.relDraggeePos = e.relDraggeePos;
                 break;
             case "rect":
