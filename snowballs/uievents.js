@@ -78,7 +78,7 @@ class Tool {
     click(e) {}
     keydown(e) {
         if (e.key === "b") {
-            I("arena").classList.toggle("hideViewBounds");
+            I("playerArenaSvg").classList.toggle("hideViewBounds");
         }
     }
 }

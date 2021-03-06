@@ -373,6 +373,7 @@ class GameState {
     
     setTransform() {
         I("arena").style.transform = this.encodeTransform();
+        I("playerArenaSvg").style.transform = this.encodeTransform();
     }
 
     adaptViewToPlayerPos() {
@@ -455,7 +456,7 @@ class GameState {
         vid.style.pointerEvents = "none"; // clicks go through down to the svg circle
         vid.style.clipPath = "url(#clipVideo)";
         vid.style.transform = "rotateY(180deg)";
-        I("arenaWrapper").appendChild(vid);
+        I("playerLayer").appendChild(vid);
     }
 
     deletePlayer(playerId) {
@@ -1162,12 +1163,16 @@ function init() {
         });
     }
 
+    /*
     if (!urlParams.has("friendId")) {
         new Mill(new Point(-16, 5), gs).init();
         if (urlParams.has("letters")) {
             new LetterSoup(new Point(-26, 5), gs, urlParams.get("letters")).init();
         }
     }
+    */
+
+    new PdfScreen(new Point(0, 0), gs).init();
 
     let handle = window.requestAnimationFrame(paint);
     function paint(timestamp) {
