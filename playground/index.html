@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Playground</title>
+    <script src="./src/dom.js"></script>
+    <script src="./src/events.js"></script>
+    <script src="./src/arena.js"></script>
+    <script src="./src/plugins/lettersoup.js"></script>
+    <script src="./src/plugins/mill.js"></script>
+    <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
+    <script>
+        function init() {
+            const dom_module = dom();
+            const events_module = events();
+            const arena_module = arena(dom_module, events_module);
+            const lettersoup_module = lettersoup(dom_module, events_module, arena_module);
+            const mill_module = mill(dom_module, events_module, arena_module);
+        }
+    </script>
+</head>
+
+<body onload="init()">
+</body>
