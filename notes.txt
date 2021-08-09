@@ -90,3 +90,7 @@ https://cozyroom.xyz has spatial audio too
 https://www.brazen.com/ career fairs
 
 
+https://www.relm.us/ 3D with video head on top of 3D avatars
+
+CRDT library: https://github.com/yjs/yjs
+
