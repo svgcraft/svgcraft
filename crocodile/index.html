@@ -1,0 +1,56 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Word-Guesser Crocodile</title>
+  <link rel="icon" href="./favicon.ico">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./croc.js"></script>
+</head>
+
+<body onload="init()">
+    <div id=topHalf>
+        <svg id=crocSvg viewBox="-11 -4 16 8">
+            <rect id="topMouth" fill="green" x="-10" y="-0.5" rx="0.5" ry="0.5" width="10.5" height="1"/>
+            <rect id="bottomMouth" fill="green" x="-10" y="2.5" rx="0.5" ry="0.5" width="10.5" height="1"/>
+            <circle id="head" fill="green" cx="0" cy="0" r="3.5"/>
+            <rect fill="green" x="-3.5" y="-0.5" width="10" height="4"></rect>
+            <circle fill="white" cx="-1.5" cy="-2" r="0.5"></circle>
+            <circle fill="black" cx="-1.5" cy="-1.75" r="0.25"></circle>
+
+
+        </svg>
+
+    </div>
+    <div id=bottomHalf>
+        <div id="keyboard">
+            <div id="topKeyRow" class="keyRow">
+                <span>Q</span><span>W</span><span>E</span><span>R</span><span>T</span><span>Y</span><span>U</span><span>I</span><span>O</span><span>P</span>
+            </div>
+            <div id="middleKeyRow" class="keyRow">
+                <span>A</span><span>S</span><span>D</span><span>F</span><span>G</span><span>H</span><span>J</span><span>K</span><span>L</span>
+            </div>
+            <div id="bottomKeyRow" class="keyRow">
+                <span>Z</span><span>X</span><span>C</span><span>V</span><span>B</span><span>N</span><span>M</span>
+            </div>
+        </div>
+    </div>
+
+    <div id=getWords>
+        <label for="topStr">Top word:</label>
+        <br/>
+        <input id="topStr" type="text"/>
+        <br/>
+        <label for="bottomStr">Bottom word:</label>
+        <br/>
+        <input id="bottomStr" type="text"/>
+        <br/>
+        <label for="maxTries">Max tries:</label>
+        <br/>
+        <input id="maxTries" type="number" min="1" max="26"/>
+        <br/>
+        <button id="submit" onclick="submit()">Go</button>        
+    </div>
+</body>
+</html>
