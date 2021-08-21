@@ -78,6 +78,45 @@ function geom() {
     }
 
     return {
-        Point: Point
+        Point: Point,
+
+        equilateral_triangle_from_center: function (center, corner) {
+            const r = corner.sub(center);
+            const p1 = corner;
+            const p2 = center.add(r.rotate(Math.PI*2/3));
+            const p3 = center.add(r.rotate(-Math.PI*2/3));
+            return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} z`};
+        },
+        
+        equilateral_triangle: function (mid, tip) {
+            const h = tip.sub(mid);
+            const l = h.norm() / Math.sqrt(3.0);
+            const p1 = mid.add(Point.polar(l, h.angle() + Math.PI/2));
+            const p2 = mid.add(Point.polar(l, h.angle() - Math.PI/2));
+            return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`};
+        },
+        
+        isosceles_triangle: function (baseMid, baseLength, rotation, height) {
+            const tip = baseMid.add(Point.polar(height, rotation));
+            const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
+            const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
+            return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`});
+        },
+        
+        rectangle: function (origin, corner) {
+            const x = Math.min(origin.x, corner.x);
+            const y = Math.min(origin.y, corner.y);
+            const w = Math.abs(origin.x - corner.x);
+            const h = Math.abs(origin.y - corner.y);
+            return {x: x, y: y, width: w, height: h};
+        },
+        
+        square: function (corner1, corner3) {
+            const r = corner1.sub(corner3).scale(0.5);
+            const center = corner3.add(r);
+            const corner0 = center.add(r.rotate(Math.PI/2));
+            const corner2 = center.add(r.rotate(-Math.PI/2));
+            return {d: 'M ' + [corner0, corner1, corner2, corner3].map((p) => `${p.x} ${p.y}`).join(' L ') + ' z'};
+        }
     };
 }

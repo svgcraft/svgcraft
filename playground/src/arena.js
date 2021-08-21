@@ -1,6 +1,6 @@
 "use strict";
 
-function arena(dom, events) {
+function arena(dom, geom, events) {
     // constants:
     const aspectRatio = 16/9;
     const styleAttrs = ["stroke", "stroke-width", "stroke-linejoin", "stroke-linecap", "fill", "fill-opacity", "text-anchor", "font-size"];
@@ -18,11 +18,27 @@ function arena(dom, events) {
         unitsPerWidth: 10
     };
     const objects = new Map();
+    const tools = {};
+    const myPlayer = new Player();
+
+    // classes:
+
+    class Player {
+        constructor() {
+            this.isPointerAttached = false;
+            this.pointerAngle = 0.0;
+        }
+
+    }
 
     // functions:
 
     function I(id) {
         return document.getElementById(id);
+    }
+
+    function registerTool(name, tool) {
+        tools[name] = tool;
     }
 
     function transferAttrsToDom(j, attrs, target) {
@@ -118,6 +134,8 @@ function arena(dom, events) {
     // exports:
     return {
         view: view,
-        objects: objects
+        objects: objects,
+        Player: Player,
+        myPlayer: myPlayer
     };
 }
