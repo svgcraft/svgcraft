@@ -29,6 +29,10 @@ body {
     font-family: Arial, Helvetica, sans-serif;
 }
 
+#crocSvg text {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
 .keyRow span {
     display: inline-block;
     background-color: yellow;
@@ -42,6 +46,14 @@ body {
     cursor: pointer;
 }
 
+.keyRow span.correctLetter {
+    background-color: green;
+}
+
+.keyRow span.wrongLetter {
+    background-color: red;
+}
+
 #getWords {
     position:absolute;
     top:0;
@@ -50,10 +62,10 @@ body {
     bottom:0;
     background-color: green;
     padding: 3vmin;
-    line-height: 10vmin;
+    line-height: 7vmin;
 }
 
 input[type="text"], input[type="number"], #getWords, #submit {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 5vmin;
+    font-size: 4vmin;
 }

@@ -12,14 +12,20 @@
 <body onload="init()">
     <div id=topHalf>
         <svg id=crocSvg viewBox="-11 -4 16 8">
-            <rect id="topMouth" fill="green" x="-10" y="-0.5" rx="0.5" ry="0.5" width="10.5" height="1"/>
-            <rect id="bottomMouth" fill="green" x="-10" y="2.5" rx="0.5" ry="0.5" width="10.5" height="1"/>
             <circle id="head" fill="green" cx="0" cy="0" r="3.5"/>
-            <rect fill="green" x="-3.5" y="-0.5" width="10" height="4"></rect>
+            <rect fill="green" x="-3.5" y="0" width="10" height="3.5"></rect>
+            <g id="topMouthG" transform="rotate(0)">
+                <rect id="topMouth" fill="green" x="-10" y="-0.5" rx="0.5" ry="0.5" width="10" height="1"/>
+                <g id="topTeeth"></g>
+                <g id="topLetters"></g>
+            </g>
+            <g id="bottomMouthG" transform="translate(0, 3)">
+                <rect id="bottomMouth" fill="green" x="-10" y="-0.5" rx="0.5" ry="0.5" width="10.5" height="1"/>
+                <g id="bottomTeeth"></g>
+                <g id="bottomLetters"></g>
+            </g>
             <circle fill="white" cx="-1.5" cy="-2" r="0.5"></circle>
             <circle fill="black" cx="-1.5" cy="-1.75" r="0.25"></circle>
-
-
         </svg>
 
     </div>
@@ -49,6 +55,14 @@
         <label for="maxTries">Max tries:</label>
         <br/>
         <input id="maxTries" type="number" min="1" max="26"/>
+        <br/>
+        <label for="usedLetters"># of used letters:</label>
+        <br/>
+        <input id="usedLetters" type="number" disabled/>
+        <br/>
+        <label for="unusedLetters"># of unused letters:</label>
+        <br/>
+        <input id="unusedLetters" type="number" disabled/>
         <br/>
         <button id="submit" onclick="submit()">Go</button>        
     </div>
