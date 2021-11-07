@@ -5,16 +5,22 @@
 function default_tool(geom, dom, events, arena) {
     const tool = {
         // measured in player radii:
-        pointerTriangleWidth: 0.7,
-        pointerTriangleHeight: 0.2,
+        pointerTriangleWidth: 0.4,
+        pointerTriangleHeight: 0.4,
+        attachGap: -0.04,
         detachGap: 0.1,
 
         activateFor: function (player) {
-            // put player circle into g and scale g so that all units can be relative to player radius
-
-            // TODO
-            const baseMid = 0;
-            isosceles_triangle(baseMid, this.pointerTriangleWidth, player.pointerAngle, this.pointerTriangleHeight)
+            player.isPointerAttached ??= true;
+            player.pointerAngle ??= 0.0;
+            const gap = player.isPointerAttached ? this.attachGap : this.detachGap;
+            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
+            const baseMid = geom.Point.polar(headRadius + gap, player.pointerAngle);
+            player.pointerTriangle = dom.svg("path", {
+                d: geom.isosceles_triangle(baseMid, this.pointerTriangleWidth, player.pointerAngle, this.pointerTriangleHeight),
+                fill: player.color
+            });
+            player.g.appendChild(player.pointerTriangle);
         },
         positionFor: function (player) {
             // use svg transform to rotate pointer triangle around mouse pointer position so that it points away from player center
@@ -69,5 +75,6 @@ function default_tool(geom, dom, events, arena) {
         click: function (e) {}
     };
     arena.registerTool("default_tool", tool);
+    tool.activateFor(arena.myPlayer);
     return tool;
 }

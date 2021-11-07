@@ -11,7 +11,8 @@ function dom() {
             for (const child of children) {
                 res.appendChild(child);
             }
-        }    }
+        }
+    }
 
     function elem(tag, attrs, children, allowedAttrs) {
         const res = document.createElement(tag);
