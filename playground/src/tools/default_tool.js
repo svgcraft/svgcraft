@@ -10,7 +10,27 @@ function default_tool(geom, dom, events, arena) {
         attachGap: -0.04,
         detachGap: 0.1,
 
+        playerToDom: function (player) {
+            player.relTo ??= "worldPlayers";
+            if (!player.g) {
+                player.g = dom.svg("g");
+                arena.ids.get(player.relTo).g.appendChild(player.g);
+            }
+            if (!player.circ) {
+                player.circ = dom.svg("circle", {
+                    cx: 0, // 0 relative to origin of surrounding g
+                    cy: 0,
+                    r: 1 // radius of player is always 1, but player size can be changed using player.scale
+                });
+                player.g.appendChild(player.circ);
+            }
+            player.circ.setAttribute("fill", player.color);
+            player.scale ??= 0.5;
+            player.g.setAttribute("transform", `translate(${player.currentPos.x}, ${player.currentPos.y}) scale(${player.scale})`);
+        },
+
         activateFor: function (player) {
+            this.playerToDom(player);
             player.isPointerAttached ??= true;
             player.pointerAngle ??= 0.0;
             const gap = player.isPointerAttached ? this.attachGap : this.detachGap;
@@ -21,11 +41,24 @@ function default_tool(geom, dom, events, arena) {
                 fill: player.color
             });
             player.g.appendChild(player.pointerTriangle);
+            if (player === arena.myPlayer) this.activateEventListeners();
         },
         positionFor: function (player) {
             // use svg transform to rotate pointer triangle around mouse pointer position so that it points away from player center
         },
         deactivateFor: function (player) {
+            if (player === arena.myPlayer) this.deactivateEventListeners();
+        },
+        handleEvent: function (e) { // handleEvent is the name required by browser's EventHandler interface
+            switch (e.type) {
+                case "mousemove": return this.hover(e); // TODO if a mouse button is down, it's mouse drag
+            }
+        },
+        activateEventListeners: function () {
+            arena.mainSvg.addEventListener("mousemove", this);
+        },
+        deactivateEventListeners: function () {
+            arena.mainSvg.removeEventListener("mousemove", this);
         },
         pointerdown: function (e) {
         },
@@ -37,8 +70,8 @@ function default_tool(geom, dom, events, arena) {
             }
         },
         hoverWithFlexiblePointerAngle: function (e) {
-            const mouse = arena.eventToWorldCoords(e);
-            const current = arena.myPlayer.posAtTime(arena.lastT);
+            const mouse = arena.myPlayer.eventToRelCoords(e);
+            const current = arena.myPlayer.posAtTime(e.timeStamp / 1000);
             const d = current.sub(mouse);
             const targetZero = mouse.add(d.scaleToLength(this.playerDistToMouse));
             const move = targetZero.sub(current);
@@ -47,23 +80,19 @@ function default_tool(geom, dom, events, arena) {
                 type: "trajectory",
                 x0: targetZero.x,
                 y0: targetZero.y,
-                t0: arena.lastT + tToStop,
+                t0: e.timeStamp / 1000 + tToStop,
                 angle: d.angle(),
-                // when bouncing on a wall, angle changes, while pointerAngle remains
                 pointerAngle: oppositeAngle(d.angle())
             });
         },
         hoverWithFixedPointerAngle: function (e) {
-            const mouse = arena.eventToWorldCoords(e);
-            const targetZero = mouse.sub(Point.polar(this.playerDistToMouse, arena.myPlayer.pointerAngle));
-            const current = arena.myPlayer.posAtTime(arena.lastT);
-            const move = targetZero.sub(current);
-            const tToStop = Math.sqrt(2 * move.norm() / arena.myPlayer.decceleration);
+            const mouse = arena.myPlayer.eventToRelCoords(e);
+            // degenerate trajectory (already at speed 0)
             events.publish({
                 type: "trajectory",
-                x0: targetZero.x,
-                y0: targetZero.y,
-                t0: arena.lastT + tToStop
+                x0: mouse.x,
+                y0: mouse.y,
+                t0: e.timeStamp / 1000
             });
         },
         first_drag: function (e) {
@@ -76,5 +105,7 @@ function default_tool(geom, dom, events, arena) {
     };
     arena.registerTool("default_tool", tool);
     tool.activateFor(arena.myPlayer);
+
+
     return tool;
 }

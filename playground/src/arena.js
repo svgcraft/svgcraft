@@ -11,8 +11,54 @@ function arena(dom, geom, events) {
 
     // classes:
 
-    class Player {
+    class DecceleratingObject {
+        /** @param initialPos {Point} */
+        constructor(initialPos) {
+            this.zeroSpeedPos = initialPos;
+            this.zeroSpeedTime = -1e10;
+            this.angle = 0.12345;
+        }
+        /** @returns {Float} deccelaration in svg position units per sec^2 */
+        get decceleration() {
+            throw "not implemented";
+        }
+        /** @param time in seconds */
+        speedAtTime(time) {
+            const t = Math.max(0, this.zeroSpeedTime - time);
+            return geom.Point.polar(this.decceleration * t, oppositeAngle(this.angle));
+        }
+        /** @param time in seconds */
+        posAtTime(time) {
+            const t = Math.max(0, this.zeroSpeedTime - time);
+            const d = 0.5 * this.decceleration * t * t;
+            return this.zeroSpeedPos.add(geom.Point.polar(d, this.angle));
+        }
+    }
+
+    class Player extends DecceleratingObject {
         // each module can add properties as it pleases, no name conflict avoidance at the moment
+
+        constructor(initialPos) {
+            super(initialPos);
+        }
+
+        get decceleration() {
+            return 10;
+        }
+
+        /** @param e {MouseEvent} */
+        eventToRelCoords(e) {
+            const r = e.currentTarget.getBoundingClientRect();
+            const x = e.pageX - r.left;
+            const y = e.pageY - r.top;
+            if (this.relTo === "worldPlayers") {
+                return new geom.Point(x / r.width * this.view.unitsPerWidth + this.view.x,
+                                      y / r.width * this.view.unitsPerWidth + this.view.y);
+            } else {
+                throw "relTo not yet supported"
+            }
+        }
+    
     }
 
     // state:
@@ -24,6 +70,7 @@ function arena(dom, geom, events) {
         unitsPerWidth: 10
     };
     const ids = new Map(); // all objects, players, views -- everything that has a string id and is displayed somewhere
+    const players = new Map();
     const tools = {};
 
     // functions:
@@ -42,33 +89,15 @@ function arena(dom, geom, events) {
      * @param color {string} SVG/CSS color 
      */
     function addPlayer(playerId, color) {
-        const player = new Player();
+        const player = new Player(new geom.Point(4, 5));
         player.id = playerId;
         player.color = color;
-        player.currentPos = new geom.Point(4, 5);
+        player.currentPos = new geom.Point(2, 5);
+        player.activeTool = "default_tool";
         player.relTo = "worldPlayers"; // id of element to which the player's position is relative
         ids.set(playerId, player);
-        playerToDom(player);
+        players.set(playerId, player);
         return player;
-    }
-
-    function playerToDom(player) {
-        player.relTo ??= "worldPlayers";
-        if (!player.g) {
-            player.g = dom.svg("g");
-            ids.get(player.relTo).g.appendChild(player.g);
-        }
-        if (!player.circ) {
-            player.circ = dom.svg("circle", {
-                cx: 0, // 0 relative to origin of surrounding g
-                cy: 0,
-                r: 1 // radius of player is always 1, but player size can be changed using player.scale
-            });
-            player.g.appendChild(player.circ);
-        }
-        player.circ.setAttribute("fill", player.color);
-        player.scale ??= 0.5;
-        player.g.setAttribute("transform", `translate(${player.currentPos.x}, ${player.currentPos.y}) scale(${player.scale})`);
     }
 
     function transferAttrsToDom(j, attrs, target) {
@@ -99,7 +128,14 @@ function arena(dom, geom, events) {
         const pxPerUnit = viewportWidthPx / view.unitsPerWidth;
         const tx = - view.x * pxPerUnit;
         const ty = - view.y * pxPerUnit;
-        arenaSvg.style.transform = `translate(${tx}px, ${ty}px) scale(${pxPerUnit})`;
+        mainSvg.style.transform = `translate(${tx}px, ${ty}px) scale(${pxPerUnit})`;
+    }
+
+    function frame(t) {
+        for (let player of players.values()) {
+            player.currentPos = player.posAtTime(t); // TODO could be smoothened
+            tools[player.activeTool].playerToDom(player);
+        }
     }
 
     function shapeMsgToDom(m, sourceId) {
@@ -141,7 +177,7 @@ function arena(dom, geom, events) {
 
     // initialisation:
 
-    const arenaSvg = dom.svg("svg", { style: "position: absolute; overflow: visible; top: 0; left: 0; transform-origin: top left;"}, [
+    const mainSvg = dom.svg("svg", { style: "position: absolute; overflow: visible; top: 0; left: 0; transform-origin: top left;"}, [
         dom.svg("defs", {}, [
             dom.svg("linearGradient", { id: "skyGradient", gradientTransform: "rotate(90)" }, [
                 dom.svg("stop", { offset: "49.9750125%", "stop-color": "#0080ff" }),
@@ -155,23 +191,35 @@ function arena(dom, geom, events) {
         ]),
         dom.svg("rect", { x: "-10000",  y: "-10000", width: "20000", height: "20000", fill: "url('#skyGradient')" })
     ]);
-    const arenaClipperDiv = dom.elem("div", { style: "position:absolute; overflow: hidden;" }, [arenaSvg]);
+    const arenaClipperDiv = dom.elem("div", { style: "position:absolute; overflow: hidden;" }, [mainSvg]);
     document.body.appendChild(arenaClipperDiv);
     document.body.style.backgroundColor = "black";
     const objectsG = dom.svg("g", { id: "objects" });
-    arenaSvg.appendChild(objectsG);
+    mainSvg.appendChild(objectsG);
     const worldPlayersG = dom.svg("g", { id: "worldPlayers" }); // for those players whose position is relative to the world
-    arenaSvg.appendChild(worldPlayersG);
+    mainSvg.appendChild(worldPlayersG);
     ids.set("worldPlayers", { g: worldPlayersG });
     window.addEventListener('resize', onResize);
     onResize();
     events.subscribe(shapeMsgToDom);
 
     const myPlayer = addPlayer("testplayer", "orange");
+    myPlayer.view = view;
+
+    let handle = window.requestAnimationFrame(paint);
+    function paint(timestamp) {
+        frame(timestamp/1000);
+        handle = window.requestAnimationFrame(paint);    
+    }
+    window.addEventListener("keypress", e => {
+        if (e.key === "q") {
+            window.cancelAnimationFrame(handle);
+        }
+    });
 
     // exports:
     return {
-        view: view,
+        mainSvg: mainSvg,
         ids: ids,
         Player: Player,
         myPlayer: myPlayer,

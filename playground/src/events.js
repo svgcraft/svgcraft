@@ -12,6 +12,7 @@ function events() {
     }
 
     function publishOne(e, sourceId) {
+        console.log(sourceId, e);
         for (const f of subscribers) f(e, sourceId);
     }
 
