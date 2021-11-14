@@ -42,6 +42,11 @@ function default_tool(geom, dom, events, arena) {
     
         cursor: "none", // CSS cursor attribute, "none" means everything is rendered in svg
 
+        applyStroke: function (elem) {
+            elem.setAttribute("stroke", "black");
+            elem.setAttribute("stroke-width", 0.02);
+        },
+
         playerToDom: function (player) {
             player.relTo ??= "worldPlayers";
             if (!player.g) {
@@ -55,6 +60,7 @@ function default_tool(geom, dom, events, arena) {
                         cy: 0,
                         r: 1 // radius of player is always 1, but player size can be changed using player.scale
                     });
+                    this.applyStroke(player.circ);
                     player.g.appendChild(player.circ);
                 }
                 player.circ.setAttribute("fill", player.color);
@@ -74,13 +80,16 @@ function default_tool(geom, dom, events, arena) {
                 d: geom.isosceles_triangle(baseMid, this.pointerTriangleWidth, player.pointerAngle, this.pointerTriangleHeight),
                 fill: player.color
             });
-            player.g.appendChild(player.pointerTriangle);
-            if (player === arena.myPlayer) this.activateEventListeners();
-        },
-        positionFor: function (player) {
-            // use svg transform to rotate pointer triangle around mouse pointer position so that it points away from player center
+            this.applyStroke(player.pointerTriangle);
+            player.g.insertBefore(player.pointerTriangle, player.circ);
+            if (player === arena.myPlayer) {
+                arena.arenaDiv.style.cursor = this.cursor;
+                this.activateEventListeners();
+            }
         },
         deactivateFor: function (player) {
+            player.pointerTriangle.remove();
+            player.pointerTriangle = undefined;
             if (player === arena.myPlayer) this.deactivateEventListeners();
         },
         activateEventListeners: function () {
