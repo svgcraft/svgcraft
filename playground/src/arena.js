@@ -220,6 +220,7 @@ function arena(dom, geom, events) {
     // exports:
     return {
         mainSvg: mainSvg,
+        arenaDiv: arenaClipperDiv,
         ids: ids,
         Player: Player,
         myPlayer: myPlayer,
