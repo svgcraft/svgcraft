@@ -80,6 +80,20 @@ function geom() {
     return {
         Point: Point,
 
+        // returns angle between -Math.PI and Math.PI
+        normalizeAngle: function (a) {
+            return a - 2 * Math.PI * Math.floor(a / 2 / Math.PI + 0.5);
+        },
+
+        // avoids getting huge angles by repeatedly adding Math.PI
+        oppositeAngle: function (a) {
+            return this.normalizeAngle(a + Math.PI);
+        },
+
+        angleDist: function (a, b) {
+            return Math.abs(this.normalizeAngle(a - b));
+        },
+
         equilateral_triangle_from_center: function (center, corner) {
             const r = corner.sub(center);
             const p1 = corner;
@@ -103,6 +117,10 @@ function geom() {
             return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`;
         },
         
+        line: function (p1, p2) {
+            return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+        },
+
         /*
         rectangle: function (origin, corner) {
             const x = Math.min(origin.x, corner.x);
