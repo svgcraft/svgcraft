@@ -7,7 +7,7 @@
 function default_tool(geom, dom, events, arena) {
     const tool = {
         // measured in player radii:
-        cursorTriangleWidth: 0.2,
+        cursorTriangleWidth: 0.16,
         cursorTriangleHeight: 0.2,
         attachGap: -0.02,
         detachGap: 0.05,
@@ -64,11 +64,13 @@ function default_tool(geom, dom, events, arena) {
             const baseMid = player.cursorPos.sub(geom.Point.polar(this.cursorTriangleHeight, player.cursorAngle));
             const t = geom.isosceles_triangle(baseMid, this.cursorTriangleWidth, player.cursorAngle, this.cursorTriangleHeight);
             player.cursorTriangle.setAttribute("d", t);
+            player.cursorTriangle.setAttribute("visibility", player.showCursor ? "visible" : "hidden");
             player.g.setAttribute("transform", `translate(${player.currentPos.x}, ${player.currentPos.y}) scale(${player.scale})`);
         },
 
         activateFor: function (player) {
             player.relTo ??= "worldPlayers";
+            player.showCursor ??= false;
             if (!player.g) {
                 player.g = dom.svg("g");
                 arena.ids.get(player.relTo).g.appendChild(player.g);
@@ -96,11 +98,14 @@ function default_tool(geom, dom, events, arena) {
             if (player === arena.myPlayer) this.deactivateEventListeners();
         },
         activateEventListeners: function () {
-            // TODO: remove cursor on mouseleave
             this.addEventListener(arena.arenaDiv, "mousemove", this.hover.bind(this));
+            this.addEventListener(arena.arenaDiv, "mouseleave", this.onMouseLeave.bind(this));
         },
         deactivateEventListeners: function () {
             this.removeAllEventListeners();
+        },
+        onMouseLeave(e) {
+            events.publish({ type: "hidecursor" });
         },
         hover: function (e) {
             if (arena.myPlayer.isCursorAttached) {
@@ -129,7 +134,7 @@ function default_tool(geom, dom, events, arena) {
                 type: "cursor",
                 x: mouse.x,
                 y: mouse.y,
-                angle: geom.oppositeAngle(d.angle())
+                angle: geom.oppositeAngle(d.angle()),
             }]);
         },
         hoverWithAttachedCursor: function (e) {
@@ -145,7 +150,7 @@ function default_tool(geom, dom, events, arena) {
                 type: "cursor",
                 x: mouse.x,
                 y: mouse.y,
-                angle: geom.oppositeAngle(d.angle())
+                angle: geom.oppositeAngle(d.angle()),
             }]);
         },
         first_drag: function (e) {
@@ -171,10 +176,12 @@ function default_tool(geom, dom, events, arena) {
             player.zeroSpeedPos = new geom.Point(parseFloat(e.x0), parseFloat(e.y0));
             player.zeroSpeedTime = e.t0; // TODO substract timeSeniority;
             player.angle = e.angle;
-        }
-        if (e.type === "cursor") {
+        } else if (e.type === "cursor") {
             player.cursorPos = new geom.Point(parseFloat(e.x), parseFloat(e.y));
             player.cursorAngle = e.angle;
+            player.showCursor = true;
+        } else if (e.type === "hidecursor") {
+            player.showCursor = false;
         }
     }
     events.subscribe(onEvent);
