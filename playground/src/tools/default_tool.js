@@ -33,13 +33,6 @@ function default_tool(geom, dom, events, arena) {
             return true;
         },
 
-        myPlayerCenterToCursor: function() {
-            const gap = arena.myPlayer.isCursorAttached ? tool.attachGap : tool.detachGap;
-            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
-            const r = headRadius + gap + this.cursorTriangleHeight;
-            return geom.Point.polar(r * arena.myPlayer.scale, arena.myPlayer.cursorAngle);
-        },
-    
         cursor: "none", // CSS cursor attribute, "none" means everything is rendered in svg
 
         applyStroke: function (elem, scale) {
@@ -65,6 +58,13 @@ function default_tool(geom, dom, events, arena) {
             const t = geom.isosceles_triangle(baseMid, this.cursorTriangleWidth, player.cursorAngle, this.cursorTriangleHeight);
             player.cursorTriangle.setAttribute("d", t);
             player.cursorTriangle.setAttribute("visibility", player.showCursor ? "visible" : "hidden");
+            /*
+            if (this.isPlayerCursorAttached(player, TODO_obtain_frame_time)) {
+                // TODO hide black line between cursor and avatar
+            } else {
+                // TODO show black line between cursor and avatar
+            }
+            */
             player.g.setAttribute("transform", `translate(${player.currentPos.x}, ${player.currentPos.y}) scale(${player.scale})`);
         },
 
@@ -75,7 +75,6 @@ function default_tool(geom, dom, events, arena) {
                 player.g = dom.svg("g");
                 arena.ids.get(player.relTo).g.appendChild(player.g);
             }
-            player.isCursorAttached ??= false;
             player.cursorAngle ??= 0.0;
             player.cursorPos ??= player.currentPos;
             if (!player.cursorTriangle) {
@@ -104,54 +103,66 @@ function default_tool(geom, dom, events, arena) {
         deactivateEventListeners: function () {
             this.removeAllEventListeners();
         },
-        onMouseLeave(e) {
+        onMouseLeave: function (e) {
             events.publish({ type: "hidecursor" });
         },
-        hover: function (e) {
-            if (arena.myPlayer.isCursorAttached) {
-                this.hoverWithAttachedCursor(e);
-            } else {
-                this.hoverWithDetachedCursor(e);
+        isPlayerCursorAttached: function (player, time) {
+            return player.zeroSpeedTime <= time;
+        },
+        lastMousePos: null,
+        lastMouseTime: null,
+        // in svg units per second
+        detachSpeedThresh: 6.0,
+        mouseSpeed: function (currentPos, currentTime) {
+            var speed = 0;
+            if (this.lastMousePos) {
+                speed = currentPos.sub(this.lastMousePos).norm() / (currentTime - this.lastMouseTime);
             }
+            this.lastMousePos = currentPos;
+            this.lastMouseTime = currentTime;
+            return speed;
         },
-        hoverWithDetachedCursor: function (e) {
+        hover: function (e) {
+            const tNow = e.timeStamp / 1000;
             const mouse = arena.myPlayer.eventToRelCoords(e);
-            const current = arena.myPlayer.posAtTime(e.timeStamp / 1000);
+            const current = arena.myPlayer.posAtTime(tNow);
             const d = current.sub(mouse);
-            // const gap = arena.myPlayer.isCursorAttached ? tool.attachGap : tool.detachGap;
             const headRadius = 1; // hardcoded, actual scaling is done using player.scale
-            const playerDistToMouse = arena.myPlayer.scale * headRadius + tool.attachGap + this.cursorTriangleHeight;
-            const targetZero = mouse.add(d.scaleToLength(playerDistToMouse));
-            const move = targetZero.sub(current);
-            const tToStop = Math.sqrt(2 * move.norm() / arena.myPlayer.decceleration);
-            events.publish([{
-                type: "trajectory",
-                x0: targetZero.x,
-                y0: targetZero.y,
-                t0: e.timeStamp / 1000 + tToStop,
-                angle: d.angle()
-            }, {
-                type: "cursor",
-                x: mouse.x,
-                y: mouse.y,
-                angle: geom.oppositeAngle(d.angle()),
-            }]);
-        },
-        hoverWithAttachedCursor: function (e) {
-            const mouse = arena.myPlayer.eventToRelCoords(e);
-            const center = mouse.sub(this.myPlayerCenterToCursor());
-            // degenerate trajectory (already at speed 0)
-            events.publish([{
-                type: "trajectory",
-                x0: center.x,
-                y0: center.y,
-                t0: e.timeStamp / 1000
-            }, {
-                type: "cursor",
-                x: mouse.x,
-                y: mouse.y,
-                angle: geom.oppositeAngle(d.angle()),
-            }]);
+            const finalPlayerDistToMouse = arena.myPlayer.scale * headRadius + tool.attachGap + this.cursorTriangleHeight;
+            const mouseSpeed = this.mouseSpeed(mouse, tNow); // don't inline because we don't want short-circuiting
+            if (arena.myPlayer.zeroSpeedTime > tNow || mouseSpeed > this.detachSpeedThresh) {
+                // cursor detached from avatar, angle can change
+                const targetZero = mouse.add(d.scaleToLength(finalPlayerDistToMouse));
+                const move = targetZero.sub(current);
+                const tToStop = Math.sqrt(2 * move.norm() / arena.myPlayer.decceleration);
+                events.publish([{
+                    type: "trajectory",
+                    x0: targetZero.x,
+                    y0: targetZero.y,
+                    t0: tNow + tToStop,
+                    angle: d.angle()
+                }, {
+                    type: "cursor",
+                    x: mouse.x,
+                    y: mouse.y,
+                    angle: geom.oppositeAngle(d.angle()),
+                }]);
+            } else {
+                // cursor remains attached to avatar, angle does not change
+                const center = mouse.sub(geom.Point.polar(finalPlayerDistToMouse, arena.myPlayer.cursorAngle));
+                // degenerate trajectory (already at speed 0)
+                events.publish([{
+                    type: "trajectory",
+                    x0: center.x,
+                    y0: center.y,
+                    t0: tNow
+                }, {
+                    type: "cursor",
+                    x: mouse.x,
+                    y: mouse.y,
+                    angle: arena.myPlayer.cursorAngle
+                }]);
+            }
         },
         first_drag: function (e) {
         },
