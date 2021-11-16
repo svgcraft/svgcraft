@@ -117,7 +117,15 @@ function arena(dom, geom, events) {
             if (j[attr] !== undefined) target[attr] = j[attr];
         }
     }
-    
+
+    function viewToDom(view) {
+        const r = arenaClipperDiv.getBoundingClientRect();
+        const pxPerUnit = r.width / view.unitsPerWidth;
+        const tx = - view.x * pxPerUnit;
+        const ty = - view.y * pxPerUnit;
+        mainSvg.style.transform = `translate(${tx}px, ${ty}px) scale(${pxPerUnit})`;
+    }
+
     function onResize() {
         const viewportWidthPx = Math.min(window.innerWidth, window.innerHeight * aspectRatio);
         const viewportHeightPx = Math.min(window.innerHeight, window.innerWidth / aspectRatio);
@@ -125,10 +133,7 @@ function arena(dom, geom, events) {
         arenaClipperDiv.style.right = arenaClipperDiv.style.left;
         arenaClipperDiv.style.top = (window.innerHeight - viewportHeightPx) / 2 + "px";
         arenaClipperDiv.style.bottom = arenaClipperDiv.style.top;
-        const pxPerUnit = viewportWidthPx / view.unitsPerWidth;
-        const tx = - view.x * pxPerUnit;
-        const ty = - view.y * pxPerUnit;
-        mainSvg.style.transform = `translate(${tx}px, ${ty}px) scale(${pxPerUnit})`;
+        viewToDom(view);
     }
 
     function frame(t) {
@@ -224,6 +229,7 @@ function arena(dom, geom, events) {
         ids: ids,
         Player: Player,
         myPlayer: myPlayer,
+        viewToDom: viewToDom,
         registerTool: registerTool
     };
 }

@@ -12,6 +12,8 @@ function default_tool(geom, dom, events, arena) {
         attachGap: -0.02,
         detachGap: 0.05,
 
+        state: "hover", // other possible values: "pan", "drag"
+
         // Note: There are two kinds of events: 
         // - UI events as fired by the browser (these have listeners)
         // - application events exchanged between peers (these have subscribers)
@@ -87,7 +89,7 @@ function default_tool(geom, dom, events, arena) {
             }
             this.playerToDom(player);
             if (player === arena.myPlayer) {
-                arena.arenaDiv.style.cursor = this.cursor;
+                //arena.arenaDiv.style.cursor = this.cursor;
                 this.activateEventListeners();
             }
         },
@@ -97,30 +99,46 @@ function default_tool(geom, dom, events, arena) {
             if (player === arena.myPlayer) this.deactivateEventListeners();
         },
         activateEventListeners: function () {
-            this.addEventListener(arena.arenaDiv, "mousemove", this.hover.bind(this));
+            this.addEventListener(arena.arenaDiv, "mousemove", this.onMouseMove.bind(this));
             this.addEventListener(arena.arenaDiv, "mouseleave", this.onMouseLeave.bind(this));
+            this.addEventListener(arena.arenaDiv, "mousedown", this.onMouseDown.bind(this));
+            this.addEventListener(window, "mouseup", this.onMouseUp.bind(this));
         },
         deactivateEventListeners: function () {
             this.removeAllEventListeners();
+        },
+
+        onMouseMove: function (e) {
+            this[this.state](e);
+        },
+        onMouseDown: function (e) {
+            const tNow = e.timeStamp / 1000;
+            if (arena.myPlayer.zeroSpeedTime > tNow) {
+                this.state = "pan";
+                this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
+                this.mouseDownViewPos = new geom.Point(arena.myPlayer.view.x, arena.myPlayer.view.y);
+            } else {
+                this.state = "drag";
+                const mouse = arena.myPlayer.eventToRelCoords(e);
+                const current = arena.myPlayer.posAtTime(tNow);
+                const d = current.sub(mouse);
+                events.publish([{
+                    type: "cursor",
+                    x: mouse.x,
+                    y: mouse.y,
+                    angle: geom.oppositeAngle(d.angle()),
+                }]);
+            }
+        },
+        onMouseUp: function (e) {
+            this.state = "hover";
+            events.publish({ type: "hidecursor" });
         },
         onMouseLeave: function (e) {
             events.publish({ type: "hidecursor" });
         },
         isPlayerCursorAttached: function (player, time) {
             return player.zeroSpeedTime <= time;
-        },
-        lastMousePos: null,
-        lastMouseTime: null,
-        // in svg units per second
-        detachSpeedThresh: 6.0,
-        mouseSpeed: function (currentPos, currentTime) {
-            var speed = 0;
-            if (this.lastMousePos) {
-                speed = currentPos.sub(this.lastMousePos).norm() / (currentTime - this.lastMouseTime);
-            }
-            this.lastMousePos = currentPos;
-            this.lastMouseTime = currentTime;
-            return speed;
         },
         hover: function (e) {
             const tNow = e.timeStamp / 1000;
@@ -129,8 +147,7 @@ function default_tool(geom, dom, events, arena) {
             const d = current.sub(mouse);
             const headRadius = 1; // hardcoded, actual scaling is done using player.scale
             const finalPlayerDistToMouse = arena.myPlayer.scale * headRadius + tool.attachGap + this.cursorTriangleHeight;
-            const mouseSpeed = this.mouseSpeed(mouse, tNow); // don't inline because we don't want short-circuiting
-            if (arena.myPlayer.zeroSpeedTime > tNow || mouseSpeed > this.detachSpeedThresh) {
+            if (d.norm() >= finalPlayerDistToMouse) {
                 // cursor detached from avatar, angle can change
                 const targetZero = mouse.add(d.scaleToLength(finalPlayerDistToMouse));
                 const move = targetZero.sub(current);
@@ -141,28 +158,41 @@ function default_tool(geom, dom, events, arena) {
                     y0: targetZero.y,
                     t0: tNow + tToStop,
                     angle: d.angle()
-                }, {
-                    type: "cursor",
-                    x: mouse.x,
-                    y: mouse.y,
-                    angle: geom.oppositeAngle(d.angle()),
-                }]);
-            } else {
-                // cursor remains attached to avatar, angle does not change
-                const center = mouse.sub(geom.Point.polar(finalPlayerDistToMouse, arena.myPlayer.cursorAngle));
-                // degenerate trajectory (already at speed 0)
-                events.publish([{
-                    type: "trajectory",
-                    x0: center.x,
-                    y0: center.y,
-                    t0: tNow
-                }, {
-                    type: "cursor",
-                    x: mouse.x,
-                    y: mouse.y,
-                    angle: arena.myPlayer.cursorAngle
                 }]);
             }
+        },
+        pan: function(e) {
+            const r = arena.arenaDiv.getBoundingClientRect();
+            const unitsPerPx = arena.myPlayer.view.unitsPerWidth / r.width;
+            const screenPos = new geom.Point(e.screenX, e.screenY);
+            const d = screenPos.sub(this.mouseDownScreenPos).scale(unitsPerPx);
+            const viewPos = this.mouseDownViewPos.sub(d);
+            events.publish([{
+                type: "pan",
+                // TODO: use view id, so that several players can share same view
+                x: viewPos.x,
+                y: viewPos.y
+            }]);
+        },
+        drag: function(e) {
+            const tNow = e.timeStamp / 1000;
+            const mouse = arena.myPlayer.eventToRelCoords(e);
+            // cursor remains attached to avatar, angle does not change
+            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
+            const finalPlayerDistToMouse = arena.myPlayer.scale * headRadius + tool.attachGap + this.cursorTriangleHeight;
+            const center = mouse.sub(geom.Point.polar(finalPlayerDistToMouse, arena.myPlayer.cursorAngle));
+            // degenerate trajectory (already at speed 0)
+            events.publish([{
+                type: "trajectory",
+                x0: center.x,
+                y0: center.y,
+                t0: tNow
+            }, {
+                type: "cursor",
+                x: mouse.x,
+                y: mouse.y,
+                angle: arena.myPlayer.cursorAngle
+            }]);
         },
         first_drag: function (e) {
         },
@@ -182,6 +212,7 @@ function default_tool(geom, dom, events, arena) {
     // And as another option, a subclass can decide to simply not emit the event in question,
     // but emit an event of a different type with a new handler.
     function onEvent(e, sourceId) {
+        // TODO support subscribing by event type, and maybe pass player as argument (but where's player map?)
         const player = sourceId ? arena.ids.get(sourceId) : arena.myPlayer;
         if (e.type === "trajectory") {
             player.zeroSpeedPos = new geom.Point(parseFloat(e.x0), parseFloat(e.y0));
@@ -193,6 +224,11 @@ function default_tool(geom, dom, events, arena) {
             player.showCursor = true;
         } else if (e.type === "hidecursor") {
             player.showCursor = false;
+        } else if (e.type === "pan") {
+            arena.myPlayer.view.x = parseFloat(e.x);
+            arena.myPlayer.view.y = parseFloat(e.y);
+            // TODO only touch DOM in frame(), just add arena.myPlayer.view to list of updates to make
+            arena.viewToDom(arena.myPlayer.view);
         }
     }
     events.subscribe(onEvent);
