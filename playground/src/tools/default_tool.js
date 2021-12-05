@@ -7,12 +7,12 @@
 function default_tool(geom, dom, events, arena) {
     const tool = {
         // measured in player radii:
-        cursorTriangleWidth: 0.16,
-        cursorTriangleHeight: 0.2,
+        pointerTriangleWidth: 0.16,
+        pointerTriangleHeight: 0.2,
         attachGap: -0.02,
         detachGap: 0.05,
 
-        state: "hover", // other possible values: "pan", "drag"
+        state: "hover", // other possible values: "pan", "movetool"
 
         // Note: There are two kinds of events: 
         // - UI events as fired by the browser (these have listeners)
@@ -55,49 +55,42 @@ function default_tool(geom, dom, events, arena) {
                 player.circ.setAttribute("fill", player.color);
             }
             const headRadius = 1; // hardcoded, actual scaling is done using player.scale
-            const baseMid = player.currentPos.add(geom.Point.polar(player.scale * headRadius + this.attachGap, player.cursorAngle));
-            const t = geom.isosceles_triangle(baseMid, this.cursorTriangleWidth, player.cursorAngle, this.cursorTriangleHeight);
-            player.cursorTriangle.setAttribute("d", t);
-            player.cursorTriangle.setAttribute("visibility", player.showCursor ? "visible" : "hidden");
-            player.cursorTriangleBorder.setAttribute("d", t);
-            player.cursorTriangleBorder.setAttribute("visibility", player.showCursor ? "visible" : "hidden");
-            /*
-            if (this.isPlayerCursorAttached(player, TODO_obtain_frame_time)) {
-                // TODO hide black line between cursor and avatar
-            } else {
-                // TODO show black line between cursor and avatar
-            }
-            */
+            const baseMid = player.currentPos.add(geom.Point.polar(player.scale * headRadius + this.attachGap, player.pointerAngle));
+            const t = geom.isosceles_triangle(baseMid, this.pointerTriangleWidth, player.pointerAngle, this.pointerTriangleHeight);
+            player.pointerTriangle.setAttribute("d", t);
+            player.pointerTriangle.setAttribute("visibility", player.showPointerTriangle ? "visible" : "hidden");
+            player.pointerTriangleBorder.setAttribute("d", t);
+            player.pointerTriangleBorder.setAttribute("visibility", player.showPointerTriangle ? "visible" : "hidden");
             player.g.setAttribute("transform", `translate(${player.currentPos.x}, ${player.currentPos.y}) scale(${player.scale})`);
         },
 
         activateFor: function (player) {
             player.relTo ??= "worldPlayers";
             player.scale ??= 0.5;
-            player.showCursor ??= false;
+            player.showPointerTriangle ??= false;
             if (!player.g) {
                 player.g = dom.svg("g");
                 arena.ids.get(player.relTo).g.appendChild(player.g);
             }
-            player.cursorAngle ??= 0.0;
-            // cursorTriangleBorder goes before (under) player.g so that its baseline is covered by the player circle
-            if (!player.cursorTriangleBorder) {
-                player.cursorTriangleBorder = dom.svg("path", {
+            player.pointerAngle ??= 0.0;
+            // pointerTriangleBorder goes before (under) player.g so that its baseline is covered by the player circle
+            if (!player.pointerTriangleBorder) {
+                player.pointerTriangleBorder = dom.svg("path", {
                     //d: set in playerToDom
                     fill: "none"
                 });
                 // TODO less hardcoding, 1 means don't scale because we're not in scaled player.g, 
-                // /2 means double stroke width because half of it is covered by cursorTriangle fill
-                this.applyStroke(player.cursorTriangleBorder, 1.0 / 2);
-                arena.ids.get(player.relTo).g.insertBefore(player.cursorTriangleBorder, player.g);
+                // /2 means double stroke width because half of it is covered by pointerTriangle fill
+                this.applyStroke(player.pointerTriangleBorder, 1.0 / 2);
+                arena.ids.get(player.relTo).g.insertBefore(player.pointerTriangleBorder, player.g);
             }
-            // cursorTriangle goes after (above) player.g so that it covers the border of the circle
-            if (!player.cursorTriangle) {
-                player.cursorTriangle = dom.svg("path", {
+            // pointerTriangle goes after (above) player.g so that it covers the border of the circle
+            if (!player.pointerTriangle) {
+                player.pointerTriangle = dom.svg("path", {
                     //d: set in playerToDom
                     fill: player.color
                 });
-                arena.ids.get(player.relTo).g.appendChild(player.cursorTriangle);
+                arena.ids.get(player.relTo).g.appendChild(player.pointerTriangle);
             }
             this.playerToDom(player);
             if (player === arena.myPlayer) {
@@ -105,8 +98,8 @@ function default_tool(geom, dom, events, arena) {
             }
         },
         deactivateFor: function (player) {
-            player.cursorTriangle.remove();
-            player.cursorTriangle = undefined;
+            player.pointerTriangle.remove();
+            player.pointerTriangle = undefined;
             if (player === arena.myPlayer) this.deactivateEventListeners();
         },
         activateEventListeners: function () {
@@ -121,37 +114,58 @@ function default_tool(geom, dom, events, arena) {
 
         myPlayerToMouse: new geom.Point(0.123, 0.123),
 
+        isPanning: false, // means mouse is down and user is moving the map around
+        isToolInAction: false, // means a click to start using the tool was made, but no click to end using tool was made yet
+        lastMouseEventWasMouseDown: false,
+
         onMouseMove: function (e) {
-            this[this.state](e);
+            if (this.isPanning) {
+                this.pan(e);
+            } else {
+                if (this.isToolInAction) {
+                    this.movetool(e);
+                } else {
+                    this.hover(e);
+                }
+            }
+            this.lastMouseEventWasMouseDown = false;
         },
         onMouseDown: function (e) {
-            const tNow = e.timeStamp / 1000;
-            if (arena.myPlayer.zeroSpeedTime > tNow) {
-                this.state = "pan";
-                this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
-                this.mouseDownViewPos = new geom.Point(arena.myPlayer.view.x, arena.myPlayer.view.y);
-            } else {
-                this.state = "drag";
-                const mouse = arena.myPlayer.eventToRelCoords(e);
-                const current = arena.myPlayer.posAtTime(tNow);
-                this.myPlayerToMouse = mouse.sub(current);
-                events.publish([{
-                    type: "cursor",
-                    angle: this.myPlayerToMouse.angle(),
-                }]);
-            }
+            // we assume that this event starts a panning gesture, even if it later turns out that it's a click
+            this.isPanning = true;
+            this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
+            this.mouseDownViewPos = new geom.Point(arena.myPlayer.view.x, arena.myPlayer.view.y);
             arena.arenaDiv.style.cursor = "none";
+            this.lastMouseEventWasMouseDown = true;
         },
         onMouseUp: function (e) {
-            this.state = "hover";
-            events.publish({ type: "hidecursor" });
-            arena.arenaDiv.style.cursor = "default";
+            if (this.lastMouseEventWasMouseDown) {
+                // It's a true click.
+                // Note: browsers also consider a mousedown-mousemove-mouseup sequence as a click,
+                // as long as the mousedown and mouseup are on the same element, but we don't want these clicks.
+                if (this.isToolInAction) {
+                    this.isToolInAction = false;
+                    events.publish({ type: "end_pointing" });
+                    arena.arenaDiv.style.cursor = "default";
+                } else {
+                    this.isToolInAction = true;
+                    const mouse = arena.myPlayer.eventToRelCoords(e);
+                    this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
+                    arena.arenaDiv.style.cursor = "none";
+                    events.publish({
+                        type: "start_pointing",
+                        angle: this.myPlayerToMouse.angle(),
+                    });
+                }    
+            } else {
+                // It's the end of a panning with non-zero movement
+                arena.arenaDiv.style.cursor = "default";
+            }
+            // end panning (even if there was zero movement)
+            this.isPanning = false;
+            this.lastMouseEventWasMouseDown = false;
         },
         onMouseLeave: function (e) {
-            events.publish({ type: "hidecursor" });
-        },
-        isPlayerCursorAttached: function (player, time) {
-            return player.zeroSpeedTime <= time;
         },
         hover: function (e) {
             const tNow = e.timeStamp / 1000;
@@ -159,9 +173,9 @@ function default_tool(geom, dom, events, arena) {
             const current = arena.myPlayer.posAtTime(tNow);
             const d = current.sub(mouse);
             const headRadius = 1; // hardcoded, actual scaling is done using player.scale
-            const finalPlayerDistToMouse = arena.myPlayer.scale * headRadius + tool.attachGap + this.cursorTriangleHeight;
+            const finalPlayerDistToMouse = arena.myPlayer.scale * headRadius + tool.attachGap + this.pointerTriangleHeight;
+            // only move if mouse is outside a circle (of radius finalPlayerDistToMouse) surrounding the player
             if (d.norm() >= finalPlayerDistToMouse) {
-                // cursor detached from avatar, angle can change
                 const targetZero = mouse.add(d.scaleToLength(finalPlayerDistToMouse));
                 const move = targetZero.sub(current);
                 const tToStop = Math.sqrt(2 * move.norm() / arena.myPlayer.decceleration);
@@ -187,11 +201,9 @@ function default_tool(geom, dom, events, arena) {
                 y: viewPos.y
             }]);
         },
-        drag: function(e) {
+        movetool: function(e) {
             const tNow = e.timeStamp / 1000;
             const mouse = arena.myPlayer.eventToRelCoords(e);
-            // cursor remains attached to avatar, angle does not change
-            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
             const center = mouse.sub(this.myPlayerToMouse);
             // degenerate trajectory (already at speed 0)
             events.publish({
@@ -201,14 +213,6 @@ function default_tool(geom, dom, events, arena) {
                 t0: tNow
             });
         },
-        first_drag: function (e) {
-        },
-        continue_drag: function (e) {
-        },
-        end_drag: function (e) {
-        },
-        click: function (e) {},
-
     };
     arena.registerTool("default_tool", tool);
     tool.activateFor(arena.myPlayer);
@@ -225,11 +229,11 @@ function default_tool(geom, dom, events, arena) {
             player.zeroSpeedPos = new geom.Point(parseFloat(e.x0), parseFloat(e.y0));
             player.zeroSpeedTime = e.t0; // TODO substract timeSeniority;
             player.angle = e.angle;
-        } else if (e.type === "cursor") {
-            player.cursorAngle = e.angle;
-            player.showCursor = true;
-        } else if (e.type === "hidecursor") {
-            player.showCursor = false;
+        } else if (e.type === "start_pointing") {
+            player.pointerAngle = e.angle;
+            player.showPointerTriangle = true;
+        } else if (e.type === "end_pointing") {
+            player.showPointerTriangle = false;
         } else if (e.type === "pan") {
             arena.myPlayer.view.x = parseFloat(e.x);
             arena.myPlayer.view.y = parseFloat(e.y);

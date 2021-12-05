@@ -48,10 +48,10 @@ function arena(dom, geom, events) {
 
         /** @param e {MouseEvent} */
         eventToRelCoords(e) {
-            const r = e.currentTarget.getBoundingClientRect();
-            const x = e.pageX - r.left;
-            const y = e.pageY - r.top;
             if (this.relTo === "worldPlayers") {
+                const r = arenaClipperDiv.getBoundingClientRect();
+                const x = e.pageX - r.left;
+                const y = e.pageY - r.top;
                 return new geom.Point(x / r.width * this.view.unitsPerWidth + this.view.x,
                                       y / r.width * this.view.unitsPerWidth + this.view.y);
             } else {
