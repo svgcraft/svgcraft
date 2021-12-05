@@ -35,10 +35,8 @@ function default_tool(geom, dom, events, arena) {
             return true;
         },
 
-        cursor: "none", // CSS cursor attribute, "none" means everything is rendered in svg
-
         applyStroke: function (elem, scale) {
-            elem.setAttribute("stroke", "black");
+            elem.setAttribute("stroke", "rgb(70, 70, 70)");
             elem.setAttribute("stroke-width", 0.01 / scale);
         },
 
@@ -60,6 +58,8 @@ function default_tool(geom, dom, events, arena) {
             const t = geom.isosceles_triangle(baseMid, this.cursorTriangleWidth, player.cursorAngle, this.cursorTriangleHeight);
             player.cursorTriangle.setAttribute("d", t);
             player.cursorTriangle.setAttribute("visibility", player.showCursor ? "visible" : "hidden");
+            player.cursorTriangleBorder.setAttribute("d", t);
+            player.cursorTriangleBorder.setAttribute("visibility", player.showCursor ? "visible" : "hidden");
             /*
             if (this.isPlayerCursorAttached(player, TODO_obtain_frame_time)) {
                 // TODO hide black line between cursor and avatar
@@ -72,6 +72,7 @@ function default_tool(geom, dom, events, arena) {
 
         activateFor: function (player) {
             player.relTo ??= "worldPlayers";
+            player.scale ??= 0.5;
             player.showCursor ??= false;
             if (!player.g) {
                 player.g = dom.svg("g");
@@ -79,17 +80,27 @@ function default_tool(geom, dom, events, arena) {
             }
             player.cursorAngle ??= 0.0;
             player.cursorPos ??= player.currentPos;
+            // cursorTriangleBorder goes before (under) player.g so that its baseline is covered by the player circle
+            if (!player.cursorTriangleBorder) {
+                player.cursorTriangleBorder = dom.svg("path", {
+                    //d: set in playerToDom
+                    fill: "none"
+                });
+                // TODO less hardcoding, 1 means don't scale because we're not in scaled player.g, 
+                // /2 means double stroke width because half of it is covered by cursorTriangle fill
+                this.applyStroke(player.cursorTriangleBorder, 1.0 / 2);
+                arena.ids.get(player.relTo).g.insertBefore(player.cursorTriangleBorder, player.g);
+            }
+            // cursorTriangle goes after (above) player.g so that it covers the border of the circle
             if (!player.cursorTriangle) {
                 player.cursorTriangle = dom.svg("path", {
                     //d: set in playerToDom
                     fill: player.color
                 });
-                this.applyStroke(player.cursorTriangle, 1);
-                arena.ids.get(player.relTo).g.insertBefore(player.cursorTriangle, player.g);
+                arena.ids.get(player.relTo).g.appendChild(player.cursorTriangle);
             }
             this.playerToDom(player);
             if (player === arena.myPlayer) {
-                //arena.arenaDiv.style.cursor = this.cursor;
                 this.activateEventListeners();
             }
         },
@@ -117,6 +128,7 @@ function default_tool(geom, dom, events, arena) {
                 this.state = "pan";
                 this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
                 this.mouseDownViewPos = new geom.Point(arena.myPlayer.view.x, arena.myPlayer.view.y);
+                arena.arenaDiv.style.cursor = "grabbing";
             } else {
                 this.state = "drag";
                 const mouse = arena.myPlayer.eventToRelCoords(e);
@@ -128,11 +140,13 @@ function default_tool(geom, dom, events, arena) {
                     y: mouse.y,
                     angle: geom.oppositeAngle(d.angle()),
                 }]);
+                arena.arenaDiv.style.cursor = "none";
             }
         },
         onMouseUp: function (e) {
             this.state = "hover";
             events.publish({ type: "hidecursor" });
+            arena.arenaDiv.style.cursor = "default";
         },
         onMouseLeave: function (e) {
             events.publish({ type: "hidecursor" });
