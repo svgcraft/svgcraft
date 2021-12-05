@@ -159,7 +159,7 @@ function default_tool(geom, dom, events, arena) {
                 }    
             } else {
                 // It's the end of a panning with non-zero movement
-                arena.arenaDiv.style.cursor = "default";
+                if (!this.isToolInAction) arena.arenaDiv.style.cursor = "default";
             }
             // end panning (even if there was zero movement)
             this.isPanning = false;
