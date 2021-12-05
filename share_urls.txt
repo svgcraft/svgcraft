@@ -1,0 +1,18 @@
+Gmail:
+https://mail.google.com/mail/?view=cm&to=&su=Test%20Email%20Subject&body=Test%20Email%20Text
+Seems to work
+
+WhatsApp:
+https://web.whatsapp.com/send?text=Test%20Message
+Seems to work
+
+Telegram:
+https://t.me/share/url?url=https%3A%2F%2Fexample.com%2F&text=Test%20Message
+https://core.telegram.org/widgets/share
+https://t.me/share/url?url={url}&text={text}
+Doesn't work with Telegram Web (shows NaN quickly, probably a bug)
+
+fb messenger:
+https://www.facebook.com/dialog/send?link=https%3A%2F%2Fexample.com%2F
+Doesn't work, requires an app_id
+https://developers.facebook.com/docs/sharing/reference/send-dialog/
