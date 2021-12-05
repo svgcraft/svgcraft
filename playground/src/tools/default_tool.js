@@ -54,7 +54,8 @@ function default_tool(geom, dom, events, arena) {
                 }
                 player.circ.setAttribute("fill", player.color);
             }
-            const baseMid = player.cursorPos.sub(geom.Point.polar(this.cursorTriangleHeight, player.cursorAngle));
+            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
+            const baseMid = player.currentPos.add(geom.Point.polar(player.scale * headRadius + this.attachGap, player.cursorAngle));
             const t = geom.isosceles_triangle(baseMid, this.cursorTriangleWidth, player.cursorAngle, this.cursorTriangleHeight);
             player.cursorTriangle.setAttribute("d", t);
             player.cursorTriangle.setAttribute("visibility", player.showCursor ? "visible" : "hidden");
@@ -79,7 +80,6 @@ function default_tool(geom, dom, events, arena) {
                 arena.ids.get(player.relTo).g.appendChild(player.g);
             }
             player.cursorAngle ??= 0.0;
-            player.cursorPos ??= player.currentPos;
             // cursorTriangleBorder goes before (under) player.g so that its baseline is covered by the player circle
             if (!player.cursorTriangleBorder) {
                 player.cursorTriangleBorder = dom.svg("path", {
@@ -119,6 +119,8 @@ function default_tool(geom, dom, events, arena) {
             this.removeAllEventListeners();
         },
 
+        myPlayerToMouse: new geom.Point(0.123, 0.123),
+
         onMouseMove: function (e) {
             this[this.state](e);
         },
@@ -128,20 +130,17 @@ function default_tool(geom, dom, events, arena) {
                 this.state = "pan";
                 this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
                 this.mouseDownViewPos = new geom.Point(arena.myPlayer.view.x, arena.myPlayer.view.y);
-                arena.arenaDiv.style.cursor = "grabbing";
             } else {
                 this.state = "drag";
                 const mouse = arena.myPlayer.eventToRelCoords(e);
                 const current = arena.myPlayer.posAtTime(tNow);
-                const d = current.sub(mouse);
+                this.myPlayerToMouse = mouse.sub(current);
                 events.publish([{
                     type: "cursor",
-                    x: mouse.x,
-                    y: mouse.y,
-                    angle: geom.oppositeAngle(d.angle()),
+                    angle: this.myPlayerToMouse.angle(),
                 }]);
-                arena.arenaDiv.style.cursor = "none";
             }
+            arena.arenaDiv.style.cursor = "none";
         },
         onMouseUp: function (e) {
             this.state = "hover";
@@ -193,20 +192,14 @@ function default_tool(geom, dom, events, arena) {
             const mouse = arena.myPlayer.eventToRelCoords(e);
             // cursor remains attached to avatar, angle does not change
             const headRadius = 1; // hardcoded, actual scaling is done using player.scale
-            const finalPlayerDistToMouse = arena.myPlayer.scale * headRadius + tool.attachGap + this.cursorTriangleHeight;
-            const center = mouse.sub(geom.Point.polar(finalPlayerDistToMouse, arena.myPlayer.cursorAngle));
+            const center = mouse.sub(this.myPlayerToMouse);
             // degenerate trajectory (already at speed 0)
-            events.publish([{
+            events.publish({
                 type: "trajectory",
                 x0: center.x,
                 y0: center.y,
                 t0: tNow
-            }, {
-                type: "cursor",
-                x: mouse.x,
-                y: mouse.y,
-                angle: arena.myPlayer.cursorAngle
-            }]);
+            });
         },
         first_drag: function (e) {
         },
@@ -233,7 +226,6 @@ function default_tool(geom, dom, events, arena) {
             player.zeroSpeedTime = e.t0; // TODO substract timeSeniority;
             player.angle = e.angle;
         } else if (e.type === "cursor") {
-            player.cursorPos = new geom.Point(parseFloat(e.x), parseFloat(e.y));
             player.cursorAngle = e.angle;
             player.showCursor = true;
         } else if (e.type === "hidecursor") {
