@@ -114,13 +114,15 @@ function default_tool(geom, dom, events, arena) {
 
         myPlayerToMouse: new geom.Point(0.123, 0.123),
 
-        isPanning: false, // means mouse is down and user is moving the map around
-        isToolInAction: false, // means a click to start using the tool was made, but no click to end using tool was made yet
+        draggee: null, // "map" or "myPlayer" or null
+        isToolInAction: false,
         lastMouseEventWasMouseDown: false,
 
         onMouseMove: function (e) {
-            if (this.isPanning) {
+            if (this.draggee === "map") {
                 this.pan(e);
+            } else if (this.draggee === "myPlayer") {
+                this.movetool(e);
             } else {
                 if (this.isToolInAction) {
                     this.movetool(e);
@@ -131,38 +133,62 @@ function default_tool(geom, dom, events, arena) {
             this.lastMouseEventWasMouseDown = false;
         },
         onMouseDown: function (e) {
-            // we assume that this event starts a panning gesture, even if it later turns out that it's a click
-            this.isPanning = true;
-            this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
-            this.mouseDownViewPos = new geom.Point(arena.myPlayer.view.x, arena.myPlayer.view.y);
+            // we assume that this event starts a dragging gesture, even if it later turns out that it's a click
+            const tNow = e.timeStamp / 1000;
+            const mouse = arena.myPlayer.eventToRelCoords(e);
+            const current = arena.myPlayer.posAtTime(tNow);
+            const d = current.sub(mouse);
+            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
+            const r = arena.myPlayer.scale * headRadius;
+            if (d.norm() <= r) {
+                this.draggee = "myPlayer";
+                this.isToolInAction = true;
+                const mouse = arena.myPlayer.eventToRelCoords(e);
+                this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
+                arena.arenaDiv.style.cursor = "none";
+                events.publish({
+                    type: "start_pointing",
+                    angle: this.myPlayerToMouse.angle(),
+                });
+            } else {
+                this.draggee = "map";
+                this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
+                this.mouseDownViewPos = new geom.Point(arena.myPlayer.view.x, arena.myPlayer.view.y);
+            }
             arena.arenaDiv.style.cursor = "none";
             this.lastMouseEventWasMouseDown = true;
         },
         onMouseUp: function (e) {
-            if (this.lastMouseEventWasMouseDown) {
-                // It's a true click.
-                // Note: browsers also consider a mousedown-mousemove-mouseup sequence as a click,
-                // as long as the mousedown and mouseup are on the same element, but we don't want these clicks.
-                if (this.isToolInAction) {
-                    this.isToolInAction = false;
-                    events.publish({ type: "end_pointing" });
-                    arena.arenaDiv.style.cursor = "default";
+            if (this.draggee === "map") {
+                if (this.lastMouseEventWasMouseDown) {
+                    // It's a true click.
+                    // Note: browsers also consider a mousedown-mousemove-mouseup sequence as a click,
+                    // as long as the mousedown and mouseup are on the same element, but we don't want these clicks.
+                    if (this.isToolInAction) {
+                        this.isToolInAction = false;
+                        events.publish({ type: "end_pointing" });
+                        arena.arenaDiv.style.cursor = "default";
+                    } else {
+                        this.isToolInAction = true;
+                        const mouse = arena.myPlayer.eventToRelCoords(e);
+                        this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
+                        arena.arenaDiv.style.cursor = "none";
+                        events.publish({
+                            type: "start_pointing",
+                            angle: this.myPlayerToMouse.angle(),
+                        });
+                    }    
                 } else {
-                    this.isToolInAction = true;
-                    const mouse = arena.myPlayer.eventToRelCoords(e);
-                    this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
-                    arena.arenaDiv.style.cursor = "none";
-                    events.publish({
-                        type: "start_pointing",
-                        angle: this.myPlayerToMouse.angle(),
-                    });
-                }    
-            } else {
-                // It's the end of a panning with non-zero movement
-                if (!this.isToolInAction) arena.arenaDiv.style.cursor = "default";
+                    // It's the end of a panning with non-zero movement
+                    if (!this.isToolInAction) arena.arenaDiv.style.cursor = "default";
+                }
+            } else if (this.draggee === "myPlayer") {
+                this.isToolInAction = false;
+                events.publish({ type: "end_pointing" });
+                arena.arenaDiv.style.cursor = "default";
             }
             // end panning (even if there was zero movement)
-            this.isPanning = false;
+            this.draggee = null;
             this.lastMouseEventWasMouseDown = false;
         },
         onMouseLeave: function (e) {

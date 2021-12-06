@@ -49,7 +49,7 @@ function arena(dom, geom, events) {
         /** @param e {MouseEvent} */
         eventToRelCoords(e) {
             if (this.relTo === "worldPlayers") {
-                const r = arenaClipperDiv.getBoundingClientRect();
+                const r = arenaDiv.getBoundingClientRect();
                 const x = e.pageX - r.left;
                 const y = e.pageY - r.top;
                 return new geom.Point(x / r.width * this.view.unitsPerWidth + this.view.x,
@@ -119,7 +119,7 @@ function arena(dom, geom, events) {
     }
 
     function viewToDom(view) {
-        const r = arenaClipperDiv.getBoundingClientRect();
+        const r = arenaDiv.getBoundingClientRect();
         const pxPerUnit = r.width / view.unitsPerWidth;
         const tx = - view.x * pxPerUnit;
         const ty = - view.y * pxPerUnit;
@@ -129,10 +129,10 @@ function arena(dom, geom, events) {
     function onResize() {
         const viewportWidthPx = Math.min(window.innerWidth, window.innerHeight * aspectRatio);
         const viewportHeightPx = Math.min(window.innerHeight, window.innerWidth / aspectRatio);
-        arenaClipperDiv.style.left = (window.innerWidth - viewportWidthPx) / 2 + "px";
-        arenaClipperDiv.style.right = arenaClipperDiv.style.left;
-        arenaClipperDiv.style.top = (window.innerHeight - viewportHeightPx) / 2 + "px";
-        arenaClipperDiv.style.bottom = arenaClipperDiv.style.top;
+        arenaDiv.style.left = (window.innerWidth - viewportWidthPx) / 2 + "px";
+        arenaDiv.style.right = arenaDiv.style.left;
+        arenaDiv.style.top = (window.innerHeight - viewportHeightPx) / 2 + "px";
+        arenaDiv.style.bottom = arenaDiv.style.top;
         viewToDom(view);
     }
 
@@ -196,8 +196,8 @@ function arena(dom, geom, events) {
         ]),
         dom.svg("rect", { x: "-10000",  y: "-10000", width: "20000", height: "20000", fill: "url('#skyGradient')" })
     ]);
-    const arenaClipperDiv = dom.elem("div", { style: "position:absolute; overflow: hidden;" }, [mainSvg]);
-    document.body.appendChild(arenaClipperDiv);
+    const arenaDiv = dom.elem("div", { style: "position:absolute; overflow: hidden;" }, [mainSvg]);
+    document.body.appendChild(arenaDiv);
     document.body.style.backgroundColor = "black";
     const objectsG = dom.svg("g", { id: "objects" });
     mainSvg.appendChild(objectsG);
@@ -225,7 +225,7 @@ function arena(dom, geom, events) {
     // exports:
     return {
         mainSvg: mainSvg,
-        arenaDiv: arenaClipperDiv,
+        arenaDiv: arenaDiv,
         ids: ids,
         Player: Player,
         myPlayer: myPlayer,
