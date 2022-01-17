@@ -121,7 +121,7 @@ function default_tool(geom, dom, events, arena) {
             if (this.draggee === "map") {
                 this.pan(e);
             } else if (this.draggee === "myPlayer") {
-                this.movetool(e);
+                this.movecirc(e);
             } else if (this.draggee === "tool") {
                 this.movetool(e);
             } else {
@@ -140,13 +140,15 @@ function default_tool(geom, dom, events, arena) {
                 this.draggee = "myPlayer";
                 const mouse = arena.myPlayer.eventToRelCoords(e);
                 this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
+                // comment out line below to keep showing the cursor while dragging myPlayer to make it easier to 
+                // understand how moving the cursor affects the toolAngle
                 arena.arenaDiv.style.cursor = "none";
             } else {
                 this.draggee = "map";
                 this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
                 this.mouseDownViewPos = new geom.Point(arena.myPlayer.view.x, arena.myPlayer.view.y);
+                arena.arenaDiv.style.cursor = "none";
             }
-            arena.arenaDiv.style.cursor = "none";
             this.lastMouseEventWasMouseDown = true;
         },
         onTriangleMouseDown: function (e) {
@@ -193,7 +195,7 @@ function default_tool(geom, dom, events, arena) {
             // only change tool angle if cursor is not too close to center of player circle (too fidgety otherwise)
             if (d.norm() >= this.playerRadius / 3.0 * arena.myPlayer.scale) {
                 events.publish({
-                    type: "toolAngle",
+                    type: "tool_angle",
                     t: tNow,
                     angle: d.angle()
                 });
@@ -211,6 +213,26 @@ function default_tool(geom, dom, events, arena) {
                 x: viewPos.x,
                 y: viewPos.y
             }]);
+        },
+        movecirc: function(e) {
+            const tNow = e.timeStamp / 1000;
+            const mouse = arena.myPlayer.eventToRelCoords(e);
+            const newCenter = mouse.sub(this.myPlayerToMouse);
+            const oldCenter = arena.myPlayer.posAtTime(tNow);
+            const tipOfTool = oldCenter.add(geom.Point.polar(this.outerToolRadius * arena.myPlayer.scale, arena.myPlayer.toolAngle));
+            const d = tipOfTool.sub(newCenter);
+            events.publish([
+                { // degenerate trajectory (already at speed 0)
+                    type: "trajectory",
+                    x0: newCenter.x,
+                    y0: newCenter.y,
+                    t0: tNow
+                }, {
+                    type: "tool_angle",
+                    angle: d.angle(),
+                    t: tNow
+                }
+            ]);
         },
         movetool: function(e) {
             const tNow = e.timeStamp / 1000;
@@ -240,7 +262,7 @@ function default_tool(geom, dom, events, arena) {
             player.zeroSpeedPos = new geom.Point(parseFloat(e.x0), parseFloat(e.y0));
             player.zeroSpeedTime = e.t0; // TODO substract timeSeniority
             player.movementAngle = e.angle;
-        } else if (e.type === "toolAngle") {
+        } else if (e.type === "tool_angle") {
             player.toolAngle = e.angle;
             player.lastMovementTime = e.t; // TODO substract timeSeniority
         } else if (e.type === "player_scale") {
