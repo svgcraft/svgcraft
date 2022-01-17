@@ -7,10 +7,12 @@
 function default_tool(geom, dom, events, arena) {
     const tool = {
         // measured in player radii:
-        pointerTriangleWidth: 0.16,
-        pointerTriangleHeight: 0.2,
-        attachGap: -0.02,
-        detachGap: 0.05,
+        playerRadius: 1,
+        pointerTriangleWidth: 0.4,
+        pointerTriangleHeight: 0.55,
+        outerToolRadius: 1.6, // distance of center of player to outermost tip of tool
+        defaultCursorDist: 1.75, // distance of center of player to cursor where player circle stops when moving towards cursor
+        maxCursorDist: 1.9, // threshold cursor distance from center of player at which player starts to move
 
         state: "hover", // other possible values: "pan", "movetool"
 
@@ -30,71 +32,66 @@ function default_tool(geom, dom, events, arena) {
             }
         },
 
-        // whether or not to show a circle with a picture or video of the player (or only a cursor)
-        get showAvatar() {
-            return true;
-        },
-
-        applyStroke: function (elem, scale) {
+        applyStroke: function (elem) {
             elem.setAttribute("stroke", "rgb(70, 70, 70)");
-            elem.setAttribute("stroke-width", 0.01 / scale);
+            elem.setAttribute("stroke-width", 0.02);
         },
 
         playerToDom: function (player) {
             player.scale ??= 0.5;
-            if (this.showAvatar) {
-                if (!player.circ) {
-                    player.circ = dom.svg("circle", {
-                        cx: 0, // 0 relative to origin of surrounding g
-                        cy: 0,
-                        r: 1 // radius of player is always 1, but player size can be changed using player.scale
-                    });
-                    this.applyStroke(player.circ, player.scale);
-                    player.g.appendChild(player.circ);
-                }
-                player.circ.setAttribute("fill", player.color);
+            if (!player.circ) {
+                /*
+                const c1 = dom.svg("circle", { cx: 0, cy: 0, fill: "transparent", r: this.outerToolRadius });
+                const c2 = dom.svg("circle", { cx: 0, cy: 0, fill: "transparent", r: this.defaultCursorDist });
+                const c3 = dom.svg("circle", { cx: 0, cy: 0, fill: "transparent", r: this.maxCursorDist });
+                this.applyStroke(c1);
+                this.applyStroke(c2);
+                this.applyStroke(c3);
+                player.g.appendChild(c1);
+                player.g.appendChild(c2);
+                player.g.appendChild(c3);
+                */
+
+                player.circ = dom.svg("circle", {
+                    cx: 0, // 0 relative to origin of surrounding g
+                    cy: 0,
+                    r: this.playerRadius // player size can be changed using player.scale
+                });
+                this.applyStroke(player.circ);
+                player.g.appendChild(player.circ);
             }
-            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
-            const baseMid = player.currentPos.add(geom.Point.polar(player.scale * headRadius + this.attachGap, player.pointerAngle));
-            const t = geom.isosceles_triangle(baseMid, this.pointerTriangleWidth, player.pointerAngle, this.pointerTriangleHeight);
+            player.circ.setAttribute("fill", player.color);
+            const baseMid = geom.Point.polar(this.outerToolRadius - this.pointerTriangleHeight, player.toolAngle);
+            const t = geom.isosceles_triangle(baseMid, this.pointerTriangleWidth, player.toolAngle, this.pointerTriangleHeight);
             player.pointerTriangle.setAttribute("d", t);
-            player.pointerTriangle.setAttribute("visibility", player.showPointerTriangle ? "visible" : "hidden");
-            player.pointerTriangleBorder.setAttribute("d", t);
-            player.pointerTriangleBorder.setAttribute("visibility", player.showPointerTriangle ? "visible" : "hidden");
+            const showTool = performance.now() / 1000 < 
+                Math.max(player.lastMovementTime, player.zeroSpeedTime) + player.toolAutoHideDelay;
+            player.pointerTriangle.setAttribute("visibility", showTool ? "visible" : "hidden");
             player.g.setAttribute("transform", `translate(${player.currentPos.x}, ${player.currentPos.y}) scale(${player.scale})`);
         },
 
         activateFor: function (player) {
             player.relTo ??= "worldPlayers";
             player.scale ??= 0.5;
-            player.showPointerTriangle ??= false;
+            player.lastMovementTime ??= -Infinity;
+            player.toolAutoHideDelay ??= 3.0; // seconds
             if (!player.g) {
                 player.g = dom.svg("g");
                 arena.ids.get(player.relTo).g.appendChild(player.g);
             }
-            player.pointerAngle ??= 0.0;
-            // pointerTriangleBorder goes before (under) player.g so that its baseline is covered by the player circle
-            if (!player.pointerTriangleBorder) {
-                player.pointerTriangleBorder = dom.svg("path", {
-                    //d: set in playerToDom
-                    fill: "none"
-                });
-                // TODO less hardcoding, 1 means don't scale because we're not in scaled player.g, 
-                // /2 means double stroke width because half of it is covered by pointerTriangle fill
-                this.applyStroke(player.pointerTriangleBorder, 1.0 / 2);
-                arena.ids.get(player.relTo).g.insertBefore(player.pointerTriangleBorder, player.g);
-            }
-            // pointerTriangle goes after (above) player.g so that it covers the border of the circle
+            player.toolAngle ??= 0.0;
             if (!player.pointerTriangle) {
                 player.pointerTriangle = dom.svg("path", {
                     //d: set in playerToDom
                     fill: player.color
                 });
-                arena.ids.get(player.relTo).g.appendChild(player.pointerTriangle);
+                this.applyStroke(player.pointerTriangle);
+                player.g.appendChild(player.pointerTriangle);
             }
             this.playerToDom(player);
             if (player === arena.myPlayer) {
                 this.activateEventListeners();
+                this.addEventListener(player.circ, "wheel", this.onPlayerCircleWheel.bind(this));
             }
         },
         deactivateFor: function (player) {
@@ -138,18 +135,13 @@ function default_tool(geom, dom, events, arena) {
             const mouse = arena.myPlayer.eventToRelCoords(e);
             const current = arena.myPlayer.posAtTime(tNow);
             const d = current.sub(mouse);
-            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
-            const r = arena.myPlayer.scale * headRadius;
+            const r = arena.myPlayer.scale * this.playerRadius;
             if (d.norm() <= r) {
                 this.draggee = "myPlayer";
                 this.isToolInAction = true;
                 const mouse = arena.myPlayer.eventToRelCoords(e);
                 this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
                 arena.arenaDiv.style.cursor = "none";
-                events.publish({
-                    type: "start_pointing",
-                    angle: this.myPlayerToMouse.angle(),
-                });
             } else {
                 this.draggee = "map";
                 this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
@@ -166,17 +158,12 @@ function default_tool(geom, dom, events, arena) {
                     // as long as the mousedown and mouseup are on the same element, but we don't want these clicks.
                     if (this.isToolInAction) {
                         this.isToolInAction = false;
-                        events.publish({ type: "end_pointing" });
                         arena.arenaDiv.style.cursor = "default";
                     } else {
                         this.isToolInAction = true;
                         const mouse = arena.myPlayer.eventToRelCoords(e);
                         this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
                         arena.arenaDiv.style.cursor = "none";
-                        events.publish({
-                            type: "start_pointing",
-                            angle: this.myPlayerToMouse.angle(),
-                        });
                     }    
                 } else {
                     // It's the end of a panning with non-zero movement
@@ -184,7 +171,6 @@ function default_tool(geom, dom, events, arena) {
                 }
             } else if (this.draggee === "myPlayer") {
                 this.isToolInAction = false;
-                events.publish({ type: "end_pointing" });
                 arena.arenaDiv.style.cursor = "default";
             }
             // end panning (even if there was zero movement)
@@ -193,25 +179,35 @@ function default_tool(geom, dom, events, arena) {
         },
         onMouseLeave: function (e) {
         },
+        onPlayerCircleWheel: function (e) {
+            const scaleChange = Math.exp(e.deltaY * -0.001);
+            events.publish({ type: "player_scale", scale: arena.myPlayer.scale * scaleChange });
+        },
         hover: function (e) {
             const tNow = e.timeStamp / 1000;
             const mouse = arena.myPlayer.eventToRelCoords(e);
             const current = arena.myPlayer.posAtTime(tNow);
-            const d = current.sub(mouse);
-            const headRadius = 1; // hardcoded, actual scaling is done using player.scale
-            const finalPlayerDistToMouse = arena.myPlayer.scale * headRadius + tool.attachGap + this.pointerTriangleHeight;
-            // only move if mouse is outside a circle (of radius finalPlayerDistToMouse) surrounding the player
-            if (d.norm() >= finalPlayerDistToMouse) {
-                const targetZero = mouse.add(d.scaleToLength(finalPlayerDistToMouse));
+            const d = mouse.sub(current);
+            // only move player if mouse is outside a circle (of radius maxCursorDist) surrounding the player
+            if (d.norm() >= this.maxCursorDist * arena.myPlayer.scale) {
+                const targetZero = mouse.sub(d.scaleToLength(this.defaultCursorDist * arena.myPlayer.scale));
                 const move = targetZero.sub(current);
                 const tToStop = Math.sqrt(2 * move.norm() / arena.myPlayer.decceleration);
-                events.publish([{
+                events.publish({
                     type: "trajectory",
                     x0: targetZero.x,
                     y0: targetZero.y,
                     t0: tNow + tToStop,
                     angle: d.angle()
-                }]);
+                });
+            }
+            // only change tool angle if cursor is not too close to center of player circle (too fidgety otherwise)
+            if (d.norm() >= this.playerRadius / 3.0 * arena.myPlayer.scale) {
+                events.publish({
+                    type: "toolAngle",
+                    t: tNow,
+                    angle: d.angle()
+                });
             }
         },
         pan: function(e) {
@@ -253,13 +249,13 @@ function default_tool(geom, dom, events, arena) {
         const player = sourceId ? arena.ids.get(sourceId) : arena.myPlayer;
         if (e.type === "trajectory") {
             player.zeroSpeedPos = new geom.Point(parseFloat(e.x0), parseFloat(e.y0));
-            player.zeroSpeedTime = e.t0; // TODO substract timeSeniority;
-            player.angle = e.angle;
-        } else if (e.type === "start_pointing") {
-            player.pointerAngle = e.angle;
-            player.showPointerTriangle = true;
-        } else if (e.type === "end_pointing") {
-            player.showPointerTriangle = false;
+            player.zeroSpeedTime = e.t0; // TODO substract timeSeniority
+            player.movementAngle = e.angle;
+        } else if (e.type === "toolAngle") {
+            player.toolAngle = e.angle;
+            player.lastMovementTime = e.t; // TODO substract timeSeniority
+        } else if (e.type === "player_scale") {
+            player.scale = e.scale;
         } else if (e.type === "pan") {
             arena.myPlayer.view.x = parseFloat(e.x);
             arena.myPlayer.view.y = parseFloat(e.y);

@@ -16,7 +16,7 @@ function arena(dom, geom, events) {
         constructor(initialPos) {
             this.zeroSpeedPos = initialPos;
             this.zeroSpeedTime = -1e10;
-            this.angle = 0.12345;
+            this.movementAngle = 0.12345;
         }
         /** @returns {Float} deccelaration in svg position units per sec^2 */
         get decceleration() {
@@ -25,13 +25,13 @@ function arena(dom, geom, events) {
         /** @param time in seconds */
         speedAtTime(time) {
             const t = Math.max(0, this.zeroSpeedTime - time);
-            return geom.Point.polar(this.decceleration * t, oppositeAngle(this.angle));
+            return geom.Point.polar(this.decceleration * t, this.movementAngle);
         }
         /** @param time in seconds */
         posAtTime(time) {
             const t = Math.max(0, this.zeroSpeedTime - time);
             const d = 0.5 * this.decceleration * t * t;
-            return this.zeroSpeedPos.add(geom.Point.polar(d, this.angle));
+            return this.zeroSpeedPos.sub(geom.Point.polar(d, this.movementAngle));
         }
     }
 
