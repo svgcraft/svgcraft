@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Crab Hand</title>
+    <script src="https://unpkg.com/@handtracking.io/yoha@0.0.7/dist/loader.browser.min.js"></script>
+    <script src="./src/dom.js"></script>
+    <script src="./src/geom.js"></script>
+    <script src="./src/main.js"></script>
+    <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
+    <script>
+        function init() {
+            const dom_module = dom();
+            const geom_module = geom();
+        }
+    </script>
+</head>
+
+<body onload="init()">
+    <div id="logs-container">
+        <div id="logs">
+          <div>Downloading model: <span id="progress">0%</span></div>
+          <div id="warmup" style="display: none;">Warming up...</div>
+          <div id="camera" style="display: none;">Requesting camera access...</div>
+          <div id="error"></div>
+        </div>
+      </div>
+</body>
