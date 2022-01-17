@@ -64,8 +64,9 @@ function default_tool(geom, dom, events, arena) {
             const baseMid = geom.Point.polar(this.outerToolRadius - this.pointerTriangleHeight, player.toolAngle);
             const t = geom.isosceles_triangle(baseMid, this.pointerTriangleWidth, player.toolAngle, this.pointerTriangleHeight);
             player.pointerTriangle.setAttribute("d", t);
-            const showTool = performance.now() / 1000 < 
-                Math.max(player.lastMovementTime, player.zeroSpeedTime) + player.toolAutoHideDelay;
+            // const showTool = performance.now() / 1000 < 
+            //    Math.max(player.lastMovementTime, player.zeroSpeedTime) + player.toolAutoHideDelay;
+            const showTool = player.showTool;
             player.pointerTriangle.setAttribute("visibility", showTool ? "visible" : "hidden");
             player.g.setAttribute("transform", `translate(${player.currentPos.x}, ${player.currentPos.y}) scale(${player.scale})`);
         },
@@ -73,6 +74,7 @@ function default_tool(geom, dom, events, arena) {
         activateFor: function (player) {
             player.relTo ??= "worldPlayers";
             player.scale ??= 0.5;
+            player.showTool ??= true;
             player.lastMovementTime ??= -Infinity;
             player.toolAutoHideDelay ??= 3.0; // seconds
             if (!player.g) {
@@ -92,6 +94,7 @@ function default_tool(geom, dom, events, arena) {
             if (player === arena.myPlayer) {
                 this.activateEventListeners();
                 this.addEventListener(player.circ, "wheel", this.onPlayerCircleWheel.bind(this));
+                this.addEventListener(player.pointerTriangle, "mousedown", this.onTriangleMouseDown.bind(this));
             }
         },
         deactivateFor: function (player) {
@@ -111,21 +114,18 @@ function default_tool(geom, dom, events, arena) {
 
         myPlayerToMouse: new geom.Point(0.123, 0.123),
 
-        draggee: null, // "map" or "myPlayer" or null
-        isToolInAction: false,
         lastMouseEventWasMouseDown: false,
+        draggee: null, // "map" or "myPlayer" or "tool" or null
 
         onMouseMove: function (e) {
             if (this.draggee === "map") {
                 this.pan(e);
             } else if (this.draggee === "myPlayer") {
                 this.movetool(e);
+            } else if (this.draggee === "tool") {
+                this.movetool(e);
             } else {
-                if (this.isToolInAction) {
-                    this.movetool(e);
-                } else {
-                    this.hover(e);
-                }
+                this.hover(e);
             }
             this.lastMouseEventWasMouseDown = false;
         },
@@ -138,7 +138,6 @@ function default_tool(geom, dom, events, arena) {
             const r = arena.myPlayer.scale * this.playerRadius;
             if (d.norm() <= r) {
                 this.draggee = "myPlayer";
-                this.isToolInAction = true;
                 const mouse = arena.myPlayer.eventToRelCoords(e);
                 this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
                 arena.arenaDiv.style.cursor = "none";
@@ -150,30 +149,20 @@ function default_tool(geom, dom, events, arena) {
             arena.arenaDiv.style.cursor = "none";
             this.lastMouseEventWasMouseDown = true;
         },
+        onTriangleMouseDown: function (e) {
+            this.draggee = "tool";
+            const mouse = arena.myPlayer.eventToRelCoords(e);
+            this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
+            arena.arenaDiv.style.cursor = "none";
+            e.stopPropagation();
+            this.lastMouseEventWasMouseDown = true;
+        },
         onMouseUp: function (e) {
-            if (this.draggee === "map") {
-                if (this.lastMouseEventWasMouseDown) {
-                    // It's a true click.
-                    // Note: browsers also consider a mousedown-mousemove-mouseup sequence as a click,
-                    // as long as the mousedown and mouseup are on the same element, but we don't want these clicks.
-                    if (this.isToolInAction) {
-                        this.isToolInAction = false;
-                        arena.arenaDiv.style.cursor = "default";
-                    } else {
-                        this.isToolInAction = true;
-                        const mouse = arena.myPlayer.eventToRelCoords(e);
-                        this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
-                        arena.arenaDiv.style.cursor = "none";
-                    }    
-                } else {
-                    // It's the end of a panning with non-zero movement
-                    if (!this.isToolInAction) arena.arenaDiv.style.cursor = "default";
-                }
-            } else if (this.draggee === "myPlayer") {
-                this.isToolInAction = false;
-                arena.arenaDiv.style.cursor = "default";
+            // detect click
+            if (this.lastMouseEventWasMouseDown) {
+                events.publish({ type: "show_tool", value: !arena.myPlayer.showTool });
             }
-            // end panning (even if there was zero movement)
+            arena.arenaDiv.style.cursor = "default";
             this.draggee = null;
             this.lastMouseEventWasMouseDown = false;
         },
@@ -256,6 +245,8 @@ function default_tool(geom, dom, events, arena) {
             player.lastMovementTime = e.t; // TODO substract timeSeniority
         } else if (e.type === "player_scale") {
             player.scale = e.scale;
+        } else if (e.type === "show_tool") {
+            player.showTool = e.value;
         } else if (e.type === "pan") {
             arena.myPlayer.view.x = parseFloat(e.x);
             arena.myPlayer.view.y = parseFloat(e.y);
