@@ -142,7 +142,7 @@ function default_tool(geom, dom, events, arena) {
                 this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
                 // comment out line below to keep showing the cursor while dragging myPlayer to make it easier to 
                 // understand how moving the cursor affects the toolAngle
-                arena.arenaDiv.style.cursor = "none";
+                // arena.arenaDiv.style.cursor = "none";
             } else {
                 this.draggee = "map";
                 this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
@@ -216,11 +216,13 @@ function default_tool(geom, dom, events, arena) {
         },
         movecirc: function(e) {
             const tNow = e.timeStamp / 1000;
-            const mouse = arena.myPlayer.eventToRelCoords(e);
-            const newCenter = mouse.sub(this.myPlayerToMouse);
+            const newMouse = arena.myPlayer.eventToRelCoords(e);
             const oldCenter = arena.myPlayer.posAtTime(tNow);
-            const tipOfTool = oldCenter.add(geom.Point.polar(this.outerToolRadius * arena.myPlayer.scale, arena.myPlayer.toolAngle));
-            const d = tipOfTool.sub(newCenter);
+            const oldAngle = arena.myPlayer.toolAngle;
+            const centerToMouseDist = this.myPlayerToMouse.norm();
+            const tipOfTool = oldCenter.add(geom.Point.polar(this.outerToolRadius * arena.myPlayer.scale, oldAngle));
+            const d = tipOfTool.sub(newMouse);
+            const newCenter = newMouse.sub(d.scaleToLength(centerToMouseDist));
             events.publish([
                 { // degenerate trajectory (already at speed 0)
                     type: "trajectory",
