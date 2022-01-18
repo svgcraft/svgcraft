@@ -121,7 +121,11 @@ function default_tool(geom, dom, events, arena) {
             if (this.draggee === "map") {
                 this.pan(e);
             } else if (this.draggee === "myPlayer") {
-                this.movecirc(e);
+                if (arena.myPlayer.showTool) {
+                    this.movecirc(e);
+                } else {
+                    this.movetool(e);
+                }
             } else if (this.draggee === "tool") {
                 this.movetool(e);
             } else {
@@ -142,7 +146,7 @@ function default_tool(geom, dom, events, arena) {
                 this.myPlayerToMouse = mouse.sub(arena.myPlayer.zeroSpeedPos);
                 // comment out line below to keep showing the cursor while dragging myPlayer to make it easier to 
                 // understand how moving the cursor affects the toolAngle
-                // arena.arenaDiv.style.cursor = "none";
+                arena.arenaDiv.style.cursor = "none";
             } else {
                 this.draggee = "map";
                 this.mouseDownScreenPos = new geom.Point(e.screenX, e.screenY);
@@ -192,14 +196,15 @@ function default_tool(geom, dom, events, arena) {
                     angle: d.angle()
                 });
             }
-            // only change tool angle if cursor is not too close to center of player circle (too fidgety otherwise)
-            if (d.norm() >= this.playerRadius / 3.0 * arena.myPlayer.scale) {
-                events.publish({
-                    type: "tool_angle",
-                    t: tNow,
-                    angle: d.angle()
-                });
-            }
+            // Only change tool angle if cursor is not too close to center of player circle (too fidgety otherwise).
+            // Commented out because when starting dragging inside the small circle on the opposite side of the
+            // pointer triangle, there's a jump at the beginning of the dragging.
+            // if (d.norm() >= this.playerRadius / 3.0 * arena.myPlayer.scale) {
+            events.publish({
+                type: "tool_angle",
+                t: tNow,
+                angle: d.angle()
+            });
         },
         pan: function(e) {
             const r = arena.arenaDiv.getBoundingClientRect();
