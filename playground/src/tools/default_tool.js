@@ -94,7 +94,7 @@ function default_tool(geom, dom, events, arena) {
             if (player === arena.myPlayer) {
                 this.activateEventListeners();
                 this.addEventListener(player.circ, "wheel", this.onPlayerCircleWheel.bind(this));
-                this.addEventListener(player.pointerTriangle, "mousedown", this.onTriangleMouseDown.bind(this));
+                this.addEventListener(player.pointerTriangle, "pointerdown", this.onTriangleMouseDown.bind(this));
             }
         },
         deactivateFor: function (player) {
@@ -103,10 +103,10 @@ function default_tool(geom, dom, events, arena) {
             if (player === arena.myPlayer) this.deactivateEventListeners();
         },
         activateEventListeners: function () {
-            this.addEventListener(arena.arenaDiv, "mousemove", this.onMouseMove.bind(this));
-            this.addEventListener(arena.arenaDiv, "mouseleave", this.onMouseLeave.bind(this));
-            this.addEventListener(arena.arenaDiv, "mousedown", this.onMouseDown.bind(this));
-            this.addEventListener(window, "mouseup", this.onMouseUp.bind(this));
+            this.addEventListener(arena.arenaDiv, "pointermove", this.onMouseMove.bind(this));
+            this.addEventListener(arena.arenaDiv, "pointerleave", this.onMouseLeave.bind(this));
+            this.addEventListener(arena.arenaDiv, "pointerdown", this.onMouseDown.bind(this));
+            this.addEventListener(window, "pointerup", this.onMouseUp.bind(this));
         },
         deactivateEventListeners: function () {
             this.removeAllEventListeners();

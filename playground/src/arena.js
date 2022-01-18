@@ -221,6 +221,8 @@ function arena(dom, geom, events) {
             window.cancelAnimationFrame(handle);
         }
     });
+    window.addEventListener("contextmenu", function(e) { e.preventDefault(); });
+    document.body.style.touchAction = "none"; // don't use browser's scroll/zoom on touch events
 
     // exports:
     return {
