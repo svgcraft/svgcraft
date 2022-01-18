@@ -118,6 +118,9 @@ function default_tool(geom, dom, events, arena) {
         draggee: null, // "map" or "myPlayer" or "tool" or null
 
         onMouseMove: function (e) {
+            // tap events also trigger pointermove events, but we don't want these
+            // if (this.draggee === null && e.pointerType !== "mouse") return;
+            // e.pointerType seems to always return "mouse"...
             if (this.draggee === "map") {
                 this.pan(e);
             } else if (this.draggee === "myPlayer") {
