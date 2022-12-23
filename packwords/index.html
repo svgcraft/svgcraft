@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>PackWords</title>
+    <script src="./src/dom.js"></script>
+    <script src="./src/wordlist.js"></script>
+    <script src="./src/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js" integrity="sha512-+Ru50BzEpZjlFzVnjSmJfYFPFfY2hS0Kjlu/IvqaJoux7maF5lJrRVUJWJ2LevPls7rd242GLbWEt+zAo4OVVQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
+    <script>
+        function init() {
+            const dom_module = dom();
+            const wordlist_module = wordlist();
+            const packwords_module = packwords(dom_module, wordlist_module);
+        }
+    </script>
+</head>
+
+<body onload="init()">
+    <svg id="mainSvg" style="position: absolute; top: 0; left: 0; height:90%; font-family: Arial, Helvetica, sans-serif;">
+    </svg>
+</body>
