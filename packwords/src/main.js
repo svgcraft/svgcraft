@@ -8,6 +8,8 @@ function packwords(dom, wordlist) {
     const wordBackgroundColor = "#dedede";
     const wordFrameColor = "black";
     const textHeight = 0.7;
+    const negativeSquareColor = "#ff3333";
+    const positiveSquareColor = "#00b300";
 
 
     function paintGrid() {
@@ -59,6 +61,34 @@ function packwords(dom, wordlist) {
                 return this.y <= y && y < this.y + 1 && this.x <= x && x < this.x + this.word.length;
             }
         }
+        rotateAtIndex(i) {
+            if (this.isDown) {
+                this.x = this.x - i;
+                this.y = this.y + i;
+            } else {
+                this.x = this.x + i;
+                this.y = this.y - i;
+            }
+            this.isDown = !this.isDown;
+        }
+    }
+
+    function paintScoreSquares(scoreGrid) {
+        for (var y = 0; y < H; y++) {
+            for (var x = 0; x < W; x++) {
+                if (scoreGrid[y][x] != 0) {
+                    const attrs = { 
+                        x: x, 
+                        y: y, 
+                        width: 1,
+                        height: 1,
+                        stroke: "none",
+                        fill: scoreGrid[y][x] < 0 ? negativeSquareColor : positiveSquareColor
+                    };
+                    mainSvg.appendChild(dom.svg("rect", attrs));
+                }
+            }
+        }
     }
 
     function paintWordRects(words, stroke, fill) {
@@ -98,10 +128,70 @@ function packwords(dom, wordlist) {
         return Math.floor(rng() * maxPlusOne);
     }
 
+    // Returns a grid of strings, each the concatenation of all letters on that cell
+    function computeOccupancy(wordObjs) {
+        const occ = emptyGrid("");
+        for (w of wordObjs) {
+            for (var i = 0; i < w.word.length; i++) {
+                const x = w.x + (w.isDown ? 0 : i);
+                const y = w.y + (w.isDown ? i : 0);
+                if (0 <= x && x < W && 0 <= y && y < H) {
+                    occ[y][x] = occ[y][x].concat(w.word[i]);
+                }
+            }
+        }
+        return occ;
+    }
+
+    function containsDifferentLetters(s) {
+        if (s.length === 0) return false;
+        for (var i = 1; i < s.length; i++) {
+            if (s[0] !== s[i]) return true;
+        }
+        return false;
+    }
+
+    function occupancyToScoreGrid(occ) {
+        const scoreGrid = emptyGrid(0);
+        for (var y = 0; y < H; y++) {
+            for (var x = 0; x < W; x++) {
+                const s = occ[y][x];
+                if (containsDifferentLetters(s)) {
+                    scoreGrid[y][x] = -1;
+                } else if (s.length > 1) {
+                    scoreGrid[y][x] = s.length - 1;
+                }
+            }
+        }
+        return scoreGrid;
+    }
+
+    function scoreGridSum(scoreGrid) {
+        var sum = 0;
+        for (var y = 0; y < H; y++) {
+            for (var x = 0; x < W; x++) {
+                sum += scoreGrid[y][x];
+            }
+        }
+        return sum;
+    }
+
     function emptyGrid(defaultValue) {
         const res = [];
         for (var row = 0; row < H; row++) {
             res.push(Array(W).fill(defaultValue));
+        }
+        return res;
+    }
+
+    function emptyGridGen(f) {
+        const res = [];
+        for (var row = 0; row < H; row++) {
+            const a = [];
+            for (var col = 0; col < W; col++) {
+                a.push(f());
+            }
+            res.push(a);
         }
         return res;
     }
@@ -243,12 +333,27 @@ function packwords(dom, wordlist) {
         indexOfDraggedLetter = -1;
     }
 
+    function onRightClick(e) {
+        const [x, y] = eventToIntRelCoords(e);
+        w = findWordAt(x, y, current);
+        if (w) {
+            const indexOfLetter = (x - w.x) + (y - w.y); // only one of the summands is non-zero
+            w.rotateAtIndex(indexOfLetter);
+        }
+        repaint();
+        e.preventDefault();
+    }
+
     function repaint() {
+        const occ = computeOccupancy(current);
+        const scoreGrid = occupancyToScoreGrid(occ);
         mainSvg.replaceChildren();
         paintWordRects(current, "none", wordBackgroundColor);
+        paintScoreSquares(scoreGrid);
         paintGrid();
         paintWordRects(current, wordFrameColor, "none");    
         paintLetters(current);
+        scoreSpan.innerHTML = scoreGridSum(scoreGrid);
     }
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -259,6 +364,7 @@ function packwords(dom, wordlist) {
     const H = urlParams.get("H") ?? 14;
     const minWordLength = urlParams.get("minWordLength") ?? 3;
     const maxWordLength = urlParams.get("maxWordLength") ?? Math.min(W, H);
+    const customWords = urlParams.has("customWords") ? urlParams.get("customWords").split(",") : null;
     const nAcross = urlParams.get("nAcross") ?? Math.floor(H / 3);
     const nDown = urlParams.get("nDown") ?? Math.floor(W / 3);
     
@@ -269,15 +375,24 @@ function packwords(dom, wordlist) {
         }
     }
 
-    const mainSvg = document.getElementById("mainSvg");
-    mainSvg.setAttribute("viewBox", `${-borderSlack} ${-borderSlack} ${W+2*borderSlack} ${H+2*borderSlack}`);
+    var solution = null;
+    var current = null;
 
-    const solution = makeCompactSolution();
-    const current = arrangeInStartPos(solution);
+    if (customWords) {
+        current = arrangeInStartPos(customWords.map(w => new Word(0, 0, w, false)));
+    } else {
+        solution = makeCompactSolution();
+        current = arrangeInStartPos(solution);
+    }
+
+    const mainSvg = document.getElementById("mainSvg");
+    const scoreSpan = document.getElementById("scoreSpan");
+    mainSvg.setAttribute("viewBox", `${-borderSlack} ${-borderSlack} ${W+2*borderSlack} ${H+2*borderSlack}`);
 
     repaint();
 
     mainSvg.addEventListener('pointerdown', onStartDragging);
+    mainSvg.addEventListener('contextmenu', onRightClick);
     window.addEventListener('pointermove', onMouseMove);
     window.addEventListener('pointerup', onEndDragging);
         
