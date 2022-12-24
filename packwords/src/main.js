@@ -52,6 +52,13 @@ function packwords(dom, wordlist) {
         atPos(x, y) {
             return new Word(x, y, this.word, this.isDown);
         }
+        coversPos(x, y) {
+            if (this.isDown) {
+                return this.x <= x && x < this.x + 1 && this.y <= y && y < this.y + this.word.length;
+            } else {
+                return this.y <= y && y < this.y + 1 && this.x <= x && x < this.x + this.word.length;
+            }
+        }
     }
 
     function paintWordRects(words, stroke, fill) {
@@ -78,7 +85,8 @@ function packwords(dom, wordlist) {
                     y: word.y + 0.52 + word.dy * i,
                     "font-size": textHeight,
                     "dominant-baseline": "middle",
-                    "text-anchor": "middle"
+                    "text-anchor": "middle",
+                    "pointer-events": "none"
                 });
                 t.textContent = letter;
                 mainSvg.appendChild(t);
@@ -188,17 +196,59 @@ function packwords(dom, wordlist) {
         return arranged;
     }
 
+    function findWordAt(x, y, wordObjs) {
+        for (var w of wordObjs) {
+            if (w.coversPos(x, y)) return w;
+        }
+    }
+
     function eventToRelCoords(e) {
         const r = mainSvg.getBoundingClientRect();
         const x = e.pageX - r.left;
         const y = e.pageY - r.top;
-        return [x / r.width * (W + 2 * borderSlack), y / r.width * (H + 2 * borderSlack)];
+        return [x / r.width * (W + 2 * borderSlack), y / r.height * (H + 2 * borderSlack)];
+    }
+    
+    function eventToIntRelCoords(e) {
+        const [x, y] = eventToRelCoords(e);
+        return [Math.floor(x), Math.floor(y)];
     }
 
     var draggee = null;
+    var indexOfDraggedLetter = -1;
 
     function onStartDragging(e) {
+        const [x, y] = eventToIntRelCoords(e);
+        draggee = findWordAt(x, y, current);
+        if (draggee) indexOfDraggedLetter = (x - draggee.x) + (y - draggee.y); // only one of the summands is non-zero
+        e.preventDefault();
+    }
 
+    function onDragging(e) {
+        const [xMouse, yMouse] = eventToIntRelCoords(e);
+        draggee.x = xMouse - (draggee.isDown ? 0 : indexOfDraggedLetter);
+        draggee.y = yMouse - (draggee.isDown ? indexOfDraggedLetter : 0);
+        repaint();
+        e.preventDefault();
+    }
+
+    function onMouseMove(e) {
+        if (draggee != null) {
+            onDragging(e);
+        }
+    }
+
+    function onEndDragging(e) {
+        draggee = null;
+        indexOfDraggedLetter = -1;
+    }
+
+    function repaint() {
+        mainSvg.replaceChildren();
+        paintWordRects(current, "none", wordBackgroundColor);
+        paintGrid();
+        paintWordRects(current, wordFrameColor, "none");    
+        paintLetters(current);
     }
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -224,10 +274,12 @@ function packwords(dom, wordlist) {
 
     const solution = makeCompactSolution();
     const current = arrangeInStartPos(solution);
-    paintWordRects(current, "none", wordBackgroundColor);
-    paintGrid();
-    paintWordRects(current, wordFrameColor, "none");    
-    paintLetters(current);
-    console.log(solution);
+
+    repaint();
+
+    mainSvg.addEventListener('pointerdown', onStartDragging);
+    window.addEventListener('pointermove', onMouseMove);
+    window.addEventListener('pointerup', onEndDragging);
+        
 }
 
