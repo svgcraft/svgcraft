@@ -440,10 +440,16 @@ function packwords(dom, wordlist) {
         paintScoreSquares(scoreGrid);
         paintGrid();
         paintBoundingBox(scoreGrid.dimensions);
-        paintWordRects(current, wordFrameColor, "none");    
+        paintWordRects(current, wordFrameColor, "none");
         paintLetters(current);
         scoreSpan.innerHTML = scoreOfScoreGrid(scoreGrid);
     }
+
+    const mainSvg = document.getElementById("mainSvg");
+    const mainSvgWrapper = document.getElementById("mainSvgWrapper");
+    const scoreSpan = document.getElementById("scoreSpan");
+    const bestScoreSpan = document.getElementById("bestScoreSpan");
+    const bestScoreP = document.getElementById("bestScoreP");
 
     const urlParams = new URLSearchParams(window.location.search);
     const seedParam = urlParams.get("seed") ?? 'random';
@@ -469,12 +475,12 @@ function packwords(dom, wordlist) {
         current = arrangeInStartPos(customWords.map(w => new Word(0, 0, w, false)), customWords.length);
     } else {
         solution = makeCompactSolution(9, 14);
+        const occ = computeOccupancy(solution);
+        const scoreGrid = occupancyToScoreGrid(occ);
+        bestScoreSpan.innerHTML = scoreOfScoreGrid(scoreGrid);
+        bestScoreP.style.visibility = "visible";
         current = arrangeInStartPos(solution, solution.size);
     }
-
-    const mainSvg = document.getElementById("mainSvg");
-    const mainSvgWrapper = document.getElementById("mainSvgWrapper");
-    const scoreSpan = document.getElementById("scoreSpan");
 
     repaint();
 
