@@ -3,7 +3,7 @@
 function packwords(dom, wordlist) {
     const thinLineWidth = 0.04;
     const thickLineWidth = 0.08;
-    const borderSlack = 0.1;
+    const borderSlack = 1.2;
     const gridLineColor = "gray";
     const wordBackgroundColor = "#dedede";
     const wordFrameColor = "black";
@@ -14,28 +14,38 @@ function packwords(dom, wordlist) {
 
     function paintGrid() {
         const attrs = {
-            x1: 0,
-            y1: 0,
-            x2: W,
-            y2: 0,
+            x1: gridLeft,
+            x2: gridRight,
             stroke: gridLineColor,
             "stroke-width": thinLineWidth,
             "stroke-linecap": "square"
         };
-        for (var row = 0; row <= H; row++) {
+        for (var row = Math.floor(gridTop); row <= gridBottom; row++) {
+            attrs.y1 = row;
+            attrs.y2 = row;
             mainSvg.appendChild(dom.svg("line", attrs));
-            attrs.y1 += 1;
-            attrs.y2 += 1;
         }
-        attrs.x1 = 0;
-        attrs.y1 = 0;
-        attrs.x2 = 0;
-        attrs.y2 = H;
-        for (var col = 0; col <= W; col++) {
+        attrs.y1 = gridTop;
+        attrs.y2 = gridBottom;
+        for (var col = Math.floor(gridLeft); col <= gridRight; col++) {
+            attrs.x1 = col;
+            attrs.x2 = col;
             mainSvg.appendChild(dom.svg("line", attrs));
-            attrs.x1 += 1;
-            attrs.x2 += 1;
         }
+    }
+
+    function paintBoundingBox(dimensions) {
+        const [x1, y1, x2, y2] = dimensions;
+        const attrs = { 
+            x: x1,
+            y: y1, 
+            width: x2 - x1, 
+            height: y2 - y1,
+            stroke: gridLineColor,
+            "stroke-width": thickLineWidth,
+            fill: "none"
+        };
+        mainSvg.appendChild(dom.svg("rect", attrs));
     }
 
     class Word {
@@ -51,15 +61,23 @@ function packwords(dom, wordlist) {
         get dy() {
             return this.isDown ? 1 : 0;
         }
+        get width() {
+            return this.isDown ? 1 : this.word.length;
+        }
+        get height() {
+            return this.isDown ? this.word.length : 1;
+        }
+        get x2() {
+            return this.x + this.width;
+        }
+        get y2() {
+            return this.y + this.height;
+        }
         atPos(x, y) {
             return new Word(x, y, this.word, this.isDown);
         }
         coversPos(x, y) {
-            if (this.isDown) {
-                return this.x <= x && x < this.x + 1 && this.y <= y && y < this.y + this.word.length;
-            } else {
-                return this.y <= y && y < this.y + 1 && this.x <= x && x < this.x + this.word.length;
-            }
+            return this.x <= x && x < this.x2 && this.y <= y && y < this.y2;
         }
         rotateAtIndex(i) {
             if (this.isDown) {
@@ -73,17 +91,41 @@ function packwords(dom, wordlist) {
         }
     }
 
+    class Grid {
+        constructor(dimensions, defaultValue) {
+            const [x1, y1, x2, y2] = dimensions;
+            const grid = [];
+            for (var y = y1; y < y2; y++) {
+                grid.push(Array(x2-x1).fill(defaultValue));
+            }
+            this.grid = grid;
+            this.x1 = x1;
+            this.y1 = y1;
+            this.x2 = x2;
+            this.y2 = y2;
+        }
+        get(x, y) {
+            return this.grid[y-this.y1][x-this.x1];
+        }
+        set(x, y, v) {
+            this.grid[y-this.y1][x-this.x1] = v;
+        }
+        get dimensions() {
+            return [this.x1, this.y1, this.x2, this.y2];
+        }
+    }
+
     function paintScoreSquares(scoreGrid) {
-        for (var y = 0; y < H; y++) {
-            for (var x = 0; x < W; x++) {
-                if (scoreGrid[y][x] != 0) {
+        for (var y = scoreGrid.y1; y < scoreGrid.y2; y++) {
+            for (var x = scoreGrid.x1; x < scoreGrid.x2; x++) {
+                if (scoreGrid.get(x, y) != 0) {
                     const attrs = { 
                         x: x, 
                         y: y, 
                         width: 1,
                         height: 1,
                         stroke: "none",
-                        fill: scoreGrid[y][x] < 0 ? negativeSquareColor : positiveSquareColor
+                        fill: scoreGrid.get(x, y) < 0 ? negativeSquareColor : positiveSquareColor
                     };
                     mainSvg.appendChild(dom.svg("rect", attrs));
                 }
@@ -128,16 +170,28 @@ function packwords(dom, wordlist) {
         return Math.floor(rng() * maxPlusOne);
     }
 
+    function boundingBoxOfWords(wordObjs) {
+        var x1 = Number.POSITIVE_INFINITY;
+        var y1 = Number.POSITIVE_INFINITY;
+        var x2 = Number.NEGATIVE_INFINITY;
+        var y2 = Number.NEGATIVE_INFINITY;
+        for (var w of wordObjs) {
+            x1 = Math.min(x1, w.x);
+            y1 = Math.min(y1, w.y);
+            x2 = Math.max(x2, w.x2);
+            y2 = Math.max(y2, w.y2);
+        }
+        return [x1, y1, x2, y2];
+    }
+
     // Returns a grid of strings, each the concatenation of all letters on that cell
     function computeOccupancy(wordObjs) {
-        const occ = emptyGrid("");
+        const occ = new Grid(boundingBoxOfWords(wordObjs), "");
         for (w of wordObjs) {
             for (var i = 0; i < w.word.length; i++) {
                 const x = w.x + (w.isDown ? 0 : i);
                 const y = w.y + (w.isDown ? i : 0);
-                if (0 <= x && x < W && 0 <= y && y < H) {
-                    occ[y][x] = occ[y][x].concat(w.word[i]);
-                }
+                occ.set(x, y, occ.get(x, y).concat(w.word[i]));
             }
         }
         return occ;
@@ -152,14 +206,14 @@ function packwords(dom, wordlist) {
     }
 
     function occupancyToScoreGrid(occ) {
-        const scoreGrid = emptyGrid(0);
-        for (var y = 0; y < H; y++) {
-            for (var x = 0; x < W; x++) {
-                const s = occ[y][x];
+        const scoreGrid = new Grid(occ.dimensions, 0);
+        for (var y = occ.y1; y < occ.y2; y++) {
+            for (var x = occ.x1; x < occ.x2; x++) {
+                const s = occ.get(x, y);
                 if (containsDifferentLetters(s)) {
-                    scoreGrid[y][x] = -1;
+                    scoreGrid.set(x, y, -1);
                 } else if (s.length > 1) {
-                    scoreGrid[y][x] = s.length - 1;
+                    scoreGrid.set(x, y, s.length - 1);
                 }
             }
         }
@@ -168,36 +222,16 @@ function packwords(dom, wordlist) {
 
     function scoreGridSum(scoreGrid) {
         var sum = 0;
-        for (var y = 0; y < H; y++) {
-            for (var x = 0; x < W; x++) {
-                sum += scoreGrid[y][x];
+        for (var y = scoreGrid.y1; y < scoreGrid.y2; y++) {
+            for (var x = scoreGrid.x1; x < scoreGrid.x2; x++) {
+                sum += scoreGrid.get(x, y);
             }
         }
         return sum;
     }
 
-    function emptyGrid(defaultValue) {
-        const res = [];
-        for (var row = 0; row < H; row++) {
-            res.push(Array(W).fill(defaultValue));
-        }
-        return res;
-    }
-
-    function emptyGridGen(f) {
-        const res = [];
-        for (var row = 0; row < H; row++) {
-            const a = [];
-            for (var col = 0; col < W; col++) {
-                a.push(f());
-            }
-            res.push(a);
-        }
-        return res;
-    }
-
-    function makeCompactSolution() {
-        const gridLetters = emptyGrid(null);
+    function makeCompactSolution(W, H) {
+        const gridLetters = new Grid([0, 0, W, H], null);
         const usedWords = new Set();
         const wordObjs = new Set();
 
@@ -207,7 +241,7 @@ function packwords(dom, wordlist) {
             const dx = isDown ? 0 : 1;
             const dy = isDown ? 1 : 0;
             for (var i = 0; i < word.length; i++) {
-                gridLetters[y][x] = word[i];
+                gridLetters.set(x, y, word[i]);
                 x += dx;
                 y += dy;
             }
@@ -222,9 +256,9 @@ function packwords(dom, wordlist) {
             if (H < y + word.length * dy) return -1;
             var score = 0;
             for (var i = 0; i < word.length; i++) {
-                if (gridLetters[y][x] === word[i]) {
+                if (gridLetters.get(x, y) === word[i]) {
                     score++;
-                } else if (gridLetters[y][x] !== null) {
+                } else if (gridLetters.get(x, y) !== null) {
                     return -1;
                 }
                 x += dx;
@@ -237,7 +271,7 @@ function packwords(dom, wordlist) {
         placeWord(Math.floor(W/2), Math.floor((H - firstWord.length)/2), firstWord, true);
 
         var remainingAcross = nAcross;
-        var remainingDown = nDown;
+        var remainingDown = nDown - 1;
         var nextIsDown = false;
         // let's hope this terminates...
         while (0 < remainingAcross + remainingDown) {
@@ -270,18 +304,29 @@ function packwords(dom, wordlist) {
         return wordObjs;
     }
 
-    function arrangeInStartPos(original) {
-        const arranged = new Set();
-        var downX = 0;
-        var acrossY = H - 1;
+    function arrangeInStartPos(original, count) {
+        var maxWordLen = 0;
         for (var w of original) {
-            if (w.isDown) {
-                arranged.add(w.atPos(downX, 0));
-                downX++;
+            maxWordLen = Math.max(maxWordLen, w.word.length);
+        }
+        const W = maxWordLen + 2;
+        const H = maxWordLen + count - 2;
+        const arranged = new Set();
+        var putAtTop = true;
+        var topY = 0;
+        var botY = H - 1;
+        for (var w of original) {
+            var wnew;
+            if (putAtTop) {
+                wnew = w.atPos(0, topY);
+                topY++;
             } else {
-                arranged.add(w.atPos(0, acrossY));
-                acrossY--;
+                wnew = w.atPos(W-w.word.length, botY)
+                botY--;
             }
+            wnew.isDown = false;
+            arranged.add(wnew);
+            putAtTop = !putAtTop;
         }
         return arranged;
     }
@@ -293,10 +338,10 @@ function packwords(dom, wordlist) {
     }
 
     function eventToRelCoords(e) {
-        const r = mainSvg.getBoundingClientRect();
-        const x = e.pageX - r.left;
-        const y = e.pageY - r.top;
-        return [x / r.width * (W + 2 * borderSlack), y / r.height * (H + 2 * borderSlack)];
+        const r = mainSvgWrapper.getBoundingClientRect();
+        const x = e.pageX - r.left - translateX;
+        const y = e.pageY - r.top - translateY;
+        return [x / scale, y / scale];
     }
     
     function eventToIntRelCoords(e) {
@@ -344,13 +389,51 @@ function packwords(dom, wordlist) {
         e.preventDefault();
     }
 
+    var translateX;
+    var translateY;
+    var scale;
+    var gridLeft;
+    var gridTop;
+    var gridRight;
+    var gridBottom;
+
+    function setTransform(dimensions) {
+        const [x1, y1, x2, y2] = dimensions;
+        const r = mainSvgWrapper.getBoundingClientRect();
+        const w = 2 * borderSlack + x2 - x1;
+        const h = 2 * borderSlack + y2 - y1;
+        const wscale = r.width/w;
+        const hscale = r.height/h;
+        if (wscale < hscale) {
+            scale = wscale;
+            translateX = (-x1 + borderSlack) * scale;
+            translateY = (-y1 + borderSlack) * scale + (r.height - scale * h) / 2;
+            gridLeft = x1 - borderSlack;
+            gridRight = x2 + borderSlack;
+            gridTop = y1 - borderSlack - (r.height / scale - h) / 2;
+            gridBottom = y2 + borderSlack + (r.height / scale - h) / 2;
+        } else {
+            scale = hscale;
+            translateX = (-x1 + borderSlack) * scale + (r.width - scale * w) / 2;
+            translateY = (-y1 + borderSlack) * scale;
+            gridLeft = x1 - borderSlack - (r.width / scale - w) / 2;
+            gridRight = x2 + borderSlack + (r.width / scale - w) / 2;
+            gridTop = y1 - borderSlack;
+            gridBottom = y2 + borderSlack;
+        }
+        const t = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        mainSvg.style.transform = t;
+    }
+
     function repaint() {
         const occ = computeOccupancy(current);
         const scoreGrid = occupancyToScoreGrid(occ);
         mainSvg.replaceChildren();
+        setTransform(scoreGrid.dimensions);
         paintWordRects(current, "none", wordBackgroundColor);
         paintScoreSquares(scoreGrid);
         paintGrid();
+        paintBoundingBox(scoreGrid.dimensions);
         paintWordRects(current, wordFrameColor, "none");    
         paintLetters(current);
         scoreSpan.innerHTML = scoreGridSum(scoreGrid);
@@ -360,14 +443,12 @@ function packwords(dom, wordlist) {
     const seedParam = urlParams.get("seed") ?? 'random';
     const seed = String(seedParam == 'random' ? Math.random() : seedParam);
     const rng = new Math.seedrandom(seed);
-    const W = urlParams.get("W") ?? 9;
-    const H = urlParams.get("H") ?? 14;
     const minWordLength = urlParams.get("minWordLength") ?? 3;
-    const maxWordLength = urlParams.get("maxWordLength") ?? Math.min(W, H);
+    const maxWordLength = urlParams.get("maxWordLength") ?? 100000;
     const customWords = urlParams.has("customWords") ? urlParams.get("customWords").split(",") : null;
-    const nAcross = urlParams.get("nAcross") ?? Math.floor(H / 3);
-    const nDown = urlParams.get("nDown") ?? Math.floor(W / 3);
-    
+    const nAcross = urlParams.get("nAcross") ?? 4;
+    const nDown = urlParams.get("nDown") ?? 3;
+
     const filteredWords = [];
     for (var w of wordlist) {
         if (minWordLength <= w.length && w.length <= maxWordLength) {
@@ -379,15 +460,15 @@ function packwords(dom, wordlist) {
     var current = null;
 
     if (customWords) {
-        current = arrangeInStartPos(customWords.map(w => new Word(0, 0, w, false)));
+        current = arrangeInStartPos(customWords.map(w => new Word(0, 0, w, false)), customWords.length);
     } else {
-        solution = makeCompactSolution();
-        current = arrangeInStartPos(solution);
+        solution = makeCompactSolution(9, 14);
+        current = arrangeInStartPos(solution, solution.size);
     }
 
     const mainSvg = document.getElementById("mainSvg");
+    const mainSvgWrapper = document.getElementById("mainSvgWrapper");
     const scoreSpan = document.getElementById("scoreSpan");
-    mainSvg.setAttribute("viewBox", `${-borderSlack} ${-borderSlack} ${W+2*borderSlack} ${H+2*borderSlack}`);
 
     repaint();
 
