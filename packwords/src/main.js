@@ -113,6 +113,12 @@ function packwords(dom, wordlist) {
         get dimensions() {
             return [this.x1, this.y1, this.x2, this.y2];
         }
+        get width() {
+            return this.x2 - this.x1;
+        }
+        get height() {
+            return this.y2 - this.y1;
+        }
     }
 
     function paintScoreSquares(scoreGrid) {
@@ -220,14 +226,14 @@ function packwords(dom, wordlist) {
         return scoreGrid;
     }
 
-    function scoreGridSum(scoreGrid) {
+    function scoreOfScoreGrid(scoreGrid) {
         var sum = 0;
         for (var y = scoreGrid.y1; y < scoreGrid.y2; y++) {
             for (var x = scoreGrid.x1; x < scoreGrid.x2; x++) {
                 sum += scoreGrid.get(x, y);
             }
         }
-        return sum;
+        return sum * 100 - scoreGrid.width * scoreGrid.height;
     }
 
     function makeCompactSolution(W, H) {
@@ -436,7 +442,7 @@ function packwords(dom, wordlist) {
         paintBoundingBox(scoreGrid.dimensions);
         paintWordRects(current, wordFrameColor, "none");    
         paintLetters(current);
-        scoreSpan.innerHTML = scoreGridSum(scoreGrid);
+        scoreSpan.innerHTML = scoreOfScoreGrid(scoreGrid);
     }
 
     const urlParams = new URLSearchParams(window.location.search);
